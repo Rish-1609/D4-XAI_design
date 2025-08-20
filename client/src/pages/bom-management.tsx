@@ -31,8 +31,30 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const formatCurrency = (cents: number) => {
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatCurrency = (paise: number) => {
+  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const formatShelfLife = (days: number | null | undefined) => {
+  if (!days) return 'N/A';
+  if (days >= 365) {
+    const years = Math.floor(days / 365);
+    const remainingDays = days % 365;
+    if (remainingDays === 0) {
+      return `${years} year${years > 1 ? 's' : ''}`;
+    }
+    const months = Math.round(remainingDays / 30);
+    return `${years}y ${months}m`;
+  }
+  if (days >= 30) {
+    const months = Math.floor(days / 30);
+    const remainingDays = days % 30;
+    if (remainingDays === 0) {
+      return `${months} month${months > 1 ? 's' : ''}`;
+    }
+    return `${months}m ${remainingDays}d`;
+  }
+  return `${days} day${days > 1 ? 's' : ''}`;
 };
 
 const formatQuantity = (quantity: number, precision = 1000) => {
@@ -401,11 +423,18 @@ export default function BomManagement() {
                               </div>
                               
                               <div className="flex items-center space-x-6">
-                                <div className="text-right">
+                                <div className="text-right mr-4">
                                   <div className="font-semibold text-gray-900">
                                     {formatCurrency(bom.totalCost)}
                                   </div>
                                   <div className="text-sm text-gray-500">Total Cost</div>
+                                </div>
+                                
+                                <div className="text-right">
+                                  <div className="font-semibold text-gray-900">
+                                    {formatShelfLife(bom.shelfLifeDays)}
+                                  </div>
+                                  <div className="text-sm text-gray-500">Shelf Life</div>
                                 </div>
                                 
                                 <Badge className={`${getStatusColor(bom.status)} text-white`}>
@@ -451,6 +480,7 @@ export default function BomManagement() {
                                         <th className="text-left py-2 px-3 font-medium text-gray-600">UNIT COST</th>
                                         <th className="text-left py-2 px-3 font-medium text-gray-600">SCRAP %</th>
                                         <th className="text-left py-2 px-3 font-medium text-gray-600">TOTAL COST</th>
+                                        <th className="text-left py-2 px-3 font-medium text-gray-600">SHELF LIFE</th>
                                         <th className="text-left py-2 px-3 font-medium text-gray-600">STOCK STATUS</th>
                                       </tr>
                                     </thead>
@@ -468,6 +498,7 @@ export default function BomManagement() {
                                           <td className="py-2 px-3">{formatCurrency(material.unitCost)}</td>
                                           <td className="py-2 px-3">{formatScrapPercentage(material.scrapPercentage)}</td>
                                           <td className="py-2 px-3 font-medium">{formatCurrency(material.totalCost)}</td>
+                                          <td className="py-2 px-3 text-sm">{formatShelfLife(material.shelfLifeDays)}</td>
                                           <td className="py-2 px-3">
                                             <Badge variant="secondary" className="bg-gray-100 text-gray-600">
                                               Unknown

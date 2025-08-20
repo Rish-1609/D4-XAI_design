@@ -238,7 +238,8 @@ export const boms = pgTable("boms", {
   productName: text("product_name").notNull(),
   version: text("version").notNull().default('1.0'),
   status: text("status").notNull().default('Active'), // 'Active', 'Inactive', 'Draft', 'Approved'
-  totalCost: integer("total_cost").notNull().default(0), // in cents
+  totalCost: integer("total_cost").notNull().default(0), // in paise (1/100th of rupee)
+  shelfLifeDays: integer("shelf_life_days"), // shelf life in days
   approvedBy: text("approved_by"),
   createdBy: text("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -253,9 +254,10 @@ export const bomMaterials = pgTable("bom_materials", {
   materialName: text("material_name").notNull(),
   quantity: integer("quantity").notNull(), // in base units * 1000 for precision
   uom: text("uom").notNull(), // Unit of Measure
-  unitCost: integer("unit_cost").notNull().default(0), // in cents
+  unitCost: integer("unit_cost").notNull().default(0), // in paise (1/100th of rupee)
   scrapPercentage: integer("scrap_percentage").notNull().default(0), // percentage * 100
-  totalCost: integer("total_cost").notNull().default(0), // in cents
+  totalCost: integer("total_cost").notNull().default(0), // in paise (1/100th of rupee)
+  shelfLifeDays: integer("shelf_life_days"), // shelf life in days
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -264,7 +266,7 @@ export const bomSubAssemblies = pgTable("bom_sub_assemblies", {
   bomId: text("bom_id").notNull().references(() => boms.id, { onDelete: "cascade" }),
   subAssemblyBomId: text("sub_assembly_bom_id").notNull().references(() => boms.id),
   quantityRequired: integer("quantity_required").notNull(),
-  totalCost: integer("total_cost").notNull().default(0), // in cents
+  totalCost: integer("total_cost").notNull().default(0), // in paise (1/100th of rupee)
   createdAt: timestamp("created_at").defaultNow(),
 });
 

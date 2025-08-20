@@ -1033,7 +1033,8 @@ export class MemStorage implements IStorage {
         productName: "MEFECUM-P SYP",
         version: "1.0",
         status: "Active" as const,
-        totalCost: 260700, // $2607.00 in cents
+        totalCost: 260700, // ₹2607.00 in paise
+        shelfLifeDays: 730, // 2 years shelf life
         approvedBy: "admin@pharma.com",
         createdBy: "system",
         createdAt: new Date('2024-08-20'),
@@ -1045,7 +1046,8 @@ export class MemStorage implements IStorage {
         productName: "LEVOCIDAL-500",
         version: "1.0",
         status: "Active" as const,
-        totalCost: 338800, // $3388.00 in cents
+        totalCost: 338800, // ₹3388.00 in paise
+        shelfLifeDays: 1095, // 3 years shelf life
         approvedBy: "admin@pharma.com",
         createdBy: "system",
         createdAt: new Date('2024-08-22'),
@@ -1057,7 +1059,8 @@ export class MemStorage implements IStorage {
         productName: "ZEN RSR PLUS(RED)",
         version: "1.0",
         status: "Active" as const,
-        totalCost: 346900, // $3469.00 in cents
+        totalCost: 346900, // ₹3469.00 in paise
+        shelfLifeDays: 1460, // 4 years shelf life
         approvedBy: "admin@pharma.com",
         createdBy: "system",
         createdAt: new Date('2024-08-18'),
@@ -1078,9 +1081,10 @@ export class MemStorage implements IStorage {
         materialName: "Paracetamol Active Ingredient",
         quantity: 1000, // 1 Lt with precision
         uom: "KG",
-        unitCost: 9400, // $94.00 in cents
+        unitCost: 9400, // ₹94.00 in paise
         scrapPercentage: 100, // 1% with precision (1% * 100)
-        totalCost: 9494, // $94.94 in cents (including scrap)
+        totalCost: 9494, // ₹94.94 in paise (including scrap)
+        shelfLifeDays: 1095, // 3 years shelf life
         createdAt: new Date('2024-08-20'),
       },
       {
@@ -1091,9 +1095,10 @@ export class MemStorage implements IStorage {
         materialName: "Sucrose Sugar Base",
         quantity: 500, // 0.5 KG
         uom: "KG",
-        unitCost: 4900, // $49.00 in cents
+        unitCost: 4900, // ₹49.00 in paise
         scrapPercentage: 200, // 2%
-        totalCost: 4998, // $49.98 in cents
+        totalCost: 4998, // ₹49.98 in paise
+        shelfLifeDays: 365, // 1 year shelf life
         createdAt: new Date('2024-08-20'),
       },
       {
@@ -1103,9 +1108,10 @@ export class MemStorage implements IStorage {
         materialName: "Flavoring Agent Cherry",
         quantity: 60, // 60g converted to grams with precision
         uom: "KG",
-        unitCost: 10900, // $109.00 in cents
+        unitCost: 10900, // ₹109.00 in paise
         scrapPercentage: 300, // 3%
-        totalCost: 11227, // $112.27 in cents
+        totalCost: 11227, // ₹112.27 in paise
+        shelfLifeDays: 545, // 1.5 years shelf life
         createdAt: new Date('2024-08-20'),
       },
       {
@@ -1115,9 +1121,10 @@ export class MemStorage implements IStorage {
         materialName: "Preservative Sodium Benzoate",
         quantity: 10, // 10g
         uom: "KG",
-        unitCost: 7250, // $72.50 in cents
+        unitCost: 7250, // ₹72.50 in paise
         scrapPercentage: 400, // 4%
-        totalCost: 7540, // $75.40 in cents
+        totalCost: 7540, // ₹75.40 in paise
+        shelfLifeDays: 1825, // 5 years shelf life
         createdAt: new Date('2024-08-20'),
       },
       {
@@ -1127,9 +1134,10 @@ export class MemStorage implements IStorage {
         materialName: "Citric Acid Stabilizer",
         quantity: 5, // 5g
         uom: "KG",
-        unitCost: 4800, // $48.00 in cents
+        unitCost: 4800, // ₹48.00 in paise
         scrapPercentage: 200, // 2%
-        totalCost: 4896, // $48.96 in cents
+        totalCost: 4896, // ₹48.96 in paise
+        shelfLifeDays: 730, // 2 years shelf life
         createdAt: new Date('2024-08-20'),
       }
     ];
@@ -1391,7 +1399,7 @@ export class MemStorage implements IStorage {
     const liveStockItems = Array.from(this.materials.values())
       .filter(m => m.stock && m.stock > 0).length;
     
-    // Calculate total BOM value in dollars
+    // Calculate total BOM value in rupees
     const totalBomValue = allBoms.reduce((sum, bom) => sum + (bom.totalCost / 100), 0);
     
     return {
