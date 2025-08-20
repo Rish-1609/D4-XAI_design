@@ -157,6 +157,22 @@ export type Sop = typeof sops.$inferSelect;
 export type InsertSopVersion = z.infer<typeof insertSopVersionSchema>;
 export type SopVersion = typeof sopVersions.$inferSelect;
 
+// Production Orders Schema
+export const productionOrders = pgTable("production_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderNumber: text("order_number").notNull().unique(),
+  skuProduct: text("sku_product").notNull(),
+  customerName: text("customer_name").notNull(),
+  jobId: text("job_id").notNull().unique(),
+  quantity: integer("quantity").notNull(),
+  priority: text("priority").notNull().default('Medium'), // 'Low', 'Medium', 'High', 'Critical'
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").notNull().default('Pending'), // 'Pending', 'In Progress', 'Completed', 'On Hold', 'Cancelled'
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // CAPA Management Schema
 export const capas = pgTable("capas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -205,6 +221,15 @@ export const insertCapaActionSchema = createInsertSchema(capaActions).omit({
   createdAt: true,
   updatedAt: true,
 });
+
+export const insertProductionOrderSchema = createInsertSchema(productionOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProductionOrder = z.infer<typeof insertProductionOrderSchema>;
+export type ProductionOrder = typeof productionOrders.$inferSelect;
 
 export type InsertCapa = z.infer<typeof insertCapaSchema>;
 export type Capa = typeof capas.$inferSelect;

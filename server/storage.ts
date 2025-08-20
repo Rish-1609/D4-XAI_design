@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -42,6 +42,13 @@ export interface IStorage {
   getSopVersions(sopId: string): Promise<SopVersion[]>;
   createSopVersion(sopVersion: InsertSopVersion): Promise<SopVersion>;
 
+  // Production Order operations
+  getProductionOrders(): Promise<ProductionOrder[]>;
+  getProductionOrder(id: string): Promise<ProductionOrder | undefined>;
+  createProductionOrder(order: InsertProductionOrder): Promise<ProductionOrder>;
+  updateProductionOrder(id: string, order: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined>;
+  deleteProductionOrder(id: string): Promise<boolean>;
+
   // CAPA operations
   getCapas(): Promise<Capa[]>;
   getCapa(id: string): Promise<Capa | undefined>;
@@ -59,6 +66,7 @@ export class MemStorage implements IStorage {
   private testInstructions: Map<string, TestInstruction>;
   private sops: Map<string, Sop>;
   private sopVersions: Map<string, SopVersion[]>;
+  private productionOrders: Map<string, ProductionOrder>;
   private capas: Map<string, Capa>;
   private capaActions: Map<string, CapaAction[]>;
 
@@ -69,6 +77,7 @@ export class MemStorage implements IStorage {
     this.testInstructions = new Map();
     this.sops = new Map();
     this.sopVersions = new Map();
+    this.productionOrders = new Map();
     this.capas = new Map();
     this.capaActions = new Map();
     this.initializeDummyData();
@@ -930,6 +939,68 @@ export class MemStorage implements IStorage {
     ];
 
     sopData.forEach(sop => this.sops.set(sop.id, sop));
+    
+    // Add sample production order data
+    const productionOrderData = [
+      {
+        id: "po1",
+        orderNumber: "PO-2024-001",
+        skuProduct: "TAB-500MG-100",
+        customerName: "Pharma Distributors Inc",
+        jobId: "JOB-2024-001",
+        quantity: 50000,
+        priority: "High" as const,
+        dueDate: new Date('2024-12-15'),
+        status: "In Progress" as const,
+        createdBy: "Production Manager",
+        createdAt: new Date('2024-08-20'),
+        updatedAt: new Date('2024-08-25'),
+      },
+      {
+        id: "po2",
+        orderNumber: "PO-2024-002",
+        skuProduct: "CAP-250MG-60",
+        customerName: "Healthcare Solutions Ltd",
+        jobId: "JOB-2024-002",
+        quantity: 25000,
+        priority: "Medium" as const,
+        dueDate: new Date('2024-12-20'),
+        status: "Pending" as const,
+        createdBy: "Production Manager",
+        createdAt: new Date('2024-08-22'),
+        updatedAt: new Date('2024-08-22'),
+      },
+      {
+        id: "po3",
+        orderNumber: "PO-2024-003",
+        skuProduct: "SYR-125ML",
+        customerName: "MedSupply Corp",
+        jobId: "JOB-2024-003",
+        quantity: 15000,
+        priority: "Low" as const,
+        dueDate: new Date('2024-12-25'),
+        status: "Completed" as const,
+        createdBy: "Production Manager",
+        createdAt: new Date('2024-08-10'),
+        updatedAt: new Date('2024-08-28'),
+      },
+      {
+        id: "po4",
+        orderNumber: "PO-2024-004",
+        skuProduct: "INJ-10ML",
+        customerName: "Global Pharma Network",
+        jobId: "JOB-2024-004",
+        quantity: 5000,
+        priority: "Critical" as const,
+        dueDate: new Date('2024-12-10'),
+        status: "On Hold" as const,
+        createdBy: "Production Manager",
+        createdAt: new Date('2024-08-28'),
+        updatedAt: new Date('2024-08-28'),
+      }
+    ];
+
+    productionOrderData.forEach(order => this.productionOrders.set(order.id, order));
   }
 
   // SOP operations
@@ -1031,6 +1102,47 @@ export class MemStorage implements IStorage {
     this.sopVersions.set(insertSopVersion.sopId, existingVersions);
     
     return sopVersion;
+  }
+
+  // Production Order operations
+  async getProductionOrders(): Promise<ProductionOrder[]> {
+    return Array.from(this.productionOrders.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getProductionOrder(id: string): Promise<ProductionOrder | undefined> {
+    return this.productionOrders.get(id);
+  }
+
+  async createProductionOrder(insertOrder: InsertProductionOrder): Promise<ProductionOrder> {
+    const id = randomUUID();
+    const now = new Date();
+    const productionOrder: ProductionOrder = {
+      ...insertOrder,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.productionOrders.set(id, productionOrder);
+    return productionOrder;
+  }
+
+  async updateProductionOrder(id: string, updateData: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined> {
+    const existing = this.productionOrders.get(id);
+    if (!existing) return undefined;
+
+    const updated: ProductionOrder = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.productionOrders.set(id, updated);
+    return updated;
+  }
+
+  async deleteProductionOrder(id: string): Promise<boolean> {
+    return this.productionOrders.delete(id);
   }
 
   // CAPA operations

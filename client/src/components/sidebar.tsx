@@ -10,7 +10,8 @@ import {
   TrendingUp, 
   Settings,
   User,
-  LogOut
+  LogOut,
+  Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ interface SidebarProps {
 }
 
 const menuItems = [
+  { id: "production-orders", label: "Production Orders", icon: Package, href: "/production-orders" },
   {
     id: "qc-management",
     label: "QC Management",

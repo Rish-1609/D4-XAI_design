@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -367,6 +367,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching CAPA actions:", error);
       res.status(500).json({ error: "Failed to fetch CAPA actions" });
+    }
+  });
+
+  // Production Order Routes
+  app.get("/api/production-orders", async (req, res) => {
+    try {
+      const orders = await storage.getProductionOrders();
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production orders" });
+    }
+  });
+
+  app.get("/api/production-orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getProductionOrder(id);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Production order not found" });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production order" });
+    }
+  });
+
+  app.post("/api/production-orders", async (req, res) => {
+    try {
+      const validatedData = insertProductionOrderSchema.parse(req.body);
+      const order = await storage.createProductionOrder(validatedData);
+      res.status(201).json(order);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid production order data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create production order" });
+    }
+  });
+
+  app.put("/api/production-orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertProductionOrderSchema.partial().parse(req.body);
+      const order = await storage.updateProductionOrder(id, validatedData);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Production order not found" });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid production order data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update production order" });
+    }
+  });
+
+  app.delete("/api/production-orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteProductionOrder(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Production order not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete production order" });
     }
   });
 
