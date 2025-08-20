@@ -45,11 +45,11 @@ const materialTypes = {
 };
 
 const materialCategories = {
-  "raw-materials": ["Metal", "Plastic", "Chemical", "Component", "Consumable"],
-  "packaging-material": ["Box", "Bottle", "Label", "Wrapper", "Container"],
-  "final-products": ["Product", "Assembly", "Kit", "Package"],
-  "artwork": ["Design", "Logo", "Label Design", "Package Design"],
-  "instructions-checklists": ["SOP", "Manual", "Checklist", "Protocol"],
+  "raw-materials": ["Active Ingredient", "Excipient", "Solvent", "Buffer", "Stabilizer"],
+  "packaging-material": ["Capsule", "Bottle", "Blister Pack", "Label", "Container"],
+  "final-products": ["Tablet", "Capsule", "Injectable", "Syrup", "Cream"],
+  "artwork": ["Product Label", "Package Insert", "Carton Design", "Marketing Material"],
+  "instructions-checklists": ["Test Protocol", "SOP", "Manufacturing Instruction", "Quality Checklist"],
 };
 
 export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMaterialDialogProps) {
@@ -68,6 +68,11 @@ export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMater
       stock: 0,
       score: undefined,
       referenceNumber: "",
+      batchNumber: "",
+      supplierName: "",
+      receiptDate: undefined,
+      expiryDate: undefined,
+      storageConditions: "",
     },
   });
 
@@ -188,6 +193,7 @@ export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMater
                         type="number" 
                         placeholder="0" 
                         {...field}
+                        value={field.value ?? 0}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                         data-testid="input-material-stock"
                       />
@@ -210,6 +216,7 @@ export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMater
                         min="0"
                         max="100"
                         {...field}
+                        value={field.value ?? ''}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                         data-testid="input-material-score"
                       />
@@ -229,7 +236,65 @@ export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMater
                       <Input 
                         placeholder="Auto-generated if empty" 
                         {...field}
+                        value={field.value ?? ''}
                         data-testid="input-material-reference"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="batchNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Batch Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., BT240825A" 
+                        {...field}
+                        value={field.value ?? ''}
+                        data-testid="input-material-batch"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="supplierName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supplier Name</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., PharmaChem Industries" 
+                        {...field}
+                        value={field.value ?? ''}
+                        data-testid="input-material-supplier"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="storageConditions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Storage Conditions</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., Store at 15-25°C, protect from light" 
+                        {...field}
+                        value={field.value ?? ''}
+                        data-testid="input-material-storage"
                       />
                     </FormControl>
                     <FormMessage />
@@ -249,6 +314,7 @@ export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMater
                       placeholder="Enter material description" 
                       rows={3}
                       {...field}
+                      value={field.value ?? ''}
                       data-testid="input-material-description"
                     />
                   </FormControl>

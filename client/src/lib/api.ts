@@ -41,6 +41,7 @@ export const materialsApi = {
     approved: number;
     pending: number;
     failed: number;
+    underTesting: number;
     averageScore: number;
   }> => {
     const response = await apiRequest("GET", "/api/quality-stats");

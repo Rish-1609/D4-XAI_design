@@ -47,6 +47,11 @@ const statusConfig = {
     className: "bg-red-100 text-red-800",
     label: "Failed/Requires Action",
   },
+  "under-testing": {
+    icon: Clock,
+    className: "bg-purple-100 text-purple-800",
+    label: "Under Testing",
+  },
 };
 
 export function MaterialTable({ materialType, title }: MaterialTableProps) {
@@ -119,9 +124,9 @@ export function MaterialTable({ materialType, title }: MaterialTableProps) {
               <TableRow className="bg-gray-50">
                 <TableHead className="font-medium text-gray-700">Material Details</TableHead>
                 <TableHead className="font-medium text-gray-700">Type & Code</TableHead>
+                <TableHead className="font-medium text-gray-700">Batch & Supplier</TableHead>
                 <TableHead className="font-medium text-gray-700">Quality Status</TableHead>
                 <TableHead className="font-medium text-gray-700">Stock & Score</TableHead>
-                <TableHead className="font-medium text-gray-700">Reference Number</TableHead>
                 <TableHead className="font-medium text-gray-700">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -177,6 +182,25 @@ export function MaterialTable({ materialType, title }: MaterialTableProps) {
                           <p className="text-sm text-gray-600 mt-1" data-testid={`text-material-code-${material.id}`}>
                             {material.code}
                           </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          {material.batchNumber && (
+                            <p className="text-sm font-medium text-gray-900" data-testid={`text-material-batch-${material.id}`}>
+                              Batch: {material.batchNumber}
+                            </p>
+                          )}
+                          {material.supplierName && (
+                            <p className="text-sm text-gray-600" data-testid={`text-material-supplier-${material.id}`}>
+                              {material.supplierName}
+                            </p>
+                          )}
+                          {material.receiptDate && (
+                            <p className="text-xs text-gray-500" data-testid={`text-material-receipt-${material.id}`}>
+                              Received: {new Date(material.receiptDate).toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -46,11 +46,12 @@ const menuItems = [
     label: "QC Management",
     icon: CheckCircle,
     submenu: [
+      { label: "Material QC", href: "/" },
+      { label: "Test Configurations", href: "/test-configurations" },
       { label: "Quality Tests", href: "/quality-tests" },
       { label: "Compliance Reports", href: "/compliance-reports" },
     ],
   },
-  { id: "material-management", label: "Material Management", icon: Boxes, href: "/", active: true },
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
   { id: "capa-records", label: "CAPA Records", icon: Triangle, href: "/capa-records" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
@@ -151,7 +152,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <button
                     className={cn(
                       "w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors",
-                      (item.href === location || item.active) 
+                      item.href === location 
                         ? "bg-blue-600 text-white" 
                         : "text-gray-300 hover:bg-navy-800"
                     )}

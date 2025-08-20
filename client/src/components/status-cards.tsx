@@ -10,8 +10,8 @@ export function StatusCards() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        {[...Array(5)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
               <div className="flex items-center justify-center mb-4">
@@ -26,7 +26,7 @@ export function StatusCards() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
       {/* Approved Materials */}
       <Card className="bg-green-50 border-green-200" data-testid="card-approved-materials">
         <CardContent className="p-6">
@@ -71,6 +71,22 @@ export function StatusCards() {
           </div>
           <p className="text-center text-sm font-medium text-red-800">
             Failed/Requires Action
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Under Testing */}
+      <Card className="bg-purple-50 border-purple-200" data-testid="card-under-testing-materials">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl font-bold text-purple-600" data-testid="text-under-testing-count">
+                {stats?.underTesting || 0}
+              </span>
+            </div>
+          </div>
+          <p className="text-center text-sm font-medium text-purple-800">
+            Under Testing
           </p>
         </CardContent>
       </Card>
