@@ -43,12 +43,7 @@ const menuItems = [
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
   { id: "capa-records", label: "CAPA Records", icon: Triangle, href: "/capa-records" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
-  {
-    id: "inventory-management",
-    label: "Inventory Management",
-    icon: Warehouse,
-    submenu: [],
-  },
+  
   {
     id: "procurement",
     label: "Procurement",
