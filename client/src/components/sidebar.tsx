@@ -4,21 +4,11 @@ import {
   ChevronRight, 
   Box, 
   Gauge, 
-  ClipboardList, 
-  Factory, 
   CheckCircle, 
-  Boxes, 
   FileText, 
   Triangle, 
   TrendingUp, 
-  Warehouse, 
-  ShoppingCart, 
-  Settings, 
-  Truck, 
-  Users, 
-  DollarSign, 
-  Database, 
-  BarChart3,
+  Settings,
   User,
   LogOut
 } from "lucide-react";
@@ -43,29 +33,6 @@ const menuItems = [
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
   { id: "capa-records", label: "CAPA Records", icon: Triangle, href: "/capa-records" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
-  
-  {
-    id: "procurement",
-    label: "Procurement",
-    icon: ShoppingCart,
-    submenu: [],
-  },
-  { id: "equipment-management", label: "Equipment Management", icon: Settings, href: "/equipment-management" },
-  { id: "supplier-management", label: "Supplier Management", icon: Truck, href: "/supplier-management" },
-  { id: "customer-management", label: "Customer Management", icon: Users, href: "/customer-management" },
-  {
-    id: "financials",
-    label: "Financials",
-    icon: DollarSign,
-    submenu: [],
-  },
-  { id: "manage-data", label: "Manage Data", icon: Database, href: "/manage-data" },
-  {
-    id: "analytics",
-    label: "Analytics",
-    icon: BarChart3,
-    submenu: [],
-  },
 ];
 
 export function Sidebar({ className }: SidebarProps) {
