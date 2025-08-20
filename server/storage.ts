@@ -25,6 +25,7 @@ export interface IStorage {
   getTestResults(): Promise<TestResult[]>;
   getTestResultsByMaterial(materialId: string): Promise<TestResult[]>;
   createTestResult(testResult: InsertTestResult): Promise<TestResult>;
+  updateTestResult(id: string, updateData: Partial<InsertTestResult>): Promise<TestResult | undefined>;
 
   // Test Instructions operations
   getTestInstructions(): Promise<TestInstruction[]>;
@@ -125,21 +126,34 @@ export class MemStorage implements IStorage {
     const pendingTests = testResults.filter(result => result.status === 'pending').length;
     const failedTests = testResults.filter(result => result.status === 'failed').length;
     const passedTests = testResults.filter(result => result.status === 'passed').length;
+    const inProgressTests = testResults.filter(result => result.status === 'in-progress').length;
 
     let newStatus: string;
     
     if (failedTests > 0) {
-      newStatus = 'failed';
-    } else if (pendingTests > 0) {
-      newStatus = 'under-testing';
-    } else if (passedTests === testResults.length) {
-      newStatus = 'approved';
+      newStatus = 'qc-failed';
+    } else if (inProgressTests > 0 || pendingTests > 0) {
+      newStatus = 'in-progress';
+    } else if (passedTests === testResults.length && testResults.length > 0) {
+      newStatus = 'qc-passed';
     } else {
       newStatus = 'ready-for-qc';
     }
 
-    // Update material status
-    const updatedMaterial = { ...material, status: newStatus, updatedAt: new Date() };
+    // Calculate quality score based on test results
+    let qualityScore: number | null = null;
+    if (passedTests > 0 || failedTests > 0) {
+      const totalTests = passedTests + failedTests;
+      qualityScore = Math.round((passedTests / totalTests) * 100);
+    }
+
+    // Update material status and score
+    const updatedMaterial = { 
+      ...material, 
+      status: newStatus, 
+      score: qualityScore,
+      updatedAt: new Date() 
+    };
     this.materials.set(materialId, updatedMaterial);
   }
 
@@ -169,10 +183,10 @@ export class MemStorage implements IStorage {
   }> {
     const allMaterials = Array.from(this.materials.values());
     
-    const approved = allMaterials.filter(m => m.status === 'approved').length;
-    const pending = allMaterials.filter(m => m.status === 'pending' || m.status === 'ready-for-qc').length;
-    const failed = allMaterials.filter(m => m.status === 'failed').length;
-    const underTesting = allMaterials.filter(m => m.status === 'under-testing').length;
+    const approved = allMaterials.filter(m => m.status === 'qc-passed' || m.status === 'approved').length;
+    const pending = allMaterials.filter(m => m.status === 'ready-for-qc').length;
+    const failed = allMaterials.filter(m => m.status === 'qc-failed' || m.status === 'failed').length;
+    const underTesting = allMaterials.filter(m => m.status === 'in-progress' || m.status === 'under-testing').length;
     
     const materialsWithScores = allMaterials.filter(m => m.score !== null && m.score !== undefined);
     const averageScore = materialsWithScores.length > 0 
@@ -226,6 +240,35 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
   }
 
+  async updateTestResult(id: string, updateData: Partial<InsertTestResult>): Promise<TestResult | undefined> {
+    const existing = this.testResults.get(id);
+    if (!existing) return undefined;
+
+    const updated: TestResult = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    
+    // Auto-evaluate if result value is provided and we have acceptance criteria
+    if (updateData.resultValue && existing.testConfigId) {
+      const testConfig = this.testConfigs.get(existing.testConfigId);
+      if (testConfig?.acceptanceCriteria && testConfig?.expectedRange) {
+        updated.status = this.evaluateTestResult(updateData.resultValue, testConfig);
+        updated.testedDate = updated.testedDate || new Date();
+      }
+    }
+    
+    this.testResults.set(id, updated);
+    
+    // Update material status based on test results
+    if (updated.materialId) {
+      await this.updateMaterialStatusFromTests(updated.materialId);
+    }
+    
+    return updated;
+  }
+
   async createTestResult(insertTestResult: InsertTestResult): Promise<TestResult> {
     const id = randomUUID();
     const now = new Date();
@@ -243,6 +286,14 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
     };
+    
+    // Auto-evaluate test result if we have acceptance criteria
+    if (testResult.resultValue && testResult.testConfigId) {
+      const testConfig = this.testConfigs.get(testResult.testConfigId);
+      if (testConfig?.acceptanceCriteria && testConfig?.expectedRange) {
+        testResult.status = this.evaluateTestResult(testResult.resultValue, testConfig);
+      }
+    }
     this.testResults.set(id, testResult);
     
     // Update material status based on test results
@@ -264,6 +315,58 @@ export class MemStorage implements IStorage {
     return Array.from(this.testInstructions.values())
       .filter(instruction => instruction.materialType === materialType && instruction.isActive)
       .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  // Evaluate test result against acceptance criteria
+  private evaluateTestResult(resultValue: string, testConfig: TestConfig): string {
+    if (!testConfig.expectedRange || !resultValue) return 'pending';
+    
+    try {
+      // Handle percentage ranges (e.g., "95.0 - 105.0%")
+      if (testConfig.expectedRange.includes('%')) {
+        const range = testConfig.expectedRange.replace('%', '').trim();
+        const [min, max] = range.split('-').map(v => parseFloat(v.trim()));
+        const value = parseFloat(resultValue.replace('%', ''));
+        
+        if (!isNaN(value) && !isNaN(min) && !isNaN(max)) {
+          return (value >= min && value <= max) ? 'passed' : 'failed';
+        }
+      }
+      
+      // Handle pH ranges (e.g., "6.8 - 7.2")
+      if (testConfig.expectedRange.includes('-')) {
+        const [min, max] = testConfig.expectedRange.split('-').map(v => parseFloat(v.trim()));
+        const value = parseFloat(resultValue);
+        
+        if (!isNaN(value) && !isNaN(min) && !isNaN(max)) {
+          return (value >= min && value <= max) ? 'passed' : 'failed';
+        }
+      }
+      
+      // Handle "greater than" criteria (e.g., ">80% in 30 min")
+      if (testConfig.expectedRange.startsWith('>')) {
+        const threshold = parseFloat(testConfig.expectedRange.substring(1).replace('%', '').trim());
+        const value = parseFloat(resultValue.replace('%', ''));
+        
+        if (!isNaN(value) && !isNaN(threshold)) {
+          return value > threshold ? 'passed' : 'failed';
+        }
+      }
+      
+      // Handle "less than" criteria (e.g., "<10 CFU/g")
+      if (testConfig.expectedRange.startsWith('<')) {
+        const threshold = parseFloat(testConfig.expectedRange.substring(1).split(' ')[0].trim());
+        const value = parseFloat(resultValue.split(' ')[0]);
+        
+        if (!isNaN(value) && !isNaN(threshold)) {
+          return value < threshold ? 'passed' : 'failed';
+        }
+      }
+    } catch (error) {
+      console.error('Error evaluating test result:', error);
+    }
+    
+    return 'pending'; // Default to pending if evaluation fails
   }
 
   async createTestInstruction(insertTestInstruction: InsertTestInstruction): Promise<TestInstruction> {
@@ -344,7 +447,7 @@ export class MemStorage implements IStorage {
 
     testConfigData.forEach(config => this.testConfigs.set(config.id, config));
 
-    // Add pharma materials
+    // Add pharma materials with different statuses to demonstrate the system
     const materialData = [
       {
         id: "m1",
@@ -353,7 +456,7 @@ export class MemStorage implements IStorage {
         code: "API-ACET-001",
         type: "raw-materials",
         category: "Active Ingredient",
-        status: "ready-for-qc",
+        status: "in-progress", // Testing in progress
         stock: 250,
         score: null,
         referenceNumber: "RM-240825-001",
@@ -372,7 +475,7 @@ export class MemStorage implements IStorage {
         code: "EXC-MCC-002",
         type: "raw-materials",
         category: "Excipient",
-        status: "approved",
+        status: "qc-passed", // QC Passed
         stock: 500,
         score: 98,
         referenceNumber: "RM-240820-002",
@@ -391,7 +494,7 @@ export class MemStorage implements IStorage {
         code: "PKG-CAP-003",
         type: "packaging-material",
         category: "Capsule",
-        status: "ready-for-qc",
+        status: "ready-for-qc", // Ready for QC
         stock: 100000,
         score: null,
         referenceNumber: "PM-240822-003",
@@ -410,7 +513,7 @@ export class MemStorage implements IStorage {
         code: "FP-TAB-004",
         type: "final-products",
         category: "Tablet",
-        status: "approved",
+        status: "qc-passed", // QC Passed
         stock: 10000,
         score: 99,
         referenceNumber: "FP-240823-004",
@@ -420,6 +523,25 @@ export class MemStorage implements IStorage {
         expiryDate: new Date('2026-08-23'),
         storageConditions: "Store at 15-30°C, protect from light and moisture",
         createdAt: new Date('2024-08-23'),
+        updatedAt: new Date(),
+      },
+      {
+        id: "m5",
+        name: "Sodium Starch Glycolate",
+        description: "Pharmaceutical excipient used as disintegrant",
+        code: "EXC-SSG-005",
+        type: "raw-materials",
+        category: "Excipient",
+        status: "qc-failed", // QC Failed
+        stock: 150,
+        score: 65,
+        referenceNumber: "RM-240826-005",
+        batchNumber: "SSG240826E",
+        supplierName: "ExcipientCorp Ltd",
+        receiptDate: new Date('2024-08-26'),
+        expiryDate: new Date('2027-08-26'),
+        storageConditions: "Store in dry place below 30°C",
+        createdAt: new Date('2024-08-26'),
         updatedAt: new Date(),
       }
     ];
@@ -456,11 +578,12 @@ export class MemStorage implements IStorage {
 
     instructionData.forEach(instruction => this.testInstructions.set(instruction.id, instruction));
 
-    // Add some test results
+    // Add comprehensive test results to demonstrate the system
     const testResultData = [
+      // MCC (m2) - All tests passed
       {
         id: "tr1",
-        materialId: "m2", // MCC - already approved
+        materialId: "m2",
         testConfigId: "tc2", // pH test
         resultValue: "7.0",
         status: "passed",
@@ -473,7 +596,21 @@ export class MemStorage implements IStorage {
       },
       {
         id: "tr2",
-        materialId: "m1", // Acetaminophen - under testing
+        materialId: "m2",
+        testConfigId: "tc1", // Assay
+        resultValue: "98.5%",
+        status: "passed",
+        testedBy: "Dr. Sarah Johnson",
+        testedDate: new Date('2024-08-21'),
+        remarks: "Assay results within specification",
+        retestCount: 0,
+        createdAt: new Date('2024-08-21'),
+        updatedAt: new Date('2024-08-21'),
+      },
+      // Acetaminophen (m1) - In progress testing
+      {
+        id: "tr3",
+        materialId: "m1",
         testConfigId: "tc1", // Assay
         resultValue: "99.2%",
         status: "passed",
@@ -483,6 +620,74 @@ export class MemStorage implements IStorage {
         retestCount: 0,
         createdAt: new Date('2024-08-26'),
         updatedAt: new Date('2024-08-26'),
+      },
+      {
+        id: "tr4",
+        materialId: "m1",
+        testConfigId: "tc2", // pH test
+        resultValue: null,
+        status: "pending",
+        testedBy: null,
+        testedDate: null,
+        remarks: null,
+        retestCount: 0,
+        createdAt: new Date('2024-08-26'),
+        updatedAt: new Date('2024-08-26'),
+      },
+      // Acetaminophen Tablets (m4) - All tests passed
+      {
+        id: "tr5",
+        materialId: "m4",
+        testConfigId: "tc3", // Dissolution
+        resultValue: "85% in 30 min",
+        status: "passed",
+        testedBy: "Dr. Lisa Wang",
+        testedDate: new Date('2024-08-23'),
+        remarks: "Dissolution rate meets specification",
+        retestCount: 0,
+        createdAt: new Date('2024-08-23'),
+        updatedAt: new Date('2024-08-23'),
+      },
+      {
+        id: "tr6",
+        materialId: "m4",
+        testConfigId: "tc1", // Assay
+        resultValue: "99.8%",
+        status: "passed",
+        testedBy: "Dr. Lisa Wang",
+        testedDate: new Date('2024-08-23'),
+        remarks: "Content meets label claim",
+        retestCount: 0,
+        createdAt: new Date('2024-08-23'),
+        updatedAt: new Date('2024-08-23'),
+      },
+      // Sodium Starch Glycolate (m5) - Failed test
+      {
+        id: "tr7",
+        materialId: "m5",
+        testConfigId: "tc2", // pH test
+        resultValue: "5.2",
+        status: "failed",
+        testedBy: "Dr. James Brown",
+        testedDate: new Date('2024-08-27'),
+        remarks: "pH below acceptable range - requires retest or rejection",
+        retestCount: 0,
+        createdAt: new Date('2024-08-27'),
+        updatedAt: new Date('2024-08-27'),
+      },
+      // HPMC Capsules (m3) - Ready for testing
+      {
+        id: "tr8",
+        materialId: "m3",
+        testConfigId: "tc4", // Microbial Limit
+        resultValue: null,
+        status: "pending",
+        testedBy: null,
+        testedDate: null,
+        remarks: null,
+        retestCount: 0,
+        createdAt: new Date('2024-08-22'),
+        updatedAt: new Date('2024-08-22'),
       }
     ];
 

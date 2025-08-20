@@ -163,28 +163,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const validatedData = insertTestResultSchema.partial().parse(req.body);
       
-      // Update the test result
-      const existingResult = await storage.getTestResults();
-      const testResult = existingResult.find(tr => tr.id === id);
+      const updatedResult = await storage.updateTestResult(id, validatedData);
       
-      if (!testResult) {
+      if (!updatedResult) {
         return res.status(404).json({ message: "Test result not found" });
       }
-
-      // Update the test result (implement update method)
-      const updatedResult = { ...testResult, ...validatedData, updatedAt: new Date() };
-      
-      // For now, create a new result to replace the old one
-      await storage.createTestResult({
-        materialId: updatedResult.materialId || undefined,
-        testConfigId: updatedResult.testConfigId || undefined,
-        resultValue: updatedResult.resultValue,
-        status: updatedResult.status,
-        testedBy: updatedResult.testedBy,
-        testedDate: updatedResult.testedDate,
-        remarks: updatedResult.remarks,
-        retestCount: updatedResult.retestCount || 0,
-      });
       
       res.json(updatedResult);
     } catch (error) {

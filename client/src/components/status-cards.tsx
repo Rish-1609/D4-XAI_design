@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export function StatusCards() {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["/api/materials/stats"],
-    queryFn: () => fetch("/api/materials/stats").then(res => res.json()),
+    queryKey: ["/api/quality-stats"],
+    queryFn: () => fetch("/api/quality-stats").then(res => res.json()),
   });
 
   if (isLoading) {
