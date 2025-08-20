@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -74,6 +74,24 @@ export interface IStorage {
   deleteCapa(id: string): Promise<boolean>;
   getCapaActions(capaId: string): Promise<CapaAction[]>;
   createCapaAction(capaAction: InsertCapaAction): Promise<CapaAction>;
+
+  // Inventory operations
+  getInventoryItems(): Promise<InventoryItem[]>;
+  getInventoryItem(id: string): Promise<InventoryItem | undefined>;
+  createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem>;
+  updateInventoryItem(id: string, item: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined>;
+  deleteInventoryItem(id: string): Promise<boolean>;
+  getInventoryStats(): Promise<{
+    totalItems: number;
+    totalValue: number;
+    lowStockItems: number;
+    outOfStockItems: number;
+  }>;
+  
+  // Stock Movement operations
+  getStockMovements(): Promise<StockMovement[]>;
+  getStockMovementsByItem(itemId: string): Promise<StockMovement[]>;
+  createStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
 }
 
 export class MemStorage implements IStorage {
@@ -89,6 +107,8 @@ export class MemStorage implements IStorage {
   private bomSubAssemblies: Map<string, BomSubAssembly[]>;
   private capas: Map<string, Capa>;
   private capaActions: Map<string, CapaAction[]>;
+  private inventoryItems: Map<string, InventoryItem>;
+  private stockMovements: Map<string, StockMovement[]>;
 
   constructor() {
     this.materials = new Map();
@@ -103,6 +123,8 @@ export class MemStorage implements IStorage {
     this.bomSubAssemblies = new Map();
     this.capas = new Map();
     this.capaActions = new Map();
+    this.inventoryItems = new Map();
+    this.stockMovements = new Map();
     this.initializeDummyData();
   }
 
@@ -1148,6 +1170,265 @@ export class MemStorage implements IStorage {
       existingMaterials.push(material);
       this.bomMaterials.set(material.bomId, existingMaterials);
     });
+
+    // Add sample inventory items data
+    const inventoryItemsData = [
+      {
+        id: "inv1",
+        itemCode: "RM001",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "PharmaChem Ltd",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB001",
+        currentStock: 1085,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 3408000, // ₹34,080.00 in paise
+        leadTimeDays: 14,
+        specification: "max 50 words",
+        imageUrl: null,
+        expiryDate: new Date('2026-08-25'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-20'),
+        updatedAt: new Date('2024-08-25'),
+      },
+      {
+        id: "inv2",
+        itemCode: "RM002",
+        name: "Raw Materials",
+        category: "Raw Materials", 
+        type: "RM",
+        supplierName: "BioSupply Corp",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB002",
+        currentStock: 449,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 2469500, // ₹24,695.00 in paise
+        leadTimeDays: 3,
+        specification: "High purity grade",
+        imageUrl: null,
+        expiryDate: new Date('2027-03-15'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-22'),
+        updatedAt: new Date('2024-08-25'),
+      },
+      {
+        id: "inv3",
+        itemCode: "RM003",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "ChemSource Industries",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB003",
+        currentStock: 927,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 906200, // ₹9,062.00 in paise
+        leadTimeDays: 4,
+        specification: "USP grade material",
+        imageUrl: null,
+        expiryDate: new Date('2025-12-30'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-18'),
+        updatedAt: new Date('2024-08-20'),
+      },
+      {
+        id: "inv4",
+        itemCode: "RM004",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "PureChem Solutions",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB004",
+        currentStock: 713,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 1278600, // ₹12,786.00 in paise
+        leadTimeDays: 13,
+        specification: "Pharmaceutical grade",
+        imageUrl: null,
+        expiryDate: new Date('2026-05-20'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-15'),
+        updatedAt: new Date('2024-08-18'),
+      },
+      {
+        id: "inv5",
+        itemCode: "RM005",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "MedGrade Supplies",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB005",
+        currentStock: 422,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 1138400, // ₹11,384.00 in paise
+        leadTimeDays: 9,
+        specification: "High quality excipient",
+        imageUrl: null,
+        expiryDate: new Date('2026-11-10'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-12'),
+        updatedAt: new Date('2024-08-15'),
+      },
+      {
+        id: "inv6",
+        itemCode: "RM006",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "Global Pharma Tech",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB006",
+        currentStock: 1051,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 5570300, // ₹55,703.00 in paise
+        leadTimeDays: 4,
+        specification: "Premium grade",
+        imageUrl: null,
+        expiryDate: new Date('2025-09-18'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-10'),
+        updatedAt: new Date('2024-08-12'),
+      },
+      {
+        id: "inv7", 
+        itemCode: "RM007",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "Specialty Chemicals",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB007",
+        currentStock: 556,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 870800, // ₹8,708.00 in paise
+        leadTimeDays: 2,
+        specification: "Research grade",
+        imageUrl: null,
+        expiryDate: new Date('2027-01-25'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-08'),
+        updatedAt: new Date('2024-08-10'),
+      },
+      {
+        id: "inv8",
+        itemCode: "RM008",
+        name: "Raw Materials",
+        category: "Raw Materials",
+        type: "RM",
+        supplierName: "Advanced Materials Co",
+        warehouseLocation: "50 / 2000",
+        batchNumber: "RMB008",
+        currentStock: 276,
+        minimumLevel: 10,
+        maximumLevel: 2000,
+        moq: 10,
+        uom: "KG",
+        rate: 1596000, // ₹15,960.00 in paise
+        leadTimeDays: 12,
+        specification: "Industrial grade",
+        imageUrl: null,
+        expiryDate: new Date('2026-02-14'),
+        status: "Active",
+        qualityStatus: "Passed",
+        createdBy: "system",
+        createdAt: new Date('2024-08-06'),
+        updatedAt: new Date('2024-08-08'),
+      }
+    ];
+
+    inventoryItemsData.forEach(item => this.inventoryItems.set(item.id, item));
+
+    // Add sample stock movements data
+    const stockMovementsData = [
+      {
+        id: "sm1",
+        inventoryItemId: "inv1",
+        type: "IN",
+        quantity: 100,
+        fromLocation: null,
+        toLocation: "Warehouse A",
+        referenceNumber: "PO-001",
+        user: "admin@pharma.com",
+        qualityIssue: null,
+        notes: "Initial stock receipt",
+        movementDate: new Date('2024-08-20'),
+        createdAt: new Date('2024-08-20'),
+      },
+      {
+        id: "sm2", 
+        inventoryItemId: "inv2",
+        type: "IN",
+        quantity: 50,
+        fromLocation: null,
+        toLocation: "Warehouse B",
+        referenceNumber: "PO-002",
+        user: "admin@pharma.com",
+        qualityIssue: null,
+        notes: "Stock replenishment",
+        movementDate: new Date('2024-08-22'),
+        createdAt: new Date('2024-08-22'),
+      },
+      {
+        id: "sm3",
+        inventoryItemId: "inv3",
+        type: "OUT",
+        quantity: 25,
+        fromLocation: "Warehouse A",
+        toLocation: "Production Floor",
+        referenceNumber: "WO-001",
+        user: "production@pharma.com",
+        qualityIssue: null,
+        notes: "Issued for production",
+        movementDate: new Date('2024-08-23'),
+        createdAt: new Date('2024-08-23'),
+      }
+    ];
+
+    // Group stock movements by inventory item ID
+    stockMovementsData.forEach(movement => {
+      const existingMovements = this.stockMovements.get(movement.inventoryItemId) || [];
+      existingMovements.push(movement);
+      this.stockMovements.set(movement.inventoryItemId, existingMovements);
+    });
   }
 
   // SOP operations
@@ -1492,6 +1773,149 @@ export class MemStorage implements IStorage {
     this.capaActions.set(insertCapaAction.capaId, existingActions);
     
     return capaAction;
+  }
+
+  // Inventory operations
+  async getInventoryItems(): Promise<InventoryItem[]> {
+    return Array.from(this.inventoryItems.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getInventoryItem(id: string): Promise<InventoryItem | undefined> {
+    return this.inventoryItems.get(id);
+  }
+
+  async createInventoryItem(insertItem: InsertInventoryItem): Promise<InventoryItem> {
+    const id = randomUUID();
+    const now = new Date();
+    const inventoryItem: InventoryItem = {
+      ...insertItem,
+      id,
+      supplierName: insertItem.supplierName || null,
+      warehouseLocation: insertItem.warehouseLocation || null,
+      batchNumber: insertItem.batchNumber || null,
+      leadTimeDays: insertItem.leadTimeDays || 0,
+      specification: insertItem.specification || null,
+      imageUrl: insertItem.imageUrl || null,
+      expiryDate: insertItem.expiryDate || null,
+      qualityStatus: insertItem.qualityStatus || "Passed",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.inventoryItems.set(id, inventoryItem);
+    return inventoryItem;
+  }
+
+  async updateInventoryItem(id: string, updateData: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined> {
+    const existing = this.inventoryItems.get(id);
+    if (!existing) return undefined;
+
+    const updated: InventoryItem = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.inventoryItems.set(id, updated);
+    return updated;
+  }
+
+  async deleteInventoryItem(id: string): Promise<boolean> {
+    const deleted = this.inventoryItems.delete(id);
+    if (deleted) {
+      // Also delete related stock movements
+      this.stockMovements.delete(id);
+    }
+    return deleted;
+  }
+
+  async getInventoryStats(): Promise<{
+    totalItems: number;
+    totalValue: number;
+    lowStockItems: number;
+    outOfStockItems: number;
+  }> {
+    const allItems = Array.from(this.inventoryItems.values());
+    const totalItems = allItems.length;
+    
+    // Calculate total inventory value
+    const totalValue = allItems.reduce((sum, item) => {
+      return sum + ((item.rate * item.currentStock) / 100); // Convert paise to rupees
+    }, 0);
+
+    // Count items that are low stock (current stock <= minimum level)
+    const lowStockItems = allItems.filter(item => 
+      item.currentStock <= item.minimumLevel && item.currentStock > 0
+    ).length;
+
+    // Count items that are out of stock (current stock = 0)
+    const outOfStockItems = allItems.filter(item => item.currentStock === 0).length;
+
+    return {
+      totalItems,
+      totalValue: Math.round(totalValue), // Round to nearest rupee
+      lowStockItems,
+      outOfStockItems
+    };
+  }
+
+  // Stock Movement operations
+  async getStockMovements(): Promise<StockMovement[]> {
+    const allMovements: StockMovement[] = [];
+    for (const movements of this.stockMovements.values()) {
+      allMovements.push(...movements);
+    }
+    return allMovements.sort((a, b) => 
+      new Date(b.movementDate!).getTime() - new Date(a.movementDate!).getTime()
+    );
+  }
+
+  async getStockMovementsByItem(itemId: string): Promise<StockMovement[]> {
+    const movements = this.stockMovements.get(itemId) || [];
+    return movements.sort((a, b) => 
+      new Date(b.movementDate!).getTime() - new Date(a.movementDate!).getTime()
+    );
+  }
+
+  async createStockMovement(insertMovement: InsertStockMovement): Promise<StockMovement> {
+    const id = randomUUID();
+    const now = new Date();
+    const stockMovement: StockMovement = {
+      ...insertMovement,
+      id,
+      fromLocation: insertMovement.fromLocation || null,
+      toLocation: insertMovement.toLocation || null,
+      referenceNumber: insertMovement.referenceNumber || null,
+      qualityIssue: insertMovement.qualityIssue || null,
+      notes: insertMovement.notes || null,
+      movementDate: insertMovement.movementDate || now,
+      createdAt: now,
+    };
+
+    const existingMovements = this.stockMovements.get(insertMovement.inventoryItemId) || [];
+    existingMovements.push(stockMovement);
+    this.stockMovements.set(insertMovement.inventoryItemId, existingMovements);
+
+    // Update inventory item stock based on movement type
+    const item = this.inventoryItems.get(insertMovement.inventoryItemId);
+    if (item) {
+      let newStock = item.currentStock;
+      if (insertMovement.type === 'IN' || insertMovement.type === 'ADJUSTMENT') {
+        newStock += Math.abs(insertMovement.quantity);
+      } else if (insertMovement.type === 'OUT') {
+        newStock -= Math.abs(insertMovement.quantity);
+        if (newStock < 0) newStock = 0; // Prevent negative stock
+      }
+      
+      const updatedItem: InventoryItem = {
+        ...item,
+        currentStock: newStock,
+        updatedAt: now,
+      };
+      this.inventoryItems.set(insertMovement.inventoryItemId, updatedItem);
+    }
+    
+    return stockMovement;
   }
 }
 

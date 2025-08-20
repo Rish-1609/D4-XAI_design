@@ -297,3 +297,61 @@ export type InsertCapa = z.infer<typeof insertCapaSchema>;
 export type Capa = typeof capas.$inferSelect;
 export type InsertCapaAction = z.infer<typeof insertCapaActionSchema>;
 export type CapaAction = typeof capaActions.$inferSelect;
+
+// Inventory Management Schema
+export const inventoryItems = pgTable("inventory_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  itemCode: text("item_code").notNull().unique(),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // Raw Materials, Packaging, etc.
+  type: text("type").notNull(), // RM (Raw Material), PM (Packaging Material), etc.
+  supplierName: text("supplier_name"),
+  warehouseLocation: text("warehouse_location"),
+  batchNumber: text("batch_number"),
+  currentStock: integer("current_stock").notNull().default(0),
+  minimumLevel: integer("minimum_level").notNull().default(0),
+  maximumLevel: integer("maximum_level").notNull().default(1000),
+  moq: integer("moq").notNull().default(1), // Minimum Order Quantity
+  uom: text("uom").notNull().default("KG"), // Unit of Measure
+  rate: integer("rate").notNull().default(0), // in paise (1/100th of rupee)
+  leadTimeDays: integer("lead_time_days").default(0), // Lead time in days
+  specification: text("specification"),
+  imageUrl: text("image_url"),
+  expiryDate: timestamp("expiry_date"),
+  status: text("status").notNull().default("Active"), // Active, Inactive, Discontinued
+  qualityStatus: text("quality_status").default("Passed"), // Passed, Failed, Pending
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const stockMovements = pgTable("stock_movements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inventoryItemId: text("inventory_item_id").notNull().references(() => inventoryItems.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // IN (Procured), OUT (Issued), TRANSFER, ADJUSTMENT
+  quantity: integer("quantity").notNull(),
+  fromLocation: text("from_location"),
+  toLocation: text("to_location"),
+  referenceNumber: text("reference_number"), // PO ID, Job ID, etc.
+  user: text("user").notNull(), // User who performed the movement
+  qualityIssue: text("quality_issue"), // Quality issue description if any
+  notes: text("notes"),
+  movementDate: timestamp("movement_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
+export type InventoryItem = typeof inventoryItems.$inferSelect;
+export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
+export type StockMovement = typeof stockMovements.$inferSelect;

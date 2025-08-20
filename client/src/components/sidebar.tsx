@@ -12,7 +12,9 @@ import {
   User,
   LogOut,
   Package,
-  Layers
+  Layers,
+  Warehouse,
+  ArrowRightLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,15 @@ interface SidebarProps {
 
 const menuItems = [
   { id: "production-orders", label: "Production Orders", icon: Package, href: "/production-orders" },
+  {
+    id: "inventory-management",
+    label: "Inventory Management",
+    icon: Warehouse,
+    submenu: [
+      { label: "Stock Overview", href: "/inventory-overview" },
+      { label: "Stock Movements", href: "/stock-movements" },
+    ],
+  },
   {
     id: "qc-management",
     label: "QC Management",

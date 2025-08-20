@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertInventoryItemSchema, insertStockMovementSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -496,6 +496,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch BOM statistics" });
+    }
+  });
+
+  // Inventory Management Routes
+  app.get("/api/inventory-items", async (req, res) => {
+    try {
+      const items = await storage.getInventoryItems();
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch inventory items" });
+    }
+  });
+
+  app.get("/api/inventory-items/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const item = await storage.getInventoryItem(id);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Inventory item not found" });
+      }
+      
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch inventory item" });
+    }
+  });
+
+  app.post("/api/inventory-items", async (req, res) => {
+    try {
+      const validatedData = insertInventoryItemSchema.parse(req.body);
+      const item = await storage.createInventoryItem(validatedData);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid inventory item data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create inventory item" });
+    }
+  });
+
+  app.put("/api/inventory-items/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertInventoryItemSchema.partial().parse(req.body);
+      const item = await storage.updateInventoryItem(id, validatedData);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Inventory item not found" });
+      }
+      
+      res.json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid inventory item data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update inventory item" });
+    }
+  });
+
+  app.delete("/api/inventory-items/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteInventoryItem(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Inventory item not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete inventory item" });
+    }
+  });
+
+  app.get("/api/inventory-stats", async (req, res) => {
+    try {
+      const stats = await storage.getInventoryStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch inventory statistics" });
+    }
+  });
+
+  // Stock Movement Routes
+  app.get("/api/stock-movements", async (req, res) => {
+    try {
+      const movements = await storage.getStockMovements();
+      res.json(movements);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stock movements" });
+    }
+  });
+
+  app.get("/api/stock-movements/item/:itemId", async (req, res) => {
+    try {
+      const { itemId } = req.params;
+      const movements = await storage.getStockMovementsByItem(itemId);
+      res.json(movements);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stock movements for item" });
+    }
+  });
+
+  app.post("/api/stock-movements", async (req, res) => {
+    try {
+      const validatedData = insertStockMovementSchema.parse(req.body);
+      const movement = await storage.createStockMovement(validatedData);
+      res.status(201).json(movement);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid stock movement data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create stock movement" });
     }
   });
 

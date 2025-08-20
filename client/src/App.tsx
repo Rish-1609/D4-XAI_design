@@ -9,6 +9,8 @@ import SopManagement from "@/pages/sop-management";
 import QualityMetrics from "@/pages/quality-metrics";
 import ProductionOrders from "@/pages/production-orders";
 import BomManagement from "@/pages/bom-management";
+import InventoryOverview from "@/pages/inventory-overview";
+import StockMovements from "@/pages/stock-movements";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +18,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/production-orders" component={ProductionOrders} />
+      <Route path="/inventory-overview" component={InventoryOverview} />
+      <Route path="/stock-movements" component={StockMovements} />
       <Route path="/qc-setup" component={QCSetupEnhancedPage} />
       <Route path="/sop-management" component={SopManagement} />
       <Route path="/bom-management" component={BomManagement} />
