@@ -48,10 +48,21 @@ const menuItems = [
     submenu: [
       { label: "Material QC", href: "/" },
       { label: "QC Setup & Instructions", href: "/qc-setup" },
-      { label: "Compliance Reports", href: "/compliance-reports" },
     ],
   },
-  { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
+  {
+    id: "sop-management",
+    label: "SOP Management",
+    icon: FileText,
+    submenu: [
+      { label: "Manufacturing SOPs", href: "/sop-manufacturing" },
+      { label: "Quality Control SOPs", href: "/sop-quality-control" },
+      { label: "Cleaning & Sanitization", href: "/sop-cleaning" },
+      { label: "Equipment Operation", href: "/sop-equipment" },
+      { label: "Safety & Environmental", href: "/sop-safety" },
+      { label: "Training SOPs", href: "/sop-training" },
+    ],
+  },
   { id: "capa-records", label: "CAPA Records", icon: Triangle, href: "/capa-records" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
   {
