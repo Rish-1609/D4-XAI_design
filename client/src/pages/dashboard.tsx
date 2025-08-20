@@ -5,12 +5,14 @@ import { Radio } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { StatusCards } from "@/components/status-cards";
 import { MaterialTable } from "@/components/material-table";
+import { QCRecordsTable } from "@/components/qc-records-table";
 
 const tabs = [
   { id: "raw-materials", label: "Raw Materials", title: "Raw Materials" },
   { id: "packaging-material", label: "Packaging Material", title: "Packaging Materials" },
   { id: "final-products", label: "Final Products", title: "Final Products" },
   { id: "artwork", label: "Artwork", title: "Artwork" },
+  { id: "qc-records", label: "QC Records", title: "QC Records" },
 ];
 
 export default function Dashboard() {
@@ -62,7 +64,11 @@ export default function Dashboard() {
 
               {tabs.map((tab) => (
                 <TabsContent key={tab.id} value={tab.id} className="mt-6">
-                  <MaterialTable materialType={tab.id} title={tab.title} />
+                  {tab.id === "qc-records" ? (
+                    <QCRecordsTable />
+                  ) : (
+                    <MaterialTable materialType={tab.id} title={tab.title} />
+                  )}
                 </TabsContent>
               ))}
             </Tabs>
