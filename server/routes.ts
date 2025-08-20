@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -99,6 +99,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch quality statistics" });
+    }
+  });
+
+  // Test Configuration Routes
+  app.get("/api/test-configs", async (req, res) => {
+    try {
+      const testConfigs = await storage.getTestConfigs();
+      res.json(testConfigs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch test configurations" });
+    }
+  });
+
+  app.post("/api/test-configs", async (req, res) => {
+    try {
+      const validatedData = insertTestConfigSchema.parse(req.body);
+      const testConfig = await storage.createTestConfig(validatedData);
+      res.status(201).json(testConfig);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid test config data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create test configuration" });
+    }
+  });
+
+  // Test Results Routes
+  app.get("/api/test-results", async (req, res) => {
+    try {
+      const testResults = await storage.getTestResults();
+      res.json(testResults);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch test results" });
+    }
+  });
+
+  app.get("/api/test-results/material/:materialId", async (req, res) => {
+    try {
+      const { materialId } = req.params;
+      const testResults = await storage.getTestResultsByMaterial(materialId);
+      res.json(testResults);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch test results for material" });
+    }
+  });
+
+  app.post("/api/test-results", async (req, res) => {
+    try {
+      const validatedData = insertTestResultSchema.parse(req.body);
+      const testResult = await storage.createTestResult(validatedData);
+      res.status(201).json(testResult);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid test result data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create test result" });
+    }
+  });
+
+  // Test Instructions Routes
+  app.get("/api/test-instructions", async (req, res) => {
+    try {
+      const testInstructions = await storage.getTestInstructions();
+      res.json(testInstructions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch test instructions" });
+    }
+  });
+
+  app.get("/api/test-instructions/material-type/:materialType", async (req, res) => {
+    try {
+      const { materialType } = req.params;
+      const testInstructions = await storage.getTestInstructionsByMaterialType(materialType);
+      res.json(testInstructions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch test instructions for material type" });
+    }
+  });
+
+  app.post("/api/test-instructions", async (req, res) => {
+    try {
+      const validatedData = insertTestInstructionSchema.parse(req.body);
+      const testInstruction = await storage.createTestInstruction(validatedData);
+      res.status(201).json(testInstruction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid test instruction data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create test instruction" });
     }
   });
 
