@@ -8,7 +8,6 @@ import { MaterialTable } from "@/components/material-table";
 import { QCRecordsTable } from "@/components/qc-records-table";
 
 const tabs = [
-  { id: "quality-metrics", label: "Quality Metrics", title: "Quality Analytics Dashboard" },
   { id: "raw-materials", label: "Raw Materials", title: "Raw Materials" },
   { id: "packaging-material", label: "Packaging Material", title: "Packaging Materials" },
   { id: "in-process", label: "In Process", title: "In Process" },
@@ -18,7 +17,7 @@ const tabs = [
 ];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("quality-metrics");
+  const [activeTab, setActiveTab] = useState("raw-materials");
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -33,14 +32,6 @@ export default function Dashboard() {
               <p className="text-gray-600 text-sm mt-1">Manage materials with quality control protocols</p>
             </div>
             <div className="flex items-center space-x-4">
-              <Button 
-                className="bg-green-600 hover:bg-green-700 text-white" 
-                data-testid="button-real-time-monitoring"
-                onClick={() => setActiveTab("quality-metrics")}
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Quality Analytics
-              </Button>
               <Button className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-real-time-monitoring">
                 <Radio className="w-4 h-4 mr-2" />
                 Real-time Monitoring
@@ -71,9 +62,7 @@ export default function Dashboard() {
 
               {tabs.map((tab) => (
                 <TabsContent key={tab.id} value={tab.id} className="mt-6">
-                  {tab.id === "quality-metrics" ? (
-                    <QualityAnalyticsDashboard />
-                  ) : tab.id === "qc-records" ? (
+                  {tab.id === "qc-records" ? (
                     <QCRecordsTable />
                   ) : (
                     <MaterialTable materialType={tab.id} title={tab.title} />
