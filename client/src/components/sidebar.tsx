@@ -32,15 +32,6 @@ interface SidebarProps {
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: Gauge, href: "/" },
   {
-    id: "production-management",
-    label: "Production Management",
-    icon: Factory,
-    submenu: [
-      { label: "Production Planning", href: "/production-planning" },
-      { label: "Batch Management", href: "/batch-management" },
-    ],
-  },
-  {
     id: "qc-management",
     label: "QC Management",
     icon: CheckCircle,
