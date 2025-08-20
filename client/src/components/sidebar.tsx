@@ -14,7 +14,11 @@ import {
   Package,
   Layers,
   Warehouse,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Shield,
+  Award,
+  FileCheck,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +38,7 @@ const menuItems = [
       { label: "Stock Movements", href: "/stock-movements" },
     ],
   },
+  { id: "quality-assurance", label: "Quality Assurance", icon: Shield, href: "/quality-assurance" },
   {
     id: "qc-management",
     label: "QC Management",

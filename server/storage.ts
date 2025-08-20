@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -92,6 +92,67 @@ export interface IStorage {
   getStockMovements(): Promise<StockMovement[]>;
   getStockMovementsByItem(itemId: string): Promise<StockMovement[]>;
   createStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
+
+  // QA/QC Stage operations
+  getQcStages(): Promise<QcStage[]>;
+  getQcStagesByOrder(productionOrderId: string): Promise<QcStage[]>;
+  getQcStage(id: string): Promise<QcStage | undefined>;
+  createQcStage(insertQcStage: InsertQcStage): Promise<QcStage>;
+  updateQcStage(id: string, updateData: Partial<InsertQcStage>): Promise<QcStage | undefined>;
+  deleteQcStage(id: string): Promise<boolean>;
+
+  // QC Checkpoint operations
+  getQcCheckpoints(): Promise<QcCheckpoint[]>;
+  getQcCheckpointsByStage(stageId: string): Promise<QcCheckpoint[]>;
+  getQcCheckpoint(id: string): Promise<QcCheckpoint | undefined>;
+  createQcCheckpoint(insertQcCheckpoint: InsertQcCheckpoint): Promise<QcCheckpoint>;
+  updateQcCheckpoint(id: string, updateData: Partial<InsertQcCheckpoint>): Promise<QcCheckpoint | undefined>;
+  deleteQcCheckpoint(id: string): Promise<boolean>;
+
+  // QC Test Result operations
+  getQcTestResults(): Promise<QcTestResult[]>;
+  getQcTestResultsByCheckpoint(checkpointId: string): Promise<QcTestResult[]>;
+  getQcTestResult(id: string): Promise<QcTestResult | undefined>;
+  createQcTestResult(insertQcTestResult: InsertQcTestResult): Promise<QcTestResult>;
+  updateQcTestResult(id: string, updateData: Partial<InsertQcTestResult>): Promise<QcTestResult | undefined>;
+  deleteQcTestResult(id: string): Promise<boolean>;
+
+  // QC Approval operations
+  getQcApprovals(): Promise<QcApproval[]>;
+  getQcApprovalsByStage(stageId: string): Promise<QcApproval[]>;
+  getQcApproval(id: string): Promise<QcApproval | undefined>;
+  createQcApproval(insertQcApproval: InsertQcApproval): Promise<QcApproval>;
+  updateQcApproval(id: string, updateData: Partial<InsertQcApproval>): Promise<QcApproval | undefined>;
+  deleteQcApproval(id: string): Promise<boolean>;
+
+  // Batch Release operations
+  getBatchReleases(): Promise<BatchRelease[]>;
+  getBatchReleasesByOrder(productionOrderId: string): Promise<BatchRelease[]>;
+  getBatchRelease(id: string): Promise<BatchRelease | undefined>;
+  createBatchRelease(insertBatchRelease: InsertBatchRelease): Promise<BatchRelease>;
+  updateBatchRelease(id: string, updateData: Partial<InsertBatchRelease>): Promise<BatchRelease | undefined>;
+  deleteBatchRelease(id: string): Promise<boolean>;
+
+  // Batch Certificate operations
+  getBatchCertificates(): Promise<BatchCertificate[]>;
+  getBatchCertificateByBatchRelease(batchReleaseId: string): Promise<BatchCertificate | undefined>;
+  getBatchCertificate(id: string): Promise<BatchCertificate | undefined>;
+  createBatchCertificate(insertBatchCertificate: InsertBatchCertificate): Promise<BatchCertificate>;
+  updateBatchCertificate(id: string, updateData: Partial<InsertBatchCertificate>): Promise<BatchCertificate | undefined>;
+  deleteBatchCertificate(id: string): Promise<boolean>;
+
+  // QA Audit Trail operations
+  getQaAuditTrails(): Promise<QaAuditTrail[]>;
+  getQaAuditTrailsByEntity(entityType: string, entityId: string): Promise<QaAuditTrail[]>;
+  getQaAuditTrail(id: string): Promise<QaAuditTrail | undefined>;
+  createQaAuditTrail(insertQaAuditTrail: InsertQaAuditTrail): Promise<QaAuditTrail>;
+
+  // QC Stage Template operations
+  getQcStageTemplates(): Promise<QcStageTemplate[]>;
+  getQcStageTemplate(id: string): Promise<QcStageTemplate | undefined>;
+  createQcStageTemplate(insertQcStageTemplate: InsertQcStageTemplate): Promise<QcStageTemplate>;
+  updateQcStageTemplate(id: string, updateData: Partial<InsertQcStageTemplate>): Promise<QcStageTemplate | undefined>;
+  deleteQcStageTemplate(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -109,6 +170,22 @@ export class MemStorage implements IStorage {
   private capaActions: Map<string, CapaAction[]>;
   private inventoryItems: Map<string, InventoryItem>;
   private stockMovements: Map<string, StockMovement[]>;
+  // QA-related data stores
+  private qcStages: Map<string, QcStage>;
+  private qcStagesByOrder: Map<string, QcStage[]>;
+  private qcCheckpoints: Map<string, QcCheckpoint>;
+  private qcCheckpointsByStage: Map<string, QcCheckpoint[]>;
+  private qcTestResults: Map<string, QcTestResult>;
+  private qcTestResultsByCheckpoint: Map<string, QcTestResult[]>;
+  private qcApprovals: Map<string, QcApproval>;
+  private qcApprovalsByStage: Map<string, QcApproval[]>;
+  private batchReleases: Map<string, BatchRelease>;
+  private batchReleasesByOrder: Map<string, BatchRelease[]>;
+  private batchCertificates: Map<string, BatchCertificate>;
+  private batchCertificatesByBatchRelease: Map<string, BatchCertificate>;
+  private qaAuditTrails: Map<string, QaAuditTrail>;
+  private qaAuditTrailsByEntity: Map<string, QaAuditTrail[]>;
+  private qcStageTemplates: Map<string, QcStageTemplate>;
 
   constructor() {
     this.materials = new Map();
@@ -125,6 +202,22 @@ export class MemStorage implements IStorage {
     this.capaActions = new Map();
     this.inventoryItems = new Map();
     this.stockMovements = new Map();
+    // Initialize QA-related data stores
+    this.qcStages = new Map();
+    this.qcStagesByOrder = new Map();
+    this.qcCheckpoints = new Map();
+    this.qcCheckpointsByStage = new Map();
+    this.qcTestResults = new Map();
+    this.qcTestResultsByCheckpoint = new Map();
+    this.qcApprovals = new Map();
+    this.qcApprovalsByStage = new Map();
+    this.batchReleases = new Map();
+    this.batchReleasesByOrder = new Map();
+    this.batchCertificates = new Map();
+    this.batchCertificatesByBatchRelease = new Map();
+    this.qaAuditTrails = new Map();
+    this.qaAuditTrailsByEntity = new Map();
+    this.qcStageTemplates = new Map();
     this.initializeDummyData();
   }
 
@@ -159,6 +252,7 @@ export class MemStorage implements IStorage {
       receiptDate: insertMaterial.receiptDate || null,
       expiryDate: insertMaterial.expiryDate || null,
       storageConditions: insertMaterial.storageConditions || null,
+      jobId: insertMaterial.jobId || null,
       createdAt: now,
       updatedAt: now,
     };
@@ -1126,6 +1220,7 @@ export class MemStorage implements IStorage {
       {
         id: "bm3",
         bomId: "bom1",
+        materialId: null,
         materialCode: "RM0002",
         materialName: "Flavoring Agent Cherry",
         quantity: 60, // 60g converted to grams with precision
@@ -1139,6 +1234,7 @@ export class MemStorage implements IStorage {
       {
         id: "bm4",
         bomId: "bom1",
+        materialId: null,
         materialCode: "RM0001",
         materialName: "Preservative Sodium Benzoate",
         quantity: 10, // 10g
@@ -1152,6 +1248,7 @@ export class MemStorage implements IStorage {
       {
         id: "bm5",
         bomId: "bom1",
+        materialId: null,
         materialCode: "RM0004",
         materialName: "Citric Acid Stabilizer",
         quantity: 5, // 5g
@@ -1454,6 +1551,8 @@ export class MemStorage implements IStorage {
     const sop: Sop = {
       ...insertSop,
       id,
+      version: insertSop.version || '1.0',
+      status: insertSop.status || 'draft',
       description: insertSop.description || null,
       filePath: insertSop.filePath || null,
       fileName: insertSop.fileName || null,
@@ -1549,6 +1648,8 @@ export class MemStorage implements IStorage {
     const productionOrder: ProductionOrder = {
       ...insertOrder,
       id,
+      status: insertOrder.status || 'Pending',
+      priority: insertOrder.priority || 'Medium',
       createdAt: now,
       updatedAt: now,
     };
@@ -1590,6 +1691,11 @@ export class MemStorage implements IStorage {
     const bom: Bom = {
       ...insertBom,
       id,
+      version: insertBom.version || '1.0',
+      status: insertBom.status || 'Active',
+      totalCost: insertBom.totalCost || 0,
+      approvedBy: insertBom.approvedBy || null,
+      shelfLifeDays: insertBom.shelfLifeDays || null,
       createdAt: now,
       updatedAt: now,
     };
@@ -1630,6 +1736,11 @@ export class MemStorage implements IStorage {
     const bomMaterial: BomMaterial = {
       ...insertBomMaterial,
       id,
+      materialId: insertBomMaterial.materialId || null,
+      unitCost: insertBomMaterial.unitCost || 0,
+      scrapPercentage: insertBomMaterial.scrapPercentage || 0,
+      totalCost: insertBomMaterial.totalCost || 0,
+      shelfLifeDays: insertBomMaterial.shelfLifeDays || null,
       createdAt: now,
     };
     
@@ -1650,6 +1761,7 @@ export class MemStorage implements IStorage {
     const bomSubAssembly: BomSubAssembly = {
       ...insertBomSubAssembly,
       id,
+      totalCost: insertBomSubAssembly.totalCost || 0,
       createdAt: now,
     };
     
@@ -1708,6 +1820,8 @@ export class MemStorage implements IStorage {
     const capa: Capa = {
       ...insertCapa,
       id,
+      status: insertCapa.status || 'Open',
+      priority: insertCapa.priority || 'Medium',
       description: insertCapa.description || null,
       assignedTo: insertCapa.assignedTo || null,
       dueDate: insertCapa.dueDate || null,
@@ -1760,6 +1874,7 @@ export class MemStorage implements IStorage {
     const capaAction: CapaAction = {
       ...insertCapaAction,
       id,
+      status: insertCapaAction.status || 'Open',
       assignedTo: insertCapaAction.assignedTo || null,
       dueDate: insertCapaAction.dueDate || null,
       completionDate: insertCapaAction.completionDate || null,
@@ -1792,6 +1907,13 @@ export class MemStorage implements IStorage {
     const inventoryItem: InventoryItem = {
       ...insertItem,
       id,
+      status: insertItem.status || 'Active',
+      currentStock: insertItem.currentStock || 0,
+      minimumLevel: insertItem.minimumLevel || 0,
+      maximumLevel: insertItem.maximumLevel || 1000,
+      moq: insertItem.moq || 1,
+      uom: insertItem.uom || 'KG',
+      rate: insertItem.rate || 0,
       supplierName: insertItem.supplierName || null,
       warehouseLocation: insertItem.warehouseLocation || null,
       batchNumber: insertItem.batchNumber || null,
@@ -1862,7 +1984,7 @@ export class MemStorage implements IStorage {
   // Stock Movement operations
   async getStockMovements(): Promise<StockMovement[]> {
     const allMovements: StockMovement[] = [];
-    for (const movements of this.stockMovements.values()) {
+    for (const movements of Array.from(this.stockMovements.values())) {
       allMovements.push(...movements);
     }
     return allMovements.sort((a, b) => 
@@ -1916,6 +2038,540 @@ export class MemStorage implements IStorage {
     }
     
     return stockMovement;
+  }
+
+  // QA/QC Stage operations
+  async getQcStages(): Promise<QcStage[]> {
+    return Array.from(this.qcStages.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getQcStagesByOrder(productionOrderId: string): Promise<QcStage[]> {
+    return this.qcStagesByOrder.get(productionOrderId) || [];
+  }
+
+  async getQcStage(id: string): Promise<QcStage | undefined> {
+    return this.qcStages.get(id);
+  }
+
+  async createQcStage(insertQcStage: InsertQcStage): Promise<QcStage> {
+    const id = randomUUID();
+    const now = new Date();
+    const qcStage: QcStage = {
+      ...insertQcStage,
+      id,
+      status: insertQcStage.status || 'Not Started',
+      assignedTo: insertQcStage.assignedTo || null,
+      startedAt: insertQcStage.startedAt || null,
+      completedAt: insertQcStage.completedAt || null,
+      notes: insertQcStage.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.qcStages.set(id, qcStage);
+    
+    // Group by production order
+    const existingStages = this.qcStagesByOrder.get(insertQcStage.productionOrderId) || [];
+    existingStages.push(qcStage);
+    this.qcStagesByOrder.set(insertQcStage.productionOrderId, existingStages);
+    
+    return qcStage;
+  }
+
+  async updateQcStage(id: string, updateData: Partial<InsertQcStage>): Promise<QcStage | undefined> {
+    const existing = this.qcStages.get(id);
+    if (!existing) return undefined;
+
+    const updated: QcStage = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.qcStages.set(id, updated);
+
+    // Update in grouped map too
+    const stagesByOrder = this.qcStagesByOrder.get(existing.productionOrderId) || [];
+    const index = stagesByOrder.findIndex(s => s.id === id);
+    if (index >= 0) {
+      stagesByOrder[index] = updated;
+    }
+    
+    return updated;
+  }
+
+  async deleteQcStage(id: string): Promise<boolean> {
+    const existing = this.qcStages.get(id);
+    if (!existing) return false;
+
+    const deleted = this.qcStages.delete(id);
+    if (deleted) {
+      // Remove from grouped map
+      const stagesByOrder = this.qcStagesByOrder.get(existing.productionOrderId) || [];
+      const filtered = stagesByOrder.filter(s => s.id !== id);
+      this.qcStagesByOrder.set(existing.productionOrderId, filtered);
+      
+      // Also delete related checkpoints
+      this.qcCheckpointsByStage.delete(id);
+      this.qcApprovalsByStage.delete(id);
+    }
+    return deleted;
+  }
+
+  // QC Checkpoint operations
+  async getQcCheckpoints(): Promise<QcCheckpoint[]> {
+    const allCheckpoints: QcCheckpoint[] = [];
+    for (const checkpoints of Array.from(this.qcCheckpointsByStage.values())) {
+      allCheckpoints.push(...checkpoints);
+    }
+    return allCheckpoints.sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getQcCheckpointsByStage(stageId: string): Promise<QcCheckpoint[]> {
+    return this.qcCheckpointsByStage.get(stageId) || [];
+  }
+
+  async getQcCheckpoint(id: string): Promise<QcCheckpoint | undefined> {
+    return this.qcCheckpoints.get(id);
+  }
+
+  async createQcCheckpoint(insertQcCheckpoint: InsertQcCheckpoint): Promise<QcCheckpoint> {
+    const id = randomUUID();
+    const now = new Date();
+    const qcCheckpoint: QcCheckpoint = {
+      ...insertQcCheckpoint,
+      id,
+      status: insertQcCheckpoint.status || 'Pending',
+      assignedTo: insertQcCheckpoint.assignedTo || null,
+      testResults: insertQcCheckpoint.testResults || null,
+      notes: insertQcCheckpoint.notes || null,
+      completedAt: insertQcCheckpoint.completedAt || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.qcCheckpoints.set(id, qcCheckpoint);
+    
+    // Group by stage
+    const existingCheckpoints = this.qcCheckpointsByStage.get(insertQcCheckpoint.stageId) || [];
+    existingCheckpoints.push(qcCheckpoint);
+    this.qcCheckpointsByStage.set(insertQcCheckpoint.stageId, existingCheckpoints);
+    
+    return qcCheckpoint;
+  }
+
+  async updateQcCheckpoint(id: string, updateData: Partial<InsertQcCheckpoint>): Promise<QcCheckpoint | undefined> {
+    const existing = this.qcCheckpoints.get(id);
+    if (!existing) return undefined;
+
+    const updated: QcCheckpoint = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.qcCheckpoints.set(id, updated);
+
+    // Update in grouped map too
+    const checkpointsByStage = this.qcCheckpointsByStage.get(existing.stageId) || [];
+    const index = checkpointsByStage.findIndex(c => c.id === id);
+    if (index >= 0) {
+      checkpointsByStage[index] = updated;
+    }
+    
+    return updated;
+  }
+
+  async deleteQcCheckpoint(id: string): Promise<boolean> {
+    const existing = this.qcCheckpoints.get(id);
+    if (!existing) return false;
+
+    const deleted = this.qcCheckpoints.delete(id);
+    if (deleted) {
+      // Remove from grouped map
+      const checkpointsByStage = this.qcCheckpointsByStage.get(existing.stageId) || [];
+      const filtered = checkpointsByStage.filter(c => c.id !== id);
+      this.qcCheckpointsByStage.set(existing.stageId, filtered);
+      
+      // Also delete related test results
+      this.qcTestResultsByCheckpoint.delete(id);
+    }
+    return deleted;
+  }
+
+  // QC Test Result operations
+  async getQcTestResults(): Promise<QcTestResult[]> {
+    const allResults: QcTestResult[] = [];
+    for (const results of Array.from(this.qcTestResultsByCheckpoint.values())) {
+      allResults.push(...results);
+    }
+    return allResults.sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getQcTestResultsByCheckpoint(checkpointId: string): Promise<QcTestResult[]> {
+    return this.qcTestResultsByCheckpoint.get(checkpointId) || [];
+  }
+
+  async getQcTestResult(id: string): Promise<QcTestResult | undefined> {
+    return this.qcTestResults.get(id);
+  }
+
+  async createQcTestResult(insertQcTestResult: InsertQcTestResult): Promise<QcTestResult> {
+    const id = randomUUID();
+    const now = new Date();
+    const qcTestResult: QcTestResult = {
+      ...insertQcTestResult,
+      id,
+      status: insertQcTestResult.status || 'Pass',
+      notes: insertQcTestResult.notes || null,
+      attachments: insertQcTestResult.attachments || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.qcTestResults.set(id, qcTestResult);
+    
+    // Group by checkpoint
+    const existingResults = this.qcTestResultsByCheckpoint.get(insertQcTestResult.checkpointId) || [];
+    existingResults.push(qcTestResult);
+    this.qcTestResultsByCheckpoint.set(insertQcTestResult.checkpointId, existingResults);
+    
+    return qcTestResult;
+  }
+
+  async updateQcTestResult(id: string, updateData: Partial<InsertQcTestResult>): Promise<QcTestResult | undefined> {
+    const existing = this.qcTestResults.get(id);
+    if (!existing) return undefined;
+
+    const updated: QcTestResult = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.qcTestResults.set(id, updated);
+
+    // Update in grouped map too
+    const resultsByCheckpoint = this.qcTestResultsByCheckpoint.get(existing.checkpointId) || [];
+    const index = resultsByCheckpoint.findIndex(r => r.id === id);
+    if (index >= 0) {
+      resultsByCheckpoint[index] = updated;
+    }
+    
+    return updated;
+  }
+
+  async deleteQcTestResult(id: string): Promise<boolean> {
+    const existing = this.qcTestResults.get(id);
+    if (!existing) return false;
+
+    const deleted = this.qcTestResults.delete(id);
+    if (deleted) {
+      // Remove from grouped map
+      const resultsByCheckpoint = this.qcTestResultsByCheckpoint.get(existing.checkpointId) || [];
+      const filtered = resultsByCheckpoint.filter(r => r.id !== id);
+      this.qcTestResultsByCheckpoint.set(existing.checkpointId, filtered);
+    }
+    return deleted;
+  }
+
+  // QC Approval operations
+  async getQcApprovals(): Promise<QcApproval[]> {
+    const allApprovals: QcApproval[] = [];
+    for (const approvals of Array.from(this.qcApprovalsByStage.values())) {
+      allApprovals.push(...approvals);
+    }
+    return allApprovals.sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getQcApprovalsByStage(stageId: string): Promise<QcApproval[]> {
+    return this.qcApprovalsByStage.get(stageId) || [];
+  }
+
+  async getQcApproval(id: string): Promise<QcApproval | undefined> {
+    return this.qcApprovals.get(id);
+  }
+
+  async createQcApproval(insertQcApproval: InsertQcApproval): Promise<QcApproval> {
+    const id = randomUUID();
+    const now = new Date();
+    const qcApproval: QcApproval = {
+      ...insertQcApproval,
+      id,
+      comments: insertQcApproval.comments || null,
+      digitalSignature: insertQcApproval.digitalSignature || null,
+      signatureTimestamp: insertQcApproval.signatureTimestamp || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.qcApprovals.set(id, qcApproval);
+    
+    // Group by stage
+    const existingApprovals = this.qcApprovalsByStage.get(insertQcApproval.stageId) || [];
+    existingApprovals.push(qcApproval);
+    this.qcApprovalsByStage.set(insertQcApproval.stageId, existingApprovals);
+    
+    return qcApproval;
+  }
+
+  async updateQcApproval(id: string, updateData: Partial<InsertQcApproval>): Promise<QcApproval | undefined> {
+    const existing = this.qcApprovals.get(id);
+    if (!existing) return undefined;
+
+    const updated: QcApproval = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.qcApprovals.set(id, updated);
+
+    // Update in grouped map too
+    const approvalsByStage = this.qcApprovalsByStage.get(existing.stageId) || [];
+    const index = approvalsByStage.findIndex(a => a.id === id);
+    if (index >= 0) {
+      approvalsByStage[index] = updated;
+    }
+    
+    return updated;
+  }
+
+  async deleteQcApproval(id: string): Promise<boolean> {
+    const existing = this.qcApprovals.get(id);
+    if (!existing) return false;
+
+    const deleted = this.qcApprovals.delete(id);
+    if (deleted) {
+      // Remove from grouped map
+      const approvalsByStage = this.qcApprovalsByStage.get(existing.stageId) || [];
+      const filtered = approvalsByStage.filter(a => a.id !== id);
+      this.qcApprovalsByStage.set(existing.stageId, filtered);
+    }
+    return deleted;
+  }
+
+  // Batch Release operations
+  async getBatchReleases(): Promise<BatchRelease[]> {
+    return Array.from(this.batchReleases.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getBatchReleasesByOrder(productionOrderId: string): Promise<BatchRelease[]> {
+    return this.batchReleasesByOrder.get(productionOrderId) || [];
+  }
+
+  async getBatchRelease(id: string): Promise<BatchRelease | undefined> {
+    return this.batchReleases.get(id);
+  }
+
+  async createBatchRelease(insertBatchRelease: InsertBatchRelease): Promise<BatchRelease> {
+    const id = randomUUID();
+    const now = new Date();
+    const batchRelease: BatchRelease = {
+      ...insertBatchRelease,
+      id,
+      status: insertBatchRelease.status || 'Pending',
+      qaDecision: insertBatchRelease.qaDecision || null,
+      qaComments: insertBatchRelease.qaComments || null,
+      releaseDate: insertBatchRelease.releaseDate || null,
+      digitalSignature: insertBatchRelease.digitalSignature || null,
+      signatureTimestamp: insertBatchRelease.signatureTimestamp || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.batchReleases.set(id, batchRelease);
+    
+    // Group by production order
+    const existingReleases = this.batchReleasesByOrder.get(insertBatchRelease.productionOrderId) || [];
+    existingReleases.push(batchRelease);
+    this.batchReleasesByOrder.set(insertBatchRelease.productionOrderId, existingReleases);
+    
+    return batchRelease;
+  }
+
+  async updateBatchRelease(id: string, updateData: Partial<InsertBatchRelease>): Promise<BatchRelease | undefined> {
+    const existing = this.batchReleases.get(id);
+    if (!existing) return undefined;
+
+    const updated: BatchRelease = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.batchReleases.set(id, updated);
+
+    // Update in grouped map too
+    const releasesByOrder = this.batchReleasesByOrder.get(existing.productionOrderId) || [];
+    const index = releasesByOrder.findIndex(r => r.id === id);
+    if (index >= 0) {
+      releasesByOrder[index] = updated;
+    }
+    
+    return updated;
+  }
+
+  async deleteBatchRelease(id: string): Promise<boolean> {
+    const existing = this.batchReleases.get(id);
+    if (!existing) return false;
+
+    const deleted = this.batchReleases.delete(id);
+    if (deleted) {
+      // Remove from grouped map
+      const releasesByOrder = this.batchReleasesByOrder.get(existing.productionOrderId) || [];
+      const filtered = releasesByOrder.filter(r => r.id !== id);
+      this.batchReleasesByOrder.set(existing.productionOrderId, filtered);
+      
+      // Also delete related certificate
+      this.batchCertificatesByBatchRelease.delete(id);
+    }
+    return deleted;
+  }
+
+  // Batch Certificate operations
+  async getBatchCertificates(): Promise<BatchCertificate[]> {
+    return Array.from(this.batchCertificates.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getBatchCertificateByBatchRelease(batchReleaseId: string): Promise<BatchCertificate | undefined> {
+    return this.batchCertificatesByBatchRelease.get(batchReleaseId);
+  }
+
+  async getBatchCertificate(id: string): Promise<BatchCertificate | undefined> {
+    return this.batchCertificates.get(id);
+  }
+
+  async createBatchCertificate(insertBatchCertificate: InsertBatchCertificate): Promise<BatchCertificate> {
+    const id = randomUUID();
+    const now = new Date();
+    const batchCertificate: BatchCertificate = {
+      ...insertBatchCertificate,
+      id,
+      issueDate: insertBatchCertificate.issueDate || now,
+      digitalSignature: insertBatchCertificate.digitalSignature || null,
+      signatureTimestamp: insertBatchCertificate.signatureTimestamp || null,
+      qrCodeData: insertBatchCertificate.qrCodeData || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.batchCertificates.set(id, batchCertificate);
+    this.batchCertificatesByBatchRelease.set(insertBatchCertificate.batchReleaseId, batchCertificate);
+    
+    return batchCertificate;
+  }
+
+  async updateBatchCertificate(id: string, updateData: Partial<InsertBatchCertificate>): Promise<BatchCertificate | undefined> {
+    const existing = this.batchCertificates.get(id);
+    if (!existing) return undefined;
+
+    const updated: BatchCertificate = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.batchCertificates.set(id, updated);
+    this.batchCertificatesByBatchRelease.set(existing.batchReleaseId, updated);
+    
+    return updated;
+  }
+
+  async deleteBatchCertificate(id: string): Promise<boolean> {
+    const existing = this.batchCertificates.get(id);
+    if (!existing) return false;
+
+    const deleted = this.batchCertificates.delete(id);
+    if (deleted) {
+      this.batchCertificatesByBatchRelease.delete(existing.batchReleaseId);
+    }
+    return deleted;
+  }
+
+  // QA Audit Trail operations
+  async getQaAuditTrails(): Promise<QaAuditTrail[]> {
+    return Array.from(this.qaAuditTrails.values()).sort((a, b) => 
+      new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime()
+    );
+  }
+
+  async getQaAuditTrailsByEntity(entityType: string, entityId: string): Promise<QaAuditTrail[]> {
+    const entityKey = `${entityType}:${entityId}`;
+    return this.qaAuditTrailsByEntity.get(entityKey) || [];
+  }
+
+  async getQaAuditTrail(id: string): Promise<QaAuditTrail | undefined> {
+    return this.qaAuditTrails.get(id);
+  }
+
+  async createQaAuditTrail(insertQaAuditTrail: InsertQaAuditTrail): Promise<QaAuditTrail> {
+    const id = randomUUID();
+    const now = new Date();
+    const qaAuditTrail: QaAuditTrail = {
+      ...insertQaAuditTrail,
+      id,
+      timestamp: insertQaAuditTrail.timestamp || now,
+      ipAddress: insertQaAuditTrail.ipAddress || null,
+      userAgent: insertQaAuditTrail.userAgent || null,
+      createdAt: now,
+    };
+    this.qaAuditTrails.set(id, qaAuditTrail);
+    
+    // Group by entity
+    const entityKey = `${insertQaAuditTrail.entityType}:${insertQaAuditTrail.entityId}`;
+    const existingTrails = this.qaAuditTrailsByEntity.get(entityKey) || [];
+    existingTrails.push(qaAuditTrail);
+    this.qaAuditTrailsByEntity.set(entityKey, existingTrails);
+    
+    return qaAuditTrail;
+  }
+
+  // QC Stage Template operations
+  async getQcStageTemplates(): Promise<QcStageTemplate[]> {
+    return Array.from(this.qcStageTemplates.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getQcStageTemplate(id: string): Promise<QcStageTemplate | undefined> {
+    return this.qcStageTemplates.get(id);
+  }
+
+  async createQcStageTemplate(insertQcStageTemplate: InsertQcStageTemplate): Promise<QcStageTemplate> {
+    const id = randomUUID();
+    const now = new Date();
+    const qcStageTemplate: QcStageTemplate = {
+      ...insertQcStageTemplate,
+      id,
+      description: insertQcStageTemplate.description || null,
+      estimatedDurationHours: insertQcStageTemplate.estimatedDurationHours || null,
+      requiredApprovals: insertQcStageTemplate.requiredApprovals || 1,
+      isActive: insertQcStageTemplate.isActive !== false, // default to true
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.qcStageTemplates.set(id, qcStageTemplate);
+    
+    return qcStageTemplate;
+  }
+
+  async updateQcStageTemplate(id: string, updateData: Partial<InsertQcStageTemplate>): Promise<QcStageTemplate | undefined> {
+    const existing = this.qcStageTemplates.get(id);
+    if (!existing) return undefined;
+
+    const updated: QcStageTemplate = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.qcStageTemplates.set(id, updated);
+    
+    return updated;
+  }
+
+  async deleteQcStageTemplate(id: string): Promise<boolean> {
+    return this.qcStageTemplates.delete(id);
   }
 }
 

@@ -355,3 +355,220 @@ export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
 export type StockMovement = typeof stockMovements.$inferSelect;
+
+// =============== QUALITY ASSURANCE SYSTEM ===============
+
+// QC Stages for Production Orders
+export const qcStages = pgTable("qc_stages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // e.g., "Raw Material Testing", "In-Process QC", "Final Product QC"
+  code: text("code").notNull().unique(), // e.g., "RM-QC", "IP-QC", "FP-QC"
+  description: text("description"),
+  sequence: integer("sequence").notNull(), // Order of execution (1, 2, 3, etc.)
+  isRequired: boolean("is_required").default(true),
+  estimatedDuration: integer("estimated_duration").default(24), // hours
+  sopReference: text("sop_reference"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// QC Checkpoints for each Production Order
+export const qcCheckpoints = pgTable("qc_checkpoints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productionOrderId: varchar("production_order_id").references(() => productionOrders.id).notNull(),
+  qcStageId: varchar("qc_stage_id").references(() => qcStages.id).notNull(),
+  status: text("status").notNull().default("pending"), // 'pending', 'in-progress', 'passed', 'failed', 'on-hold'
+  assignedTo: text("assigned_to"), // QC Analyst
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  dueDate: timestamp("due_date"),
+  remarks: text("remarks"),
+  priority: text("priority").notNull().default("normal"), // 'low', 'normal', 'high', 'critical'
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// QC Test Results for each Checkpoint
+export const qcTestResults = pgTable("qc_test_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  checkpointId: varchar("checkpoint_id").references(() => qcCheckpoints.id).notNull(),
+  testConfigId: varchar("test_config_id").references(() => testConfigs.id).notNull(),
+  sampleId: text("sample_id"), // Sample identification
+  testValue: text("test_value"), // Actual test result
+  expectedValue: text("expected_value"), // Expected/target value
+  status: text("status").notNull().default("pending"), // 'passed', 'failed', 'pending', 'retest-required'
+  deviation: text("deviation"), // Any deviation observed
+  testedBy: text("tested_by"), // Analyst performing test
+  testedAt: timestamp("tested_at"),
+  reviewedBy: text("reviewed_by"), // QC Manager reviewing results
+  reviewedAt: timestamp("reviewed_at"),
+  retestCount: integer("retest_count").default(0),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// QC Approvals and Sign-offs
+export const qcApprovals = pgTable("qc_approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  checkpointId: varchar("checkpoint_id").references(() => qcCheckpoints.id).notNull(),
+  approverRole: text("approver_role").notNull(), // 'qc-analyst', 'qc-manager', 'qa-head', 'authorized-person'
+  approverName: text("approver_name").notNull(),
+  approverSignature: text("approver_signature"), // Digital signature hash or reference
+  decision: text("decision").notNull(), // 'approved', 'rejected', 'conditional-approval'
+  comments: text("comments"),
+  approvedAt: timestamp("approved_at").defaultNow(),
+  ipAddress: text("ip_address"), // For audit trail
+  userAgent: text("user_agent"), // For audit trail
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Batch Release Management
+export const batchReleases = pgTable("batch_releases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productionOrderId: varchar("production_order_id").references(() => productionOrders.id).notNull(),
+  batchNumber: text("batch_number").notNull().unique(),
+  productCode: text("product_code").notNull(),
+  productName: text("product_name").notNull(),
+  batchSize: integer("batch_size").notNull(),
+  manufacturedDate: timestamp("manufactured_date").notNull(),
+  expiryDate: timestamp("expiry_date").notNull(),
+  releaseStatus: text("release_status").notNull().default("under-testing"), // 'under-testing', 'released', 'rejected', 'on-hold'
+  releaseDecision: text("release_decision"), // 'full-release', 'conditional-release', 'rejection'
+  releaseDate: timestamp("release_date"),
+  releasedBy: text("released_by"), // Authorized Person
+  releaseSignature: text("release_signature"), // Digital signature
+  qaReview: text("qa_review"), // QA Manager review comments
+  qaApprovedBy: text("qa_approved_by"),
+  qaApprovedAt: timestamp("qa_approved_at"),
+  storageConditions: text("storage_conditions"),
+  shelfLife: integer("shelf_life_months"),
+  packagingDetails: text("packaging_details"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Digital Batch Release Certificates/CoA
+export const batchCertificates = pgTable("batch_certificates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchReleaseId: varchar("batch_release_id").references(() => batchReleases.id).notNull(),
+  certificateNumber: text("certificate_number").notNull().unique(),
+  certificateType: text("certificate_type").notNull(), // 'coa', 'batch-release-certificate', 'quality-certificate'
+  templateVersion: text("template_version").default("v1.0"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+  generatedBy: text("generated_by").notNull(),
+  digitalSignature: text("digital_signature"), // Digital signature hash
+  signedBy: text("signed_by"), // Person who digitally signed
+  signedAt: timestamp("signed_at"),
+  pdfPath: text("pdf_path"), // Path to generated PDF certificate
+  status: text("status").notNull().default("draft"), // 'draft', 'signed', 'issued', 'revoked'
+  issuedTo: text("issued_to"), // Customer/Recipient
+  validUntil: timestamp("valid_until"),
+  revocationReason: text("revocation_reason"),
+  revokedAt: timestamp("revoked_at"),
+  revokedBy: text("revoked_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Audit Trail for QA Activities
+export const qaAuditTrail = pgTable("qa_audit_trail", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: text("entity_type").notNull(), // 'qc-checkpoint', 'batch-release', 'certificate', 'test-result'
+  entityId: varchar("entity_id").notNull(), // ID of the entity being audited
+  action: text("action").notNull(), // 'created', 'updated', 'approved', 'rejected', 'signed', 'released'
+  oldValues: text("old_values"), // JSON string of previous values
+  newValues: text("new_values"), // JSON string of new values
+  performedBy: text("performed_by").notNull(),
+  performedAt: timestamp("performed_at").defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: text("session_id"),
+  reason: text("reason"), // Reason for the change
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// QC Stage Templates (for reusability across different products)
+export const qcStageTemplates = pgTable("qc_stage_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  productCategory: text("product_category"), // e.g., "Tablets", "Capsules", "Liquids"
+  stages: text("stages").notNull(), // JSON array of stage configurations
+  isActive: boolean("is_active").default(true),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for QA system
+export const insertQcStageSchema = createInsertSchema(qcStages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQcCheckpointSchema = createInsertSchema(qcCheckpoints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQcTestResultSchema = createInsertSchema(qcTestResults).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQcApprovalSchema = createInsertSchema(qcApprovals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBatchReleaseSchema = createInsertSchema(batchReleases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBatchCertificateSchema = createInsertSchema(batchCertificates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQaAuditTrailSchema = createInsertSchema(qaAuditTrail).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertQcStageTemplateSchema = createInsertSchema(qcStageTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Type definitions for QA system
+export type InsertQcStage = z.infer<typeof insertQcStageSchema>;
+export type QcStage = typeof qcStages.$inferSelect;
+
+export type InsertQcCheckpoint = z.infer<typeof insertQcCheckpointSchema>;
+export type QcCheckpoint = typeof qcCheckpoints.$inferSelect;
+
+export type InsertQcTestResult = z.infer<typeof insertQcTestResultSchema>;
+export type QcTestResult = typeof qcTestResults.$inferSelect;
+
+export type InsertQcApproval = z.infer<typeof insertQcApprovalSchema>;
+export type QcApproval = typeof qcApprovals.$inferSelect;
+
+export type InsertBatchRelease = z.infer<typeof insertBatchReleaseSchema>;
+export type BatchRelease = typeof batchReleases.$inferSelect;
+
+export type InsertBatchCertificate = z.infer<typeof insertBatchCertificateSchema>;
+export type BatchCertificate = typeof batchCertificates.$inferSelect;
+
+export type InsertQaAuditTrail = z.infer<typeof insertQaAuditTrailSchema>;
+export type QaAuditTrail = typeof qaAuditTrail.$inferSelect;
+
+export type InsertQcStageTemplate = z.infer<typeof insertQcStageTemplateSchema>;
+export type QcStageTemplate = typeof qcStageTemplates.$inferSelect;

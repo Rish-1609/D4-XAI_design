@@ -685,6 +685,678 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quality Assurance Management Routes
+
+  // QC Stage Routes
+  app.get("/api/qc-stages", async (req, res) => {
+    try {
+      const stages = await storage.getQcStages();
+      res.json(stages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC stages" });
+    }
+  });
+
+  app.get("/api/qc-stages/order/:orderId", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const stages = await storage.getQcStagesByOrder(orderId);
+      res.json(stages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC stages for order" });
+    }
+  });
+
+  app.get("/api/qc-stages/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const stage = await storage.getQcStage(id);
+      
+      if (!stage) {
+        return res.status(404).json({ message: "QC stage not found" });
+      }
+      
+      res.json(stage);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC stage" });
+    }
+  });
+
+  app.post("/api/qc-stages", async (req, res) => {
+    try {
+      const validatedData = insertQcStageSchema.parse(req.body);
+      const stage = await storage.createQcStage(validatedData);
+      res.status(201).json(stage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC stage data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create QC stage" });
+    }
+  });
+
+  app.patch("/api/qc-stages/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertQcStageSchema.partial().parse(req.body);
+      const stage = await storage.updateQcStage(id, validatedData);
+      
+      if (!stage) {
+        return res.status(404).json({ message: "QC stage not found" });
+      }
+      
+      res.json(stage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC stage data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update QC stage" });
+    }
+  });
+
+  app.delete("/api/qc-stages/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteQcStage(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "QC stage not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete QC stage" });
+    }
+  });
+
+  // QC Checkpoint Routes
+  app.get("/api/qc-checkpoints", async (req, res) => {
+    try {
+      const checkpoints = await storage.getQcCheckpoints();
+      res.json(checkpoints);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC checkpoints" });
+    }
+  });
+
+  app.get("/api/qc-checkpoints/stage/:stageId", async (req, res) => {
+    try {
+      const { stageId } = req.params;
+      const checkpoints = await storage.getQcCheckpointsByStage(stageId);
+      res.json(checkpoints);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC checkpoints for stage" });
+    }
+  });
+
+  app.get("/api/qc-checkpoints/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const checkpoint = await storage.getQcCheckpoint(id);
+      
+      if (!checkpoint) {
+        return res.status(404).json({ message: "QC checkpoint not found" });
+      }
+      
+      res.json(checkpoint);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC checkpoint" });
+    }
+  });
+
+  app.post("/api/qc-checkpoints", async (req, res) => {
+    try {
+      const validatedData = insertQcCheckpointSchema.parse(req.body);
+      const checkpoint = await storage.createQcCheckpoint(validatedData);
+      res.status(201).json(checkpoint);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC checkpoint data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create QC checkpoint" });
+    }
+  });
+
+  app.patch("/api/qc-checkpoints/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertQcCheckpointSchema.partial().parse(req.body);
+      const checkpoint = await storage.updateQcCheckpoint(id, validatedData);
+      
+      if (!checkpoint) {
+        return res.status(404).json({ message: "QC checkpoint not found" });
+      }
+      
+      res.json(checkpoint);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC checkpoint data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update QC checkpoint" });
+    }
+  });
+
+  app.delete("/api/qc-checkpoints/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteQcCheckpoint(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "QC checkpoint not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete QC checkpoint" });
+    }
+  });
+
+  // QC Test Result Routes
+  app.get("/api/qc-test-results", async (req, res) => {
+    try {
+      const testResults = await storage.getQcTestResults();
+      res.json(testResults);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC test results" });
+    }
+  });
+
+  app.get("/api/qc-test-results/checkpoint/:checkpointId", async (req, res) => {
+    try {
+      const { checkpointId } = req.params;
+      const testResults = await storage.getQcTestResultsByCheckpoint(checkpointId);
+      res.json(testResults);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC test results for checkpoint" });
+    }
+  });
+
+  app.get("/api/qc-test-results/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const testResult = await storage.getQcTestResult(id);
+      
+      if (!testResult) {
+        return res.status(404).json({ message: "QC test result not found" });
+      }
+      
+      res.json(testResult);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC test result" });
+    }
+  });
+
+  app.post("/api/qc-test-results", async (req, res) => {
+    try {
+      const validatedData = insertQcTestResultSchema.parse(req.body);
+      const testResult = await storage.createQcTestResult(validatedData);
+      res.status(201).json(testResult);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC test result data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create QC test result" });
+    }
+  });
+
+  app.patch("/api/qc-test-results/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertQcTestResultSchema.partial().parse(req.body);
+      const testResult = await storage.updateQcTestResult(id, validatedData);
+      
+      if (!testResult) {
+        return res.status(404).json({ message: "QC test result not found" });
+      }
+      
+      res.json(testResult);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC test result data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update QC test result" });
+    }
+  });
+
+  app.delete("/api/qc-test-results/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteQcTestResult(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "QC test result not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete QC test result" });
+    }
+  });
+
+  // QC Approval Routes
+  app.get("/api/qc-approvals", async (req, res) => {
+    try {
+      const approvals = await storage.getQcApprovals();
+      res.json(approvals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC approvals" });
+    }
+  });
+
+  app.get("/api/qc-approvals/stage/:stageId", async (req, res) => {
+    try {
+      const { stageId } = req.params;
+      const approvals = await storage.getQcApprovalsByStage(stageId);
+      res.json(approvals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC approvals for stage" });
+    }
+  });
+
+  app.get("/api/qc-approvals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const approval = await storage.getQcApproval(id);
+      
+      if (!approval) {
+        return res.status(404).json({ message: "QC approval not found" });
+      }
+      
+      res.json(approval);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC approval" });
+    }
+  });
+
+  app.post("/api/qc-approvals", async (req, res) => {
+    try {
+      const validatedData = insertQcApprovalSchema.parse(req.body);
+      const approval = await storage.createQcApproval(validatedData);
+      
+      // Create audit trail for approval
+      await storage.createQaAuditTrail({
+        entityType: 'QcApproval',
+        entityId: approval.id,
+        action: 'APPROVAL_CREATED',
+        performedBy: validatedData.approverEmail,
+        details: { 
+          decision: validatedData.decision,
+          stageId: validatedData.stageId 
+        }
+      });
+      
+      res.status(201).json(approval);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC approval data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create QC approval" });
+    }
+  });
+
+  app.patch("/api/qc-approvals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertQcApprovalSchema.partial().parse(req.body);
+      const approval = await storage.updateQcApproval(id, validatedData);
+      
+      if (!approval) {
+        return res.status(404).json({ message: "QC approval not found" });
+      }
+      
+      res.json(approval);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC approval data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update QC approval" });
+    }
+  });
+
+  app.delete("/api/qc-approvals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteQcApproval(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "QC approval not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete QC approval" });
+    }
+  });
+
+  // Batch Release Routes
+  app.get("/api/batch-releases", async (req, res) => {
+    try {
+      const batchReleases = await storage.getBatchReleases();
+      res.json(batchReleases);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch releases" });
+    }
+  });
+
+  app.get("/api/batch-releases/order/:orderId", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const batchReleases = await storage.getBatchReleasesByOrder(orderId);
+      res.json(batchReleases);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch releases for order" });
+    }
+  });
+
+  app.get("/api/batch-releases/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const batchRelease = await storage.getBatchRelease(id);
+      
+      if (!batchRelease) {
+        return res.status(404).json({ message: "Batch release not found" });
+      }
+      
+      res.json(batchRelease);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch release" });
+    }
+  });
+
+  app.post("/api/batch-releases", async (req, res) => {
+    try {
+      const validatedData = insertBatchReleaseSchema.parse(req.body);
+      const batchRelease = await storage.createBatchRelease(validatedData);
+      
+      // Create audit trail for batch release
+      await storage.createQaAuditTrail({
+        entityType: 'BatchRelease',
+        entityId: batchRelease.id,
+        action: 'BATCH_RELEASE_CREATED',
+        performedBy: validatedData.qaReviewer,
+        details: { 
+          productionOrderId: validatedData.productionOrderId,
+          batchNumber: validatedData.batchNumber 
+        }
+      });
+      
+      res.status(201).json(batchRelease);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid batch release data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create batch release" });
+    }
+  });
+
+  app.patch("/api/batch-releases/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBatchReleaseSchema.partial().parse(req.body);
+      const batchRelease = await storage.updateBatchRelease(id, validatedData);
+      
+      if (!batchRelease) {
+        return res.status(404).json({ message: "Batch release not found" });
+      }
+      
+      // Create audit trail for status changes
+      if (validatedData.qaDecision) {
+        await storage.createQaAuditTrail({
+          entityType: 'BatchRelease',
+          entityId: id,
+          action: 'QA_DECISION_MADE',
+          performedBy: batchRelease.qaReviewer,
+          details: { 
+            decision: validatedData.qaDecision,
+            comments: validatedData.qaComments 
+          }
+        });
+      }
+      
+      res.json(batchRelease);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid batch release data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update batch release" });
+    }
+  });
+
+  app.delete("/api/batch-releases/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteBatchRelease(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Batch release not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete batch release" });
+    }
+  });
+
+  // Batch Certificate Routes
+  app.get("/api/batch-certificates", async (req, res) => {
+    try {
+      const certificates = await storage.getBatchCertificates();
+      res.json(certificates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch certificates" });
+    }
+  });
+
+  app.get("/api/batch-certificates/batch-release/:batchReleaseId", async (req, res) => {
+    try {
+      const { batchReleaseId } = req.params;
+      const certificate = await storage.getBatchCertificateByBatchRelease(batchReleaseId);
+      
+      if (!certificate) {
+        return res.status(404).json({ message: "Batch certificate not found for batch release" });
+      }
+      
+      res.json(certificate);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch certificate" });
+    }
+  });
+
+  app.get("/api/batch-certificates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const certificate = await storage.getBatchCertificate(id);
+      
+      if (!certificate) {
+        return res.status(404).json({ message: "Batch certificate not found" });
+      }
+      
+      res.json(certificate);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch certificate" });
+    }
+  });
+
+  app.post("/api/batch-certificates", async (req, res) => {
+    try {
+      const validatedData = insertBatchCertificateSchema.parse(req.body);
+      const certificate = await storage.createBatchCertificate(validatedData);
+      
+      // Create audit trail for certificate generation
+      await storage.createQaAuditTrail({
+        entityType: 'BatchCertificate',
+        entityId: certificate.id,
+        action: 'CERTIFICATE_GENERATED',
+        performedBy: validatedData.issuedBy,
+        details: { 
+          certificateNumber: validatedData.certificateNumber,
+          batchReleaseId: validatedData.batchReleaseId 
+        }
+      });
+      
+      res.status(201).json(certificate);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid batch certificate data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create batch certificate" });
+    }
+  });
+
+  app.patch("/api/batch-certificates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBatchCertificateSchema.partial().parse(req.body);
+      const certificate = await storage.updateBatchCertificate(id, validatedData);
+      
+      if (!certificate) {
+        return res.status(404).json({ message: "Batch certificate not found" });
+      }
+      
+      res.json(certificate);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid batch certificate data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update batch certificate" });
+    }
+  });
+
+  app.delete("/api/batch-certificates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteBatchCertificate(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Batch certificate not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete batch certificate" });
+    }
+  });
+
+  // QA Audit Trail Routes
+  app.get("/api/qa-audit-trails", async (req, res) => {
+    try {
+      const auditTrails = await storage.getQaAuditTrails();
+      res.json(auditTrails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QA audit trails" });
+    }
+  });
+
+  app.get("/api/qa-audit-trails/entity/:entityType/:entityId", async (req, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      const auditTrails = await storage.getQaAuditTrailsByEntity(entityType, entityId);
+      res.json(auditTrails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QA audit trails for entity" });
+    }
+  });
+
+  app.get("/api/qa-audit-trails/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const auditTrail = await storage.getQaAuditTrail(id);
+      
+      if (!auditTrail) {
+        return res.status(404).json({ message: "QA audit trail not found" });
+      }
+      
+      res.json(auditTrail);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QA audit trail" });
+    }
+  });
+
+  app.post("/api/qa-audit-trails", async (req, res) => {
+    try {
+      const validatedData = insertQaAuditTrailSchema.parse(req.body);
+      const auditTrail = await storage.createQaAuditTrail(validatedData);
+      res.status(201).json(auditTrail);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QA audit trail data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create QA audit trail" });
+    }
+  });
+
+  // QC Stage Template Routes
+  app.get("/api/qc-stage-templates", async (req, res) => {
+    try {
+      const templates = await storage.getQcStageTemplates();
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC stage templates" });
+    }
+  });
+
+  app.get("/api/qc-stage-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getQcStageTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ message: "QC stage template not found" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch QC stage template" });
+    }
+  });
+
+  app.post("/api/qc-stage-templates", async (req, res) => {
+    try {
+      const validatedData = insertQcStageTemplateSchema.parse(req.body);
+      const template = await storage.createQcStageTemplate(validatedData);
+      res.status(201).json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC stage template data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create QC stage template" });
+    }
+  });
+
+  app.patch("/api/qc-stage-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertQcStageTemplateSchema.partial().parse(req.body);
+      const template = await storage.updateQcStageTemplate(id, validatedData);
+      
+      if (!template) {
+        return res.status(404).json({ message: "QC stage template not found" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid QC stage template data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update QC stage template" });
+    }
+  });
+
+  app.delete("/api/qc-stage-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteQcStageTemplate(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "QC stage template not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete QC stage template" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
