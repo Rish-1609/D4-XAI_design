@@ -31,7 +31,6 @@ const menuItems = [
     ],
   },
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
-  { id: "capa-records", label: "CAPA Records", icon: Triangle, href: "/capa-records" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
 ];
 
