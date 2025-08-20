@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, FlaskConical, Beaker, TestTube, ChevronDown, ChevronRight } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
+import { Sidebar } from "@/components/sidebar";
 import type { TestConfig, InsertTestConfig, Material, TestResult } from "@shared/schema";
 import {
   Table,
@@ -192,15 +193,23 @@ export default function QCSetupEnhancedPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">QC Setup & Instructions</h1>
-          <p className="text-muted-foreground">
-            Manage test configurations and assign tests to materials
-          </p>
-        </div>
-      </div>
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">QC Setup & Instructions</h2>
+              <p className="text-gray-600 text-sm mt-1">Manage test configurations and assign tests to materials</p>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -519,6 +528,9 @@ export default function QCSetupEnhancedPage() {
           </div>
         </TabsContent>
       </Tabs>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

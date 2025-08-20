@@ -11,7 +11,6 @@ const tabs = [
   { id: "packaging-material", label: "Packaging Material", title: "Packaging Materials" },
   { id: "final-products", label: "Final Products", title: "Final Products" },
   { id: "artwork", label: "Artwork", title: "Artwork" },
-  { id: "instructions-checklists", label: "Instructions & Checklists", title: "Instructions & Checklists" },
 ];
 
 export default function Dashboard() {
