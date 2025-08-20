@@ -27,6 +27,7 @@ export const materials = pgTable("materials", {
 export const testConfigs = pgTable("test_configs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(), // e.g., "Assay", "pH Test", "Dissolution", "Content Uniformity"
+  code: text("code").notNull().unique(), // e.g., "TC-001", "TC-pH-002"
   category: text("category").notNull(), // e.g., "Physical", "Chemical", "Microbiological"
   testMethod: text("test_method"), // e.g., "HPLC", "UV-Vis", "Titration"
   expectedRange: text("expected_range"), // e.g., "95.0 - 105.0%", "6.8 - 7.2"

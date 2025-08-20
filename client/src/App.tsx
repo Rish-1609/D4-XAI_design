@@ -4,14 +4,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
-import QCSetupPage from "@/pages/qc-setup";
+import QCSetupEnhancedPage from "@/pages/qc-setup-enhanced";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/qc-setup" component={QCSetupPage} />
+      <Route path="/qc-setup" component={QCSetupEnhancedPage} />
       <Route component={NotFound} />
     </Switch>
   );

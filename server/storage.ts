@@ -291,6 +291,7 @@ export class MemStorage implements IStorage {
       {
         id: "tc1",
         name: "Assay by HPLC",
+        code: "TC-HPLC-001",
         category: "Chemical",
         testMethod: "HPLC",
         expectedRange: "95.0 - 105.0%",
@@ -303,6 +304,7 @@ export class MemStorage implements IStorage {
       {
         id: "tc2", 
         name: "pH Test",
+        code: "TC-PH-002",
         category: "Physical",
         testMethod: "pH meter",
         expectedRange: "6.8 - 7.2",
@@ -315,6 +317,7 @@ export class MemStorage implements IStorage {
       {
         id: "tc3",
         name: "Dissolution",
+        code: "TC-DISS-003",
         category: "Physical", 
         testMethod: "USP Type II Paddle",
         expectedRange: ">80% in 30 min",
@@ -327,6 +330,7 @@ export class MemStorage implements IStorage {
       {
         id: "tc4",
         name: "Microbial Limit Test",
+        code: "TC-MIC-004",
         category: "Microbiological",
         testMethod: "USP <61>",
         expectedRange: "<10 CFU/g",
