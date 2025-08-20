@@ -31,7 +31,6 @@ interface SidebarProps {
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: Gauge, href: "/" },
-  { id: "production-orders", label: "Production Orders", icon: ClipboardList, href: "/production-orders" },
   {
     id: "production-management",
     label: "Production Management",
