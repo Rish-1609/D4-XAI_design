@@ -54,7 +54,7 @@ export function StatusCards() {
             </div>
           </div>
           <p className="text-center text-sm font-medium text-yellow-800">
-            Pending Review
+            Ready for QC
           </p>
         </CardContent>
       </Card>

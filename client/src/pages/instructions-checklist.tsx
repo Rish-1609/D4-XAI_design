@@ -252,10 +252,11 @@ export default function InstructionsChecklist() {
                                   <Badge className={
                                     material.status === 'approved' ? 'bg-green-100 text-green-800' :
                                     material.status === 'under-testing' ? 'bg-purple-100 text-purple-800' :
-                                    material.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    material.status === 'pending' || material.status === 'ready-for-qc' ? 'bg-blue-100 text-blue-800' :
                                     'bg-red-100 text-red-800'
                                   }>
                                     {material.status === 'under-testing' ? 'Under Testing' : 
+                                     material.status === 'ready-for-qc' ? 'Ready for QC' :
                                      material.status.charAt(0).toUpperCase() + material.status.slice(1)}
                                   </Badge>
                                 </TableCell>

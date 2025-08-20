@@ -10,7 +10,7 @@ export const materials = pgTable("materials", {
   code: text("code").notNull().unique(),
   type: text("type").notNull(), // 'raw-materials', 'packaging-material', 'final-products', 'artwork', 'instructions-checklists'
   category: text("category").notNull(), // Material category within type
-  status: text("status").notNull().default('pending'), // 'approved', 'pending', 'failed', 'under-testing'
+  status: text("status").notNull().default('ready-for-qc'), // 'approved', 'pending', 'failed', 'under-testing', 'ready-for-qc'
   stock: integer("stock").default(0),
   score: integer("score"), // Quality score out of 100
   referenceNumber: text("reference_number").notNull(),

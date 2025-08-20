@@ -52,6 +52,11 @@ const statusConfig = {
     className: "bg-purple-100 text-purple-800",
     label: "Under Testing",
   },
+  "ready-for-qc": {
+    icon: Clock,
+    className: "bg-blue-100 text-blue-800",
+    label: "Ready for QC",
+  },
 };
 
 export function MaterialTable({ materialType, title }: MaterialTableProps) {

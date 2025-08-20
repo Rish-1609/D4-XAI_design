@@ -64,7 +64,7 @@ export function AddMaterialDialog({ open, onOpenChange, materialType }: AddMater
       code: "",
       type: materialType,
       category: "",
-      status: "pending",
+      status: "ready-for-qc",
       stock: 0,
       score: undefined,
       referenceNumber: "",

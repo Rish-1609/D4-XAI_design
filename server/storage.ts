@@ -69,7 +69,7 @@ export class MemStorage implements IStorage {
       ...insertMaterial,
       id,
       description: insertMaterial.description || null,
-      status: insertMaterial.status || 'pending',
+      status: 'ready-for-qc',
       stock: insertMaterial.stock || 0,
       score: insertMaterial.score || null,
       batchNumber: insertMaterial.batchNumber || null,
@@ -81,7 +81,66 @@ export class MemStorage implements IStorage {
       updatedAt: now,
     };
     this.materials.set(id, material);
+    
+    // Auto-assign test configurations for this material type
+    await this.autoAssignTestsToMaterial(id, insertMaterial.type);
+    
     return material;
+  }
+
+  // Auto-assign tests to materials based on material type
+  private async autoAssignTestsToMaterial(materialId: string, materialType: string): Promise<void> {
+    // Get all test instructions for this material type
+    const instructions = await this.getTestInstructionsByMaterialType(materialType);
+    
+    // Create test result placeholders for each applicable test
+    for (const instruction of instructions) {
+      if (instruction.testConfigId) {
+        await this.createTestResult({
+          materialId,
+          testConfigId: instruction.testConfigId,
+          resultValue: null,
+          status: 'pending',
+          testedBy: null,
+          testedDate: null,
+          remarks: null,
+          retestCount: 0,
+        });
+      }
+    }
+  }
+
+  // Update material status based on test results
+  async updateMaterialStatusFromTests(materialId: string): Promise<void> {
+    const material = this.materials.get(materialId);
+    if (!material) return;
+
+    const testResults = await this.getTestResultsByMaterial(materialId);
+    
+    if (testResults.length === 0) {
+      // No tests assigned, keep as ready-for-qc
+      return;
+    }
+
+    const pendingTests = testResults.filter(result => result.status === 'pending').length;
+    const failedTests = testResults.filter(result => result.status === 'failed').length;
+    const passedTests = testResults.filter(result => result.status === 'passed').length;
+
+    let newStatus: string;
+    
+    if (failedTests > 0) {
+      newStatus = 'failed';
+    } else if (pendingTests > 0) {
+      newStatus = 'under-testing';
+    } else if (passedTests === testResults.length) {
+      newStatus = 'approved';
+    } else {
+      newStatus = 'ready-for-qc';
+    }
+
+    // Update material status
+    const updatedMaterial = { ...material, status: newStatus, updatedAt: new Date() };
+    this.materials.set(materialId, updatedMaterial);
   }
 
   async updateMaterial(id: string, updateData: UpdateMaterial): Promise<Material | undefined> {
@@ -111,7 +170,7 @@ export class MemStorage implements IStorage {
     const allMaterials = Array.from(this.materials.values());
     
     const approved = allMaterials.filter(m => m.status === 'approved').length;
-    const pending = allMaterials.filter(m => m.status === 'pending').length;
+    const pending = allMaterials.filter(m => m.status === 'pending' || m.status === 'ready-for-qc').length;
     const failed = allMaterials.filter(m => m.status === 'failed').length;
     const underTesting = allMaterials.filter(m => m.status === 'under-testing').length;
     
@@ -185,6 +244,12 @@ export class MemStorage implements IStorage {
       updatedAt: now,
     };
     this.testResults.set(id, testResult);
+    
+    // Update material status based on test results
+    if (insertTestResult.materialId) {
+      await this.updateMaterialStatusFromTests(insertTestResult.materialId);
+    }
+    
     return testResult;
   }
 
@@ -284,7 +349,7 @@ export class MemStorage implements IStorage {
         code: "API-ACET-001",
         type: "raw-materials",
         category: "Active Ingredient",
-        status: "under-testing",
+        status: "ready-for-qc",
         stock: 250,
         score: null,
         referenceNumber: "RM-240825-001",
@@ -322,7 +387,7 @@ export class MemStorage implements IStorage {
         code: "PKG-CAP-003",
         type: "packaging-material",
         category: "Capsule",
-        status: "pending",
+        status: "ready-for-qc",
         stock: 100000,
         score: null,
         referenceNumber: "PM-240822-003",
