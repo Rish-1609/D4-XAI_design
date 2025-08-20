@@ -11,7 +11,8 @@ import {
   Settings,
   User,
   LogOut,
-  Package
+  Package,
+  Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const menuItems = [
     ],
   },
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
+  { id: "bom-management", label: "BOM Management", icon: Layers, href: "/bom-management" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
 ];
 

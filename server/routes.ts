@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -367,6 +367,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching CAPA actions:", error);
       res.status(500).json({ error: "Failed to fetch CAPA actions" });
+    }
+  });
+
+  // BOM Management Routes
+  app.get("/api/boms", async (req, res) => {
+    try {
+      const boms = await storage.getBoms();
+      res.json(boms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOMs" });
+    }
+  });
+
+  app.get("/api/boms/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const bom = await storage.getBom(id);
+      
+      if (!bom) {
+        return res.status(404).json({ message: "BOM not found" });
+      }
+      
+      res.json(bom);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOM" });
+    }
+  });
+
+  app.post("/api/boms", async (req, res) => {
+    try {
+      const validatedData = insertBomSchema.parse(req.body);
+      const bom = await storage.createBom(validatedData);
+      res.status(201).json(bom);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid BOM data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create BOM" });
+    }
+  });
+
+  app.put("/api/boms/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBomSchema.partial().parse(req.body);
+      const bom = await storage.updateBom(id, validatedData);
+      
+      if (!bom) {
+        return res.status(404).json({ message: "BOM not found" });
+      }
+      
+      res.json(bom);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid BOM data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update BOM" });
+    }
+  });
+
+  app.delete("/api/boms/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteBom(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "BOM not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete BOM" });
+    }
+  });
+
+  app.get("/api/boms/:id/materials", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const materials = await storage.getBomMaterials(id);
+      res.json(materials);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOM materials" });
+    }
+  });
+
+  app.post("/api/boms/:id/materials", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBomMaterialSchema.parse({ ...req.body, bomId: id });
+      const material = await storage.createBomMaterial(validatedData);
+      res.status(201).json(material);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid BOM material data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create BOM material" });
+    }
+  });
+
+  app.get("/api/boms/:id/sub-assemblies", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const subAssemblies = await storage.getBomSubAssemblies(id);
+      res.json(subAssemblies);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOM sub-assemblies" });
+    }
+  });
+
+  app.post("/api/boms/:id/sub-assemblies", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBomSubAssemblySchema.parse({ ...req.body, bomId: id });
+      const subAssembly = await storage.createBomSubAssembly(validatedData);
+      res.status(201).json(subAssembly);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid BOM sub-assembly data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create BOM sub-assembly" });
+    }
+  });
+
+  app.get("/api/bom-stats", async (req, res) => {
+    try {
+      const stats = await storage.getBomStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOM statistics" });
     }
   });
 

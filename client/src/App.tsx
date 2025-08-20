@@ -8,6 +8,7 @@ import QCSetupEnhancedPage from "@/pages/qc-setup-enhanced";
 import SopManagement from "@/pages/sop-management";
 import QualityMetrics from "@/pages/quality-metrics";
 import ProductionOrders from "@/pages/production-orders";
+import BomManagement from "@/pages/bom-management";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/production-orders" component={ProductionOrders} />
       <Route path="/qc-setup" component={QCSetupEnhancedPage} />
       <Route path="/sop-management" component={SopManagement} />
+      <Route path="/bom-management" component={BomManagement} />
       <Route path="/quality-metrics" component={QualityMetrics} />
       <Route component={NotFound} />
     </Switch>

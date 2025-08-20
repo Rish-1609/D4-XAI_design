@@ -231,6 +231,66 @@ export const insertProductionOrderSchema = createInsertSchema(productionOrders).
 export type InsertProductionOrder = z.infer<typeof insertProductionOrderSchema>;
 export type ProductionOrder = typeof productionOrders.$inferSelect;
 
+// BOM Management Schema
+export const boms = pgTable("boms", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bomNumber: text("bom_number").notNull().unique(),
+  productName: text("product_name").notNull(),
+  version: text("version").notNull().default('1.0'),
+  status: text("status").notNull().default('Active'), // 'Active', 'Inactive', 'Draft', 'Approved'
+  totalCost: integer("total_cost").notNull().default(0), // in cents
+  approvedBy: text("approved_by"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const bomMaterials = pgTable("bom_materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bomId: text("bom_id").notNull().references(() => boms.id, { onDelete: "cascade" }),
+  materialId: text("material_id").references(() => materials.id),
+  materialCode: text("material_code").notNull(),
+  materialName: text("material_name").notNull(),
+  quantity: integer("quantity").notNull(), // in base units * 1000 for precision
+  uom: text("uom").notNull(), // Unit of Measure
+  unitCost: integer("unit_cost").notNull().default(0), // in cents
+  scrapPercentage: integer("scrap_percentage").notNull().default(0), // percentage * 100
+  totalCost: integer("total_cost").notNull().default(0), // in cents
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const bomSubAssemblies = pgTable("bom_sub_assemblies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bomId: text("bom_id").notNull().references(() => boms.id, { onDelete: "cascade" }),
+  subAssemblyBomId: text("sub_assembly_bom_id").notNull().references(() => boms.id),
+  quantityRequired: integer("quantity_required").notNull(),
+  totalCost: integer("total_cost").notNull().default(0), // in cents
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBomSchema = createInsertSchema(boms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBomMaterialSchema = createInsertSchema(bomMaterials).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBomSubAssemblySchema = createInsertSchema(bomSubAssemblies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBom = z.infer<typeof insertBomSchema>;
+export type Bom = typeof boms.$inferSelect;
+export type InsertBomMaterial = z.infer<typeof insertBomMaterialSchema>;
+export type BomMaterial = typeof bomMaterials.$inferSelect;
+export type InsertBomSubAssembly = z.infer<typeof insertBomSubAssemblySchema>;
+export type BomSubAssembly = typeof bomSubAssemblies.$inferSelect;
+
 export type InsertCapa = z.infer<typeof insertCapaSchema>;
 export type Capa = typeof capas.$inferSelect;
 export type InsertCapaAction = z.infer<typeof insertCapaActionSchema>;

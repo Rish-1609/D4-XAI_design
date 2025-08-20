@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -49,6 +49,23 @@ export interface IStorage {
   updateProductionOrder(id: string, order: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined>;
   deleteProductionOrder(id: string): Promise<boolean>;
 
+  // BOM operations
+  getBoms(): Promise<Bom[]>;
+  getBom(id: string): Promise<Bom | undefined>;
+  createBom(bom: InsertBom): Promise<Bom>;
+  updateBom(id: string, bom: Partial<InsertBom>): Promise<Bom | undefined>;
+  deleteBom(id: string): Promise<boolean>;
+  getBomMaterials(bomId: string): Promise<BomMaterial[]>;
+  createBomMaterial(bomMaterial: InsertBomMaterial): Promise<BomMaterial>;
+  getBomSubAssemblies(bomId: string): Promise<BomSubAssembly[]>;
+  createBomSubAssembly(bomSubAssembly: InsertBomSubAssembly): Promise<BomSubAssembly>;
+  getBomStats(): Promise<{
+    totalBoms: number;
+    rawMaterials: number;
+    liveStockItems: number;
+    totalBomValue: number;
+  }>;
+
   // CAPA operations
   getCapas(): Promise<Capa[]>;
   getCapa(id: string): Promise<Capa | undefined>;
@@ -67,6 +84,9 @@ export class MemStorage implements IStorage {
   private sops: Map<string, Sop>;
   private sopVersions: Map<string, SopVersion[]>;
   private productionOrders: Map<string, ProductionOrder>;
+  private boms: Map<string, Bom>;
+  private bomMaterials: Map<string, BomMaterial[]>;
+  private bomSubAssemblies: Map<string, BomSubAssembly[]>;
   private capas: Map<string, Capa>;
   private capaActions: Map<string, CapaAction[]>;
 
@@ -78,6 +98,9 @@ export class MemStorage implements IStorage {
     this.sops = new Map();
     this.sopVersions = new Map();
     this.productionOrders = new Map();
+    this.boms = new Map();
+    this.bomMaterials = new Map();
+    this.bomSubAssemblies = new Map();
     this.capas = new Map();
     this.capaActions = new Map();
     this.initializeDummyData();
@@ -1001,6 +1024,122 @@ export class MemStorage implements IStorage {
     ];
 
     productionOrderData.forEach(order => this.productionOrders.set(order.id, order));
+    
+    // Add sample BOM data
+    const bomData = [
+      {
+        id: "bom1",
+        bomNumber: "000001",
+        productName: "MEFECUM-P SYP",
+        version: "1.0",
+        status: "Active" as const,
+        totalCost: 260700, // $2607.00 in cents
+        approvedBy: "admin@pharma.com",
+        createdBy: "system",
+        createdAt: new Date('2024-08-20'),
+        updatedAt: new Date('2024-08-25'),
+      },
+      {
+        id: "bom2",
+        bomNumber: "000002",
+        productName: "LEVOCIDAL-500",
+        version: "1.0",
+        status: "Active" as const,
+        totalCost: 338800, // $3388.00 in cents
+        approvedBy: "admin@pharma.com",
+        createdBy: "system",
+        createdAt: new Date('2024-08-22'),
+        updatedAt: new Date('2024-08-25'),
+      },
+      {
+        id: "bom3",
+        bomNumber: "000003",
+        productName: "ZEN RSR PLUS(RED)",
+        version: "1.0",
+        status: "Active" as const,
+        totalCost: 346900, // $3469.00 in cents
+        approvedBy: "admin@pharma.com",
+        createdBy: "system",
+        createdAt: new Date('2024-08-18'),
+        updatedAt: new Date('2024-08-20'),
+      }
+    ];
+
+    bomData.forEach(bom => this.boms.set(bom.id, bom));
+    
+    // Add sample BOM materials data
+    const bomMaterialsData = [
+      // BOM 1 materials (MEFECUM-P SYP)
+      {
+        id: "bm1",
+        bomId: "bom1",
+        materialId: "m1", // Reference to existing material
+        materialCode: "RM0305",
+        materialName: "Paracetamol Active Ingredient",
+        quantity: 1000, // 1 Lt with precision
+        uom: "KG",
+        unitCost: 9400, // $94.00 in cents
+        scrapPercentage: 100, // 1% with precision (1% * 100)
+        totalCost: 9494, // $94.94 in cents (including scrap)
+        createdAt: new Date('2024-08-20'),
+      },
+      {
+        id: "bm2",
+        bomId: "bom1",
+        materialId: "m2",
+        materialCode: "SM0004",
+        materialName: "Sucrose Sugar Base",
+        quantity: 500, // 0.5 KG
+        uom: "KG",
+        unitCost: 4900, // $49.00 in cents
+        scrapPercentage: 200, // 2%
+        totalCost: 4998, // $49.98 in cents
+        createdAt: new Date('2024-08-20'),
+      },
+      {
+        id: "bm3",
+        bomId: "bom1",
+        materialCode: "RM0002",
+        materialName: "Flavoring Agent Cherry",
+        quantity: 60, // 60g converted to grams with precision
+        uom: "KG",
+        unitCost: 10900, // $109.00 in cents
+        scrapPercentage: 300, // 3%
+        totalCost: 11227, // $112.27 in cents
+        createdAt: new Date('2024-08-20'),
+      },
+      {
+        id: "bm4",
+        bomId: "bom1",
+        materialCode: "RM0001",
+        materialName: "Preservative Sodium Benzoate",
+        quantity: 10, // 10g
+        uom: "KG",
+        unitCost: 7250, // $72.50 in cents
+        scrapPercentage: 400, // 4%
+        totalCost: 7540, // $75.40 in cents
+        createdAt: new Date('2024-08-20'),
+      },
+      {
+        id: "bm5",
+        bomId: "bom1",
+        materialCode: "RM0004",
+        materialName: "Citric Acid Stabilizer",
+        quantity: 5, // 5g
+        uom: "KG",
+        unitCost: 4800, // $48.00 in cents
+        scrapPercentage: 200, // 2%
+        totalCost: 4896, // $48.96 in cents
+        createdAt: new Date('2024-08-20'),
+      }
+    ];
+
+    // Group materials by bomId
+    bomMaterialsData.forEach(material => {
+      const existingMaterials = this.bomMaterials.get(material.bomId) || [];
+      existingMaterials.push(material);
+      this.bomMaterials.set(material.bomId, existingMaterials);
+    });
   }
 
   // SOP operations
@@ -1143,6 +1282,124 @@ export class MemStorage implements IStorage {
 
   async deleteProductionOrder(id: string): Promise<boolean> {
     return this.productionOrders.delete(id);
+  }
+
+  // BOM operations
+  async getBoms(): Promise<Bom[]> {
+    return Array.from(this.boms.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getBom(id: string): Promise<Bom | undefined> {
+    return this.boms.get(id);
+  }
+
+  async createBom(insertBom: InsertBom): Promise<Bom> {
+    const id = randomUUID();
+    const now = new Date();
+    const bom: Bom = {
+      ...insertBom,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.boms.set(id, bom);
+    return bom;
+  }
+
+  async updateBom(id: string, updateData: Partial<InsertBom>): Promise<Bom | undefined> {
+    const existing = this.boms.get(id);
+    if (!existing) return undefined;
+
+    const updated: Bom = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.boms.set(id, updated);
+    return updated;
+  }
+
+  async deleteBom(id: string): Promise<boolean> {
+    const deleted = this.boms.delete(id);
+    if (deleted) {
+      // Also delete related materials and sub-assemblies
+      this.bomMaterials.delete(id);
+      this.bomSubAssemblies.delete(id);
+    }
+    return deleted;
+  }
+
+  async getBomMaterials(bomId: string): Promise<BomMaterial[]> {
+    return this.bomMaterials.get(bomId) || [];
+  }
+
+  async createBomMaterial(insertBomMaterial: InsertBomMaterial): Promise<BomMaterial> {
+    const id = randomUUID();
+    const now = new Date();
+    const bomMaterial: BomMaterial = {
+      ...insertBomMaterial,
+      id,
+      createdAt: now,
+    };
+    
+    const existingMaterials = this.bomMaterials.get(insertBomMaterial.bomId) || [];
+    existingMaterials.push(bomMaterial);
+    this.bomMaterials.set(insertBomMaterial.bomId, existingMaterials);
+    
+    return bomMaterial;
+  }
+
+  async getBomSubAssemblies(bomId: string): Promise<BomSubAssembly[]> {
+    return this.bomSubAssemblies.get(bomId) || [];
+  }
+
+  async createBomSubAssembly(insertBomSubAssembly: InsertBomSubAssembly): Promise<BomSubAssembly> {
+    const id = randomUUID();
+    const now = new Date();
+    const bomSubAssembly: BomSubAssembly = {
+      ...insertBomSubAssembly,
+      id,
+      createdAt: now,
+    };
+    
+    const existingSubAssemblies = this.bomSubAssemblies.get(insertBomSubAssembly.bomId) || [];
+    existingSubAssemblies.push(bomSubAssembly);
+    this.bomSubAssemblies.set(insertBomSubAssembly.bomId, existingSubAssemblies);
+    
+    return bomSubAssembly;
+  }
+
+  async getBomStats(): Promise<{
+    totalBoms: number;
+    rawMaterials: number;
+    liveStockItems: number;
+    totalBomValue: number;
+  }> {
+    const allBoms = Array.from(this.boms.values());
+    const totalBoms = allBoms.length;
+    
+    // Calculate unique raw materials used across all BOMs
+    const uniqueMaterials = new Set();
+    this.bomMaterials.forEach(materials => {
+      materials.forEach(material => uniqueMaterials.add(material.materialCode));
+    });
+    const rawMaterials = uniqueMaterials.size;
+    
+    // Count materials with stock status as available
+    const liveStockItems = Array.from(this.materials.values())
+      .filter(m => m.stock && m.stock > 0).length;
+    
+    // Calculate total BOM value in dollars
+    const totalBomValue = allBoms.reduce((sum, bom) => sum + (bom.totalCost / 100), 0);
+    
+    return {
+      totalBoms,
+      rawMaterials,
+      liveStockItems,
+      totalBomValue,
+    };
   }
 
   // CAPA operations
