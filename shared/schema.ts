@@ -106,3 +106,53 @@ export type TestResult = typeof testResults.$inferSelect;
 
 export type InsertTestInstruction = z.infer<typeof insertTestInstructionSchema>;
 export type TestInstruction = typeof testInstructions.$inferSelect;
+
+// SOP Management Schema
+export const sops = pgTable("sops", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  sopNumber: text("sop_number").notNull().unique(),
+  category: text("category").notNull(), // 'Manufacturing', 'Quality Control', 'Cleaning & Sanitization', etc.
+  description: text("description"),
+  version: text("version").notNull().default('1.0'),
+  status: text("status").notNull().default('draft'), // 'draft', 'under-review', 'approved', 'archived'
+  filePath: text("file_path"), // Path to the uploaded document
+  fileName: text("file_name"), // Original file name
+  fileSize: integer("file_size"), // File size in bytes
+  approvedBy: text("approved_by"),
+  approvedDate: timestamp("approved_date"),
+  effectiveDate: timestamp("effective_date"),
+  nextReviewDate: timestamp("next_review_date"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// SOP Version History for version control
+export const sopVersions = pgTable("sop_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sopId: varchar("sop_id").references(() => sops.id).notNull(),
+  version: text("version").notNull(),
+  filePath: text("file_path"),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  changeLog: text("change_log"), // Description of changes made
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSopSchema = createInsertSchema(sops).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSopVersionSchema = createInsertSchema(sopVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSop = z.infer<typeof insertSopSchema>;
+export type Sop = typeof sops.$inferSelect;
+export type InsertSopVersion = z.infer<typeof insertSopVersionSchema>;
+export type SopVersion = typeof sopVersions.$inferSelect;

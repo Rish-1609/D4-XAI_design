@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import QCSetupEnhancedPage from "@/pages/qc-setup-enhanced";
+import SopManagement from "@/pages/sop-management";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -12,6 +13,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/qc-setup" component={QCSetupEnhancedPage} />
+      <Route path="/sop-management" component={SopManagement} />
       <Route component={NotFound} />
     </Switch>
   );

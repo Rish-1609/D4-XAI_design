@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -31,6 +31,16 @@ export interface IStorage {
   getTestInstructions(): Promise<TestInstruction[]>;
   getTestInstructionsByMaterialType(materialType: string): Promise<TestInstruction[]>;
   createTestInstruction(testInstruction: InsertTestInstruction): Promise<TestInstruction>;
+
+  // SOP operations
+  getSops(): Promise<Sop[]>;
+  getSopsByCategory(category: string): Promise<Sop[]>;
+  getSop(id: string): Promise<Sop | undefined>;
+  createSop(sop: InsertSop): Promise<Sop>;
+  updateSop(id: string, sop: Partial<InsertSop>): Promise<Sop | undefined>;
+  deleteSop(id: string): Promise<boolean>;
+  getSopVersions(sopId: string): Promise<SopVersion[]>;
+  createSopVersion(sopVersion: InsertSopVersion): Promise<SopVersion>;
 }
 
 export class MemStorage implements IStorage {
@@ -38,12 +48,16 @@ export class MemStorage implements IStorage {
   private testConfigs: Map<string, TestConfig>;
   private testResults: Map<string, TestResult>;
   private testInstructions: Map<string, TestInstruction>;
+  private sops: Map<string, Sop>;
+  private sopVersions: Map<string, SopVersion[]>;
 
   constructor() {
     this.materials = new Map();
     this.testConfigs = new Map();
     this.testResults = new Map();
     this.testInstructions = new Map();
+    this.sops = new Map();
+    this.sopVersions = new Map();
     this.initializeDummyData();
   }
 
@@ -840,6 +854,170 @@ export class MemStorage implements IStorage {
     ];
 
     testResultData.forEach(result => this.testResults.set(result.id, result));
+    
+    // Add sample SOP data
+    const sopData = [
+      {
+        id: "sop1",
+        title: "Manufacturing Process for Oral Solid Dosage Forms",
+        sopNumber: "SOP-MAN-001",
+        category: "Manufacturing",
+        description: "Standard operating procedure for tablet manufacturing including weighing, blending, compression and coating",
+        version: "2.1",
+        status: "approved" as const,
+        filePath: null,
+        fileName: null,
+        fileSize: null,
+        approvedBy: "John Smith, QA Manager",
+        approvedDate: new Date('2024-01-15'),
+        effectiveDate: new Date('2024-02-01'),
+        nextReviewDate: new Date('2025-02-01'),
+        createdBy: "Manufacturing Team",
+        createdAt: new Date('2024-01-10'),
+        updatedAt: new Date('2024-01-15'),
+      },
+      {
+        id: "sop2",
+        title: "HPLC Method for API Assay Testing",
+        sopNumber: "SOP-QC-002",
+        category: "Quality Control",
+        description: "Analytical method for quantitative determination of active pharmaceutical ingredients using HPLC",
+        version: "1.3",
+        status: "approved" as const,
+        filePath: null,
+        fileName: null,
+        fileSize: null,
+        approvedBy: "Sarah Johnson, Analytical Manager",
+        approvedDate: new Date('2024-03-10'),
+        effectiveDate: new Date('2024-03-20'),
+        nextReviewDate: new Date('2025-03-20'),
+        createdBy: "QC Laboratory",
+        createdAt: new Date('2024-03-01'),
+        updatedAt: new Date('2024-03-10'),
+      },
+      {
+        id: "sop3", 
+        title: "Equipment Cleaning and Sanitization",
+        sopNumber: "SOP-CLN-003",
+        category: "Cleaning & Sanitization",
+        description: "Procedures for cleaning and sanitizing manufacturing equipment between batches",
+        version: "1.0",
+        status: "under-review" as const,
+        filePath: null,
+        fileName: null,
+        fileSize: null,
+        approvedBy: null,
+        approvedDate: null,
+        effectiveDate: null,
+        nextReviewDate: null,
+        createdBy: "Operations Team",
+        createdAt: new Date('2024-08-01'),
+        updatedAt: new Date('2024-08-15'),
+      }
+    ];
+
+    sopData.forEach(sop => this.sops.set(sop.id, sop));
+  }
+
+  // SOP operations
+  async getSops(): Promise<Sop[]> {
+    return Array.from(this.sops.values()).sort((a, b) => 
+      new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime()
+    );
+  }
+
+  async getSopsByCategory(category: string): Promise<Sop[]> {
+    return Array.from(this.sops.values())
+      .filter(sop => sop.category === category)
+      .sort((a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime());
+  }
+
+  async getSop(id: string): Promise<Sop | undefined> {
+    return this.sops.get(id);
+  }
+
+  async createSop(insertSop: InsertSop): Promise<Sop> {
+    const id = randomUUID();
+    const now = new Date();
+    const sop: Sop = {
+      ...insertSop,
+      id,
+      description: insertSop.description || null,
+      filePath: insertSop.filePath || null,
+      fileName: insertSop.fileName || null,
+      fileSize: insertSop.fileSize || null,
+      approvedBy: insertSop.approvedBy || null,
+      approvedDate: insertSop.approvedDate || null,
+      effectiveDate: insertSop.effectiveDate || null,
+      nextReviewDate: insertSop.nextReviewDate || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.sops.set(id, sop);
+    return sop;
+  }
+
+  async updateSop(id: string, updateData: Partial<InsertSop>): Promise<Sop | undefined> {
+    const existing = this.sops.get(id);
+    if (!existing) return undefined;
+
+    const updated: Sop = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    
+    // If version is being updated, create a version history record
+    if (updateData.version && updateData.version !== existing.version) {
+      await this.createSopVersion({
+        sopId: id,
+        version: existing.version,
+        filePath: existing.filePath,
+        fileName: existing.fileName,
+        fileSize: existing.fileSize,
+        changeLog: `Updated to version ${updateData.version}`,
+        createdBy: updateData.createdBy || existing.createdBy,
+      });
+    }
+    
+    this.sops.set(id, updated);
+    return updated;
+  }
+
+  async deleteSop(id: string): Promise<boolean> {
+    const deleted = this.sops.delete(id);
+    if (deleted) {
+      // Also remove version history
+      this.sopVersions.delete(id);
+    }
+    return deleted;
+  }
+
+  async getSopVersions(sopId: string): Promise<SopVersion[]> {
+    const versions = this.sopVersions.get(sopId) || [];
+    return versions.sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async createSopVersion(insertSopVersion: InsertSopVersion): Promise<SopVersion> {
+    const id = randomUUID();
+    const now = new Date();
+    const sopVersion: SopVersion = {
+      ...insertSopVersion,
+      id,
+      filePath: insertSopVersion.filePath || null,
+      fileName: insertSopVersion.fileName || null,
+      fileSize: insertSopVersion.fileSize || null,
+      changeLog: insertSopVersion.changeLog || null,
+      createdAt: now,
+    };
+    
+    const existingVersions = this.sopVersions.get(insertSopVersion.sopId) || [];
+    existingVersions.push(sopVersion);
+    this.sopVersions.set(insertSopVersion.sopId, existingVersions);
+    
+    return sopVersion;
   }
 }
 

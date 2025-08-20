@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -208,6 +208,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid test instruction data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create test instruction" });
+    }
+  });
+
+  // SOP Management Routes
+  app.get("/api/sops", async (req, res) => {
+    try {
+      const { category } = req.query;
+      let sops;
+      if (category && typeof category === 'string') {
+        sops = await storage.getSopsByCategory(category);
+      } else {
+        sops = await storage.getSops();
+      }
+      res.json(sops);
+    } catch (error) {
+      console.error("Error fetching SOPs:", error);
+      res.status(500).json({ error: "Failed to fetch SOPs" });
+    }
+  });
+
+  app.get("/api/sops/:id", async (req, res) => {
+    try {
+      const sop = await storage.getSop(req.params.id);
+      if (!sop) {
+        return res.status(404).json({ error: "SOP not found" });
+      }
+      res.json(sop);
+    } catch (error) {
+      console.error("Error fetching SOP:", error);
+      res.status(500).json({ error: "Failed to fetch SOP" });
+    }
+  });
+
+  app.post("/api/sops", async (req, res) => {
+    try {
+      const validatedData = insertSopSchema.parse(req.body);
+      const sop = await storage.createSop(validatedData);
+      res.json(sop);
+    } catch (error) {
+      console.error("Error creating SOP:", error);
+      res.status(400).json({ error: "Invalid SOP data" });
+    }
+  });
+
+  app.patch("/api/sops/:id", async (req, res) => {
+    try {
+      const sop = await storage.updateSop(req.params.id, req.body);
+      if (!sop) {
+        return res.status(404).json({ error: "SOP not found" });
+      }
+      res.json(sop);
+    } catch (error) {
+      console.error("Error updating SOP:", error);
+      res.status(400).json({ error: "Invalid SOP data" });
+    }
+  });
+
+  app.delete("/api/sops/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteSop(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "SOP not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting SOP:", error);
+      res.status(500).json({ error: "Failed to delete SOP" });
+    }
+  });
+
+  app.get("/api/sops/:id/versions", async (req, res) => {
+    try {
+      const versions = await storage.getSopVersions(req.params.id);
+      res.json(versions);
+    } catch (error) {
+      console.error("Error fetching SOP versions:", error);
+      res.status(500).json({ error: "Failed to fetch SOP versions" });
+    }
+  });
+
+  // Object storage routes for file uploads
+  app.post("/api/objects/upload", async (req, res) => {
+    try {
+      // This would integrate with ObjectStorageService to get presigned URL
+      // For now, return a placeholder response
+      res.json({ uploadURL: "https://example.com/upload-placeholder" });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
     }
   });
 
