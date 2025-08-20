@@ -33,6 +33,7 @@ import {
 const materialTypes = [
   { value: "raw-materials", label: "Raw Materials" },
   { value: "packaging-material", label: "Packaging Material" },
+  { value: "in-process", label: "In Process" },
   { value: "final-products", label: "Final Products" },
   { value: "artwork", label: "Artwork" },
 ];
@@ -226,7 +227,7 @@ export default function QCSetupEnhancedPage() {
         <TabsContent value="materials" className="space-y-6">
           <div className="space-y-6">
             <Tabs defaultValue="raw-materials" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 {materialTypes.map((type) => (
                   <TabsTrigger key={type.value} value={type.value} className="text-sm">
                     {type.label}
@@ -265,7 +266,12 @@ export default function QCSetupEnhancedPage() {
                                       </div>
                                       <div>
                                         <div className="font-medium">{material.name}</div>
-                                        <div className="text-sm text-gray-500">{material.code} • {material.category}</div>
+                                        <div className="text-sm text-gray-500">
+                                          {material.code} • {material.category}
+                                          {material.jobId && (
+                                            <span className="font-medium text-blue-600 ml-2">• Job: {material.jobId}</span>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="flex items-center space-x-4">
