@@ -47,8 +47,7 @@ const menuItems = [
     icon: CheckCircle,
     submenu: [
       { label: "Material QC", href: "/" },
-      { label: "Instructions & Checklists", href: "/instructions-checklists" },
-      { label: "Test Configurations", href: "/test-configurations" },
+      { label: "QC Setup & Instructions", href: "/qc-setup" },
       { label: "Compliance Reports", href: "/compliance-reports" },
     ],
   },
