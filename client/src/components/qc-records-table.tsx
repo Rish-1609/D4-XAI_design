@@ -29,6 +29,7 @@ interface QCRecord {
   materialType: string;
   materialCategory: string;
   batchNumber: string;
+  jobId: string;
   testName: string;
   testCode: string;
   testCategory: string;
@@ -53,6 +54,7 @@ export function QCRecordsTable() {
     materialCode: true,
     materialType: true,
     batchNumber: true,
+    jobId: true,
     testName: true,
     testCategory: true,
     resultValue: true,
@@ -91,6 +93,7 @@ export function QCRecordsTable() {
             materialType: material.type,
             materialCategory: material.category,
             batchNumber: material.batchNumber || 'N/A',
+            jobId: material.jobId || 'N/A',
             testName: testConfig.name,
             testCode: testConfig.code,
             testCategory: testConfig.category,
@@ -346,6 +349,7 @@ export function QCRecordsTable() {
               {visibleColumns.materialCode && <TableHead className="font-medium text-gray-700">Code</TableHead>}
               {visibleColumns.materialType && <TableHead className="font-medium text-gray-700">Type</TableHead>}
               {visibleColumns.batchNumber && <TableHead className="font-medium text-gray-700">Batch</TableHead>}
+              {visibleColumns.jobId && <TableHead className="font-medium text-gray-700">Job ID</TableHead>}
               {visibleColumns.testName && <TableHead className="font-medium text-gray-700">Test</TableHead>}
               {visibleColumns.testCategory && <TableHead className="font-medium text-gray-700">Category</TableHead>}
               {visibleColumns.resultValue && <TableHead className="font-medium text-gray-700">Result</TableHead>}
@@ -395,6 +399,15 @@ export function QCRecordsTable() {
                   )}
                   {visibleColumns.batchNumber && (
                     <TableCell className="font-mono text-sm">{record.batchNumber}</TableCell>
+                  )}
+                  {visibleColumns.jobId && (
+                    <TableCell className="font-mono text-sm">
+                      {record.jobId !== 'N/A' ? (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700">{record.jobId}</Badge>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
                   )}
                   {visibleColumns.testName && (
                     <TableCell>

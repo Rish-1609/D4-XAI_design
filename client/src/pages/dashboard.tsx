@@ -10,6 +10,7 @@ import { QCRecordsTable } from "@/components/qc-records-table";
 const tabs = [
   { id: "raw-materials", label: "Raw Materials", title: "Raw Materials" },
   { id: "packaging-material", label: "Packaging Material", title: "Packaging Materials" },
+  { id: "in-process", label: "In Process", title: "In Process" },
   { id: "final-products", label: "Final Products", title: "Final Products" },
   { id: "artwork", label: "Artwork", title: "Artwork" },
   { id: "qc-records", label: "QC Records", title: "QC Records" },

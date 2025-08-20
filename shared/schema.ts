@@ -8,13 +8,14 @@ export const materials = pgTable("materials", {
   name: text("name").notNull(),
   description: text("description"),
   code: text("code").notNull().unique(),
-  type: text("type").notNull(), // 'raw-materials', 'packaging-material', 'final-products', 'artwork', 'instructions-checklists'
+  type: text("type").notNull(), // 'raw-materials', 'packaging-material', 'in-process', 'final-products', 'artwork', 'instructions-checklists'
   category: text("category").notNull(), // Material category within type
   status: text("status").notNull().default('ready-for-qc'), // 'approved', 'pending', 'failed', 'under-testing', 'ready-for-qc'
   stock: integer("stock").default(0),
   score: integer("score"), // Quality score out of 100
   referenceNumber: text("reference_number").notNull(),
   batchNumber: text("batch_number"),
+  jobId: text("job_id"), // For in-process materials tracking
   supplierName: text("supplier_name"),
   receiptDate: timestamp("receipt_date"),
   expiryDate: timestamp("expiry_date"),

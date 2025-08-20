@@ -282,6 +282,9 @@ export function MaterialTable({ materialType, title }: MaterialTableProps) {
                                 {material.batchNumber && (
                                   <span className="text-sm text-gray-500">• Batch: {material.batchNumber}</span>
                                 )}
+                                {material.jobId && (
+                                  <span className="text-sm font-medium text-blue-600">• Job: {material.jobId}</span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -305,7 +308,7 @@ export function MaterialTable({ materialType, title }: MaterialTableProps) {
                     <CollapsibleContent>
                       <div className="border-t bg-gray-50 p-4">
                         <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="font-medium text-gray-700">Reference:</span>
                               <p className="text-gray-600">{material.referenceNumber}</p>
@@ -314,6 +317,12 @@ export function MaterialTable({ materialType, title }: MaterialTableProps) {
                               <span className="font-medium text-gray-700">Stock:</span>
                               <p className="text-gray-600">{material.stock} units</p>
                             </div>
+                            {material.jobId && (
+                              <div>
+                                <span className="font-medium text-gray-700">Job ID:</span>
+                                <p className="text-blue-600 font-mono">{material.jobId}</p>
+                              </div>
+                            )}
                             {material.supplierName && (
                               <div>
                                 <span className="font-medium text-gray-700">Supplier:</span>
