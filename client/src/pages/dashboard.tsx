@@ -5,11 +5,16 @@ import { Radio, BarChart3 } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { QualityAnalyticsDashboard } from "@/components/quality-analytics-dashboard";
 import { MaterialTable } from "@/components/material-table";
-
+import { QCRecordsTable } from "@/components/qc-records-table";
 
 const tabs = [
   { id: "quality-metrics", label: "Quality Metrics", title: "Quality Analytics Dashboard" },
+  { id: "raw-materials", label: "Raw Materials", title: "Raw Materials" },
+  { id: "packaging-material", label: "Packaging Material", title: "Packaging Materials" },
+  { id: "in-process", label: "In Process", title: "In Process" },
   { id: "final-products", label: "Final Products", title: "Final Products" },
+  { id: "artwork", label: "Artwork", title: "Artwork" },
+  { id: "qc-records", label: "QC Records", title: "QC Records" },
 ];
 
 export default function Dashboard() {
