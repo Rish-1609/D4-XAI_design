@@ -20,7 +20,6 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: Gauge, href: "/" },
   {
     id: "qc-management",
     label: "QC Management",
