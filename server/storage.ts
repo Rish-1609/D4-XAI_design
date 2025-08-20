@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -41,6 +41,15 @@ export interface IStorage {
   deleteSop(id: string): Promise<boolean>;
   getSopVersions(sopId: string): Promise<SopVersion[]>;
   createSopVersion(sopVersion: InsertSopVersion): Promise<SopVersion>;
+
+  // CAPA operations
+  getCapas(): Promise<Capa[]>;
+  getCapa(id: string): Promise<Capa | undefined>;
+  createCapa(capa: InsertCapa): Promise<Capa>;
+  updateCapa(id: string, capa: Partial<InsertCapa>): Promise<Capa | undefined>;
+  deleteCapa(id: string): Promise<boolean>;
+  getCapaActions(capaId: string): Promise<CapaAction[]>;
+  createCapaAction(capaAction: InsertCapaAction): Promise<CapaAction>;
 }
 
 export class MemStorage implements IStorage {
@@ -50,6 +59,8 @@ export class MemStorage implements IStorage {
   private testInstructions: Map<string, TestInstruction>;
   private sops: Map<string, Sop>;
   private sopVersions: Map<string, SopVersion[]>;
+  private capas: Map<string, Capa>;
+  private capaActions: Map<string, CapaAction[]>;
 
   constructor() {
     this.materials = new Map();
@@ -58,6 +69,8 @@ export class MemStorage implements IStorage {
     this.testInstructions = new Map();
     this.sops = new Map();
     this.sopVersions = new Map();
+    this.capas = new Map();
+    this.capaActions = new Map();
     this.initializeDummyData();
   }
 
@@ -1018,6 +1031,90 @@ export class MemStorage implements IStorage {
     this.sopVersions.set(insertSopVersion.sopId, existingVersions);
     
     return sopVersion;
+  }
+
+  // CAPA operations
+  async getCapas(): Promise<Capa[]> {
+    return Array.from(this.capas.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getCapa(id: string): Promise<Capa | undefined> {
+    return this.capas.get(id);
+  }
+
+  async createCapa(insertCapa: InsertCapa): Promise<Capa> {
+    const id = randomUUID();
+    const now = new Date();
+    const capa: Capa = {
+      ...insertCapa,
+      id,
+      description: insertCapa.description || null,
+      assignedTo: insertCapa.assignedTo || null,
+      dueDate: insertCapa.dueDate || null,
+      relatedSopId: insertCapa.relatedSopId || null,
+      rootCauseAnalysis: insertCapa.rootCauseAnalysis || null,
+      correctiveActions: insertCapa.correctiveActions || null,
+      preventiveActions: insertCapa.preventiveActions || null,
+      implementation: insertCapa.implementation || null,
+      verification: insertCapa.verification || null,
+      completionDate: insertCapa.completionDate || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.capas.set(id, capa);
+    return capa;
+  }
+
+  async updateCapa(id: string, updateData: Partial<InsertCapa>): Promise<Capa | undefined> {
+    const existing = this.capas.get(id);
+    if (!existing) return undefined;
+
+    const updated: Capa = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.capas.set(id, updated);
+    return updated;
+  }
+
+  async deleteCapa(id: string): Promise<boolean> {
+    const deleted = this.capas.delete(id);
+    if (deleted) {
+      // Also delete related actions
+      this.capaActions.delete(id);
+    }
+    return deleted;
+  }
+
+  async getCapaActions(capaId: string): Promise<CapaAction[]> {
+    const actions = this.capaActions.get(capaId) || [];
+    return actions.sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async createCapaAction(insertCapaAction: InsertCapaAction): Promise<CapaAction> {
+    const id = randomUUID();
+    const now = new Date();
+    const capaAction: CapaAction = {
+      ...insertCapaAction,
+      id,
+      assignedTo: insertCapaAction.assignedTo || null,
+      dueDate: insertCapaAction.dueDate || null,
+      completionDate: insertCapaAction.completionDate || null,
+      evidence: insertCapaAction.evidence || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const existingActions = this.capaActions.get(insertCapaAction.capaId) || [];
+    existingActions.push(capaAction);
+    this.capaActions.set(insertCapaAction.capaId, existingActions);
+    
+    return capaAction;
   }
 }
 

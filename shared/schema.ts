@@ -156,3 +156,57 @@ export type InsertSop = z.infer<typeof insertSopSchema>;
 export type Sop = typeof sops.$inferSelect;
 export type InsertSopVersion = z.infer<typeof insertSopVersionSchema>;
 export type SopVersion = typeof sopVersions.$inferSelect;
+
+// CAPA Management Schema
+export const capas = pgTable("capas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  capaNumber: text("capa_number").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // 'Corrective Action', 'Preventive Action', 'Corrective & Preventive Action'
+  priority: text("priority").notNull().default('Medium'), // 'Low', 'Medium', 'High', 'Critical'
+  status: text("status").notNull().default('Open'), // 'Open', 'In Progress', 'Under Review', 'Closed', 'Cancelled'
+  assignedTo: text("assigned_to"),
+  dueDate: timestamp("due_date"),
+  relatedSopId: varchar("related_sop_id").references(() => sops.id),
+  rootCauseAnalysis: text("root_cause_analysis"),
+  correctiveActions: text("corrective_actions"),
+  preventiveActions: text("preventive_actions"),
+  implementation: text("implementation"),
+  verification: text("verification"),
+  completionDate: timestamp("completion_date"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// CAPA Actions tracking individual action items
+export const capaActions = pgTable("capa_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  capaId: varchar("capa_id").references(() => capas.id).notNull(),
+  actionDescription: text("action_description").notNull(),
+  assignedTo: text("assigned_to"),
+  dueDate: timestamp("due_date"),
+  status: text("status").notNull().default('Open'), // 'Open', 'In Progress', 'Completed', 'Overdue'
+  completionDate: timestamp("completion_date"),
+  evidence: text("evidence"), // Path to uploaded evidence files
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCapaSchema = createInsertSchema(capas).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCapaActionSchema = createInsertSchema(capaActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCapa = z.infer<typeof insertCapaSchema>;
+export type Capa = typeof capas.$inferSelect;
+export type InsertCapaAction = z.infer<typeof insertCapaActionSchema>;
+export type CapaAction = typeof capaActions.$inferSelect;

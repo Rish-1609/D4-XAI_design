@@ -300,6 +300,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CAPA Management Routes
+  app.get("/api/capas", async (req, res) => {
+    try {
+      const capas = await storage.getCapas();
+      res.json(capas);
+    } catch (error) {
+      console.error("Error fetching CAPAs:", error);
+      res.status(500).json({ error: "Failed to fetch CAPAs" });
+    }
+  });
+
+  app.post("/api/capas", async (req, res) => {
+    try {
+      const capa = await storage.createCapa(req.body);
+      res.status(201).json(capa);
+    } catch (error) {
+      console.error("Error creating CAPA:", error);
+      res.status(500).json({ error: "Failed to create CAPA" });
+    }
+  });
+
+  app.get("/api/capas/:id", async (req, res) => {
+    try {
+      const capa = await storage.getCapa(req.params.id);
+      if (!capa) {
+        return res.status(404).json({ error: "CAPA not found" });
+      }
+      res.json(capa);
+    } catch (error) {
+      console.error("Error fetching CAPA:", error);
+      res.status(500).json({ error: "Failed to fetch CAPA" });
+    }
+  });
+
+  app.patch("/api/capas/:id", async (req, res) => {
+    try {
+      const capa = await storage.updateCapa(req.params.id, req.body);
+      if (!capa) {
+        return res.status(404).json({ error: "CAPA not found" });
+      }
+      res.json(capa);
+    } catch (error) {
+      console.error("Error updating CAPA:", error);
+      res.status(500).json({ error: "Failed to update CAPA" });
+    }
+  });
+
+  app.delete("/api/capas/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteCapa(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "CAPA not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting CAPA:", error);
+      res.status(500).json({ error: "Failed to delete CAPA" });
+    }
+  });
+
+  app.get("/api/capas/:id/actions", async (req, res) => {
+    try {
+      const actions = await storage.getCapaActions(req.params.id);
+      res.json(actions);
+    } catch (error) {
+      console.error("Error fetching CAPA actions:", error);
+      res.status(500).json({ error: "Failed to fetch CAPA actions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

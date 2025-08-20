@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { Sidebar } from "@/components/sidebar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -28,7 +29,10 @@ import {
   Clock, 
   CheckCircle, 
   AlertCircle, 
-  Archive 
+  Archive,
+  AlertTriangle,
+  Target,
+  Users
 } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
@@ -40,6 +44,27 @@ const sopCategories = [
   "Equipment Operation",
   "Safety & Environmental",
   "Training"
+];
+
+const capaTypes = [
+  "Corrective Action",
+  "Preventive Action",
+  "Corrective & Preventive Action"
+];
+
+const capaPriorities = [
+  "Low",
+  "Medium", 
+  "High",
+  "Critical"
+];
+
+const capaStatuses = [
+  "Open",
+  "In Progress",
+  "Under Review",
+  "Closed",
+  "Cancelled"
 ];
 
 const statusColors = {
@@ -57,11 +82,13 @@ const statusIcons = {
 };
 
 export default function SopManagement() {
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("sops");
+  const [sopTab, setSopTab] = useState("all");
   const [selectedSop, setSelectedSop] = useState<Sop | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isVersionsDialogOpen, setIsVersionsDialogOpen] = useState(false);
+  const [isCreateCapaDialogOpen, setIsCreateCapaDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -74,6 +101,12 @@ export default function SopManagement() {
   const { data: sopVersions = [] } = useQuery<SopVersion[]>({
     queryKey: ['/api/sops', selectedSop?.id, 'versions'],
     enabled: !!selectedSop && isVersionsDialogOpen,
+  });
+
+  // Fetch CAPAs
+  const { data: capas = [], isLoading: isLoadingCapas } = useQuery({
+    queryKey: ['/api/capas'],
+    enabled: activeTab === 'capa',
   });
 
   // Create SOP mutation
@@ -150,8 +183,45 @@ export default function SopManagement() {
 
   // Filter SOPs based on active tab
   const filteredSops = sops.filter((sop: Sop) => {
-    if (activeTab === "all") return true;
-    return sop.category === activeTab;
+    if (sopTab === "all") return true;
+    return sop.category === sopTab;
+  });
+
+  // Create CAPA mutation
+  const createCapaMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch("/api/capas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to create CAPA");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capas'] });
+      setIsCreateCapaDialogOpen(false);
+      toast({ title: "Success", description: "CAPA created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create CAPA", variant: "destructive" });
+    },
+  });
+
+  // Delete CAPA mutation
+  const deleteCapaMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/capas/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete CAPA");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/capas'] });
+      toast({ title: "Success", description: "CAPA deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete CAPA", variant: "destructive" });
+    },
   });
 
   // Handle file upload - this would need to be implemented with object storage routes
@@ -217,245 +287,467 @@ export default function SopManagement() {
   };
 
   return (
-    <div className="space-y-6" data-testid="page-sop-management">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">SOP Management</h1>
-          <p className="text-muted-foreground">
-            Manage Standard Operating Procedures with document upload and version control
-          </p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-sop">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New SOP
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New SOP</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title *</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-sop-title" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="sopNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SOP Number *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="SOP-001" data-testid="input-sop-number" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-sop-category">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {sopCategories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="version"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Version</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-sop-version" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} value={field.value || ""} data-testid="textarea-sop-description" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="space-y-2">
-                  <Label>Document Upload</Label>
-                  <ObjectUploader
-                    maxNumberOfFiles={1}
-                    maxFileSize={50 * 1024 * 1024} // 50MB
-                    onGetUploadParameters={handleFileUpload}
-                    onComplete={handleUploadComplete}
-                    buttonClassName="w-full"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload SOP Document
-                  </ObjectUploader>
-                  {form.watch("fileName") && (
-                    <p className="text-sm text-muted-foreground">
-                      Uploaded: {form.watch("fileName")} ({Math.round((form.watch("fileSize") || 0) / 1024)}KB)
-                    </p>
-                  )}
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createSopMutation.isPending} data-testid="button-submit-sop">
-                    Create SOP
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="all" data-testid="tab-all-sops">All SOPs</TabsTrigger>
-          {sopCategories.map((category) => (
-            <TabsTrigger key={category} value={category} data-testid={`tab-${category.toLowerCase().replace(/\s+/g, '-')}`}>
-              {category}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value={activeTab} className="space-y-4">
-          <div className="grid gap-4">
-            {isLoading ? (
-              <div>Loading SOPs...</div>
-            ) : filteredSops.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No SOPs found</h3>
-                  <p className="text-muted-foreground text-center mb-4">
-                    {activeTab === "all" 
-                      ? "Create your first Standard Operating Procedure to get started."
-                      : `No SOPs found in the ${activeTab} category.`
-                    }
-                  </p>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New SOP
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>SOP Number</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Version</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Last Updated</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSops.map((sop: Sop) => {
-                      const StatusIcon = statusIcons[sop.status as keyof typeof statusIcons];
-                      return (
-                        <TableRow key={sop.id} data-testid={`row-sop-${sop.id}`}>
-                          <TableCell className="font-mono">{sop.sopNumber}</TableCell>
-                          <TableCell className="font-medium">{sop.title}</TableCell>
-                          <TableCell>{sop.category}</TableCell>
-                          <TableCell>{sop.version}</TableCell>
-                          <TableCell>
-                            <Badge className={statusColors[sop.status as keyof typeof statusColors]}>
-                              <StatusIcon className="h-3 w-3 mr-1" />
-                              {sop.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {sop.updatedAt ? format(new Date(sop.updatedAt), 'MMM dd, yyyy') : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleEdit(sop)}
-                                data-testid={`button-edit-${sop.id}`}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleViewVersions(sop)}
-                                data-testid={`button-versions-${sop.id}`}
-                              >
-                                <Clock className="h-4 w-4" />
-                              </Button>
-                              {sop.filePath && (
-                                <Button size="sm" variant="outline" data-testid={`button-download-${sop.id}`}>
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button 
-                                size="sm" 
-                                variant="destructive" 
-                                onClick={() => deleteSopMutation.mutate(sop.id)}
-                                data-testid={`button-delete-${sop.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">SOP & CAPA Management</h1>
+              <p className="text-gray-600 text-sm mt-1">
+                Manage Standard Operating Procedures and Corrective/Preventive Actions
+              </p>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6" data-testid="page-sop-management">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="bg-white border-b border-gray-200 h-auto p-0 rounded-none w-full justify-start">
+                <div className="flex space-x-8">
+                  <TabsTrigger
+                    value="sops"
+                    className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 rounded-none bg-transparent"
+                    data-testid="tab-sops"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Standard Operating Procedures
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="capa"
+                    className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 rounded-none bg-transparent"
+                    data-testid="tab-capa"
+                  >
+                    <Target className="h-4 w-4 mr-2" />
+                    CAPA Management
+                  </TabsTrigger>
+                </div>
+              </TabsList>
+
+              <TabsContent value="sops" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold">Standard Operating Procedures</h2>
+                    <p className="text-gray-600 text-sm">
+                      Manage SOPs with document upload and version control
+                    </p>
+                  </div>
+                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button data-testid="button-create-sop">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New SOP
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Create New SOP</DialogTitle>
+                      </DialogHeader>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="title"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Title *</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} data-testid="input-sop-title" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="sopNumber"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>SOP Number *</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="SOP-001" data-testid="input-sop-number" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="category"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Category *</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid="select-sop-category">
+                                        <SelectValue placeholder="Select category" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {sopCategories.map((category) => (
+                                        <SelectItem key={category} value={category}>
+                                          {category}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="version"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Version</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} data-testid="input-sop-version" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                  <Textarea {...field} value={field.value || ""} data-testid="textarea-sop-description" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="space-y-2">
+                            <Label>Document Upload</Label>
+                            <ObjectUploader
+                              maxNumberOfFiles={1}
+                              maxFileSize={50 * 1024 * 1024} // 50MB
+                              onGetUploadParameters={handleFileUpload}
+                              onComplete={handleUploadComplete}
+                              buttonClassName="w-full"
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload SOP Document
+                            </ObjectUploader>
+                            {form.watch("fileName") && (
+                              <p className="text-sm text-muted-foreground">
+                                Uploaded: {form.watch("fileName")} ({Math.round((form.watch("fileSize") || 0) / 1024)}KB)
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button type="submit" disabled={createSopMutation.isPending} data-testid="button-submit-sop">
+                              Create SOP
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <Tabs value={sopTab} onValueChange={setSopTab}>
+                  <TabsList className="grid w-full grid-cols-7">
+                    <TabsTrigger value="all" data-testid="tab-all-sops">All SOPs</TabsTrigger>
+                    {sopCategories.map((category) => (
+                      <TabsTrigger key={category} value={category} data-testid={`tab-${category.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {category}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  <TabsContent value={sopTab} className="space-y-4">
+                    <div className="grid gap-4">
+                      {isLoading ? (
+                        <div>Loading SOPs...</div>
+                      ) : filteredSops.length === 0 ? (
+                        <Card>
+                          <CardContent className="flex flex-col items-center justify-center py-16">
+                            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-semibold mb-2">No SOPs found</h3>
+                            <p className="text-muted-foreground text-center mb-4">
+                              {sopTab === "all" 
+                                ? "Create your first Standard Operating Procedure to get started."
+                                : `No SOPs found in the ${sopTab} category.`
+                              }
+                            </p>
+                            <Button onClick={() => setIsCreateDialogOpen(true)}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Create New SOP
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="grid gap-4">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>SOP Number</TableHead>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Category</TableHead>
+                                <TableHead>Version</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Last Updated</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredSops.map((sop: Sop) => {
+                                const StatusIcon = statusIcons[sop.status as keyof typeof statusIcons];
+                                return (
+                                  <TableRow key={sop.id} data-testid={`row-sop-${sop.id}`}>
+                                    <TableCell className="font-mono">{sop.sopNumber}</TableCell>
+                                    <TableCell className="font-medium">{sop.title}</TableCell>
+                                    <TableCell>{sop.category}</TableCell>
+                                    <TableCell>{sop.version}</TableCell>
+                                    <TableCell>
+                                      <Badge className={statusColors[sop.status as keyof typeof statusColors]}>
+                                        <StatusIcon className="h-3 w-3 mr-1" />
+                                        {sop.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {sop.updatedAt ? format(new Date(sop.updatedAt), 'MMM dd, yyyy') : 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex space-x-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          onClick={() => handleEdit(sop)}
+                                          data-testid={`button-edit-${sop.id}`}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          onClick={() => handleViewVersions(sop)}
+                                          data-testid={`button-versions-${sop.id}`}
+                                        >
+                                          <Clock className="h-4 w-4" />
+                                        </Button>
+                                        {sop.filePath && (
+                                          <Button size="sm" variant="outline" data-testid={`button-download-${sop.id}`}>
+                                            <Download className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                        <Button 
+                                          size="sm" 
+                                          variant="destructive" 
+                                          onClick={() => deleteSopMutation.mutate(sop.id)}
+                                          data-testid={`button-delete-${sop.id}`}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+
+              <TabsContent value="capa" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold">CAPA Management</h2>
+                    <p className="text-gray-600 text-sm">
+                      Manage Corrective and Preventive Actions
+                    </p>
+                  </div>
+                  <Dialog open={isCreateCapaDialogOpen} onOpenChange={setIsCreateCapaDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button data-testid="button-create-capa">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New CAPA
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Create New CAPA</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>CAPA Number *</Label>
+                            <Input placeholder="CAPA-2024-XXX" data-testid="input-capa-number" />
+                          </div>
+                          <div>
+                            <Label>Type *</Label>
+                            <Select>
+                              <SelectTrigger data-testid="select-capa-type">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {capaTypes.map((type) => (
+                                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Title *</Label>
+                          <Input placeholder="Enter CAPA title" data-testid="input-capa-title" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Priority</Label>
+                            <Select>
+                              <SelectTrigger data-testid="select-capa-priority">
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {capaPriorities.map((priority) => (
+                                  <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Assigned To</Label>
+                            <Input placeholder="Enter assignee" data-testid="input-capa-assignee" />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Description</Label>
+                          <Textarea placeholder="Describe the issue and proposed action" data-testid="textarea-capa-description" />
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                          <Button type="button" variant="outline" onClick={() => setIsCreateCapaDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit" data-testid="button-submit-capa">
+                            Create CAPA
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="grid gap-4">
+                  {isLoadingCapas ? (
+                    <div>Loading CAPAs...</div>
+                  ) : capas.length === 0 ? (
+                    <Card>
+                      <CardContent className="flex flex-col items-center justify-center py-16">
+                        <Target className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No CAPAs found</h3>
+                        <p className="text-muted-foreground text-center mb-4">
+                          Create your first Corrective/Preventive Action to get started.
+                        </p>
+                        <Button onClick={() => setIsCreateCapaDialogOpen(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create New CAPA
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>CAPA Number</TableHead>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Assigned To</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {capas.map((capa: any) => (
+                          <TableRow key={capa.id} data-testid={`row-capa-${capa.id}`}>
+                            <TableCell className="font-mono">{capa.capaNumber}</TableCell>
+                            <TableCell className="font-medium">{capa.title}</TableCell>
+                            <TableCell>{capa.type}</TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={
+                                  capa.priority === "Critical" ? "bg-red-100 text-red-800" :
+                                  capa.priority === "High" ? "bg-orange-100 text-orange-800" :
+                                  capa.priority === "Medium" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-green-100 text-green-800"
+                                }
+                              >
+                                {capa.priority}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={
+                                  capa.status === "Open" ? "bg-blue-100 text-blue-800" :
+                                  capa.status === "In Progress" ? "bg-yellow-100 text-yellow-800" :
+                                  capa.status === "Under Review" ? "bg-purple-100 text-purple-800" :
+                                  capa.status === "Closed" ? "bg-green-100 text-green-800" :
+                                  "bg-gray-100 text-gray-800"
+                                }
+                              >
+                                {capa.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Users className="h-4 w-4 text-gray-400" />
+                                <span>{capa.assignedTo || 'Unassigned'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {capa.dueDate ? format(new Date(capa.dueDate), 'MMM dd, yyyy') : 'No due date'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button size="sm" variant="outline" data-testid={`button-edit-capa-${capa.id}`}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" data-testid={`button-view-capa-${capa.id}`}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={() => deleteCapaMutation.mutate(capa.id)}
+                                  data-testid={`button-delete-capa-${capa.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
 
       {/* Edit SOP Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
