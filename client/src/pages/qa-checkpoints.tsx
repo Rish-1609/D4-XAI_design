@@ -92,6 +92,42 @@ interface QAAuditStep {
   approval_required: boolean;
 }
 
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  status: 'Available' | 'Busy' | 'On Leave';
+  skills: string[];
+  workload: number; // percentage 0-100
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  type: 'Batch Release' | 'Equipment Audit' | 'Location Audit' | 'Custom' | 'QC Testing' | 'Documentation';
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Cancelled';
+  assignedTo: string;
+  assignedBy: string;
+  relatedBatch?: string;
+  relatedOrder?: string;
+  estimatedHours: number;
+  actualHours?: number;
+  startDate: Date;
+  dueDate: Date;
+  completedDate?: Date;
+  dependencies: string[];
+  tags: string[];
+  checklist: { id: string; text: string; completed: boolean }[];
+  attachments: string[];
+  comments: { id: string; author: string; message: string; timestamp: Date }[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface BatchRelease {
   id: string;
   batchNumber: string;
@@ -173,9 +209,12 @@ const getStatusVariant = (status: string): "default" | "secondary" | "destructiv
 
 export default function QACheckpoints() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<string>("");
-  const [selectedStage, setSelectedStage] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("checkpoints");
+  const [selectedOrder, setSelectedOrder] = useState("all-orders");
+  const [selectedStage, setSelectedStage] = useState("all-stages");
+  const [viewMode, setViewMode] = useState<'gantt' | 'calendar' | 'list'>('gantt');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<'day' | 'week' | 'month'>('week');
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -433,6 +472,104 @@ export default function QACheckpoints() {
     });
   }, [productionOrders]);
 
+  // Mock team members data
+  const teamMembers: TeamMember[] = useMemo(() => [
+    {
+      id: "tm1", name: "Dr. Sarah Johnson", role: "QA Manager", department: "Quality Assurance",
+      email: "sarah.johnson@pharma.com", status: "Available", skills: ["GMP", "Validation", "CAPA"], workload: 75
+    },
+    {
+      id: "tm2", name: "Michael Chen", role: "QC Analyst - Materials", department: "Quality Control",
+      email: "michael.chen@pharma.com", status: "Busy", skills: ["HPLC", "UV-Vis", "Material Testing"], workload: 90
+    },
+    {
+      id: "tm3", name: "Dr. Priya Sharma", role: "Senior QC Analyst", department: "Quality Control",
+      email: "priya.sharma@pharma.com", status: "Available", skills: ["Assay", "Dissolution", "Stability"], workload: 60
+    },
+    {
+      id: "tm4", name: "James Wilson", role: "QC Analyst - Process", department: "Quality Control",
+      email: "james.wilson@pharma.com", status: "Available", skills: ["Process Monitoring", "IPCs", "Validation"], workload: 45
+    },
+    {
+      id: "tm5", name: "Dr. Aisha Patel", role: "Documentation Specialist", department: "Quality Assurance",
+      email: "aisha.patel@pharma.com", status: "On Leave", skills: ["BMR Review", "SOPs", "Regulatory"], workload: 0
+    },
+    {
+      id: "tm6", name: "Robert Kim", role: "Production Analyst", department: "Production",
+      email: "robert.kim@pharma.com", status: "Available", skills: ["Yield Calculation", "Material Balance", "Production"], workload: 70
+    }
+  ], []);
+
+  // Mock tasks data
+  const tasks: Task[] = useMemo(() => {
+    const batchTasks = batchReleases.flatMap((batch) => 
+      batch.auditSteps.map((step, index) => ({
+        id: `task-${batch.id}-${step.id}`,
+        title: step.name,
+        description: `${step.category} for Batch ${batch.batchNumber} (${batch.productName})`,
+        type: 'Batch Release' as const,
+        priority: step.approval_required ? 'High' as const : 'Medium' as const,
+        status: step.status === 'Approved' || step.status === 'Completed' ? 'Completed' as const :
+                step.status === 'In Progress' ? 'In Progress' as const :
+                step.status === 'Rejected' ? 'Cancelled' as const : 'Not Started' as const,
+        assignedTo: step.assignedTo,
+        assignedBy: batch.qaManager,
+        relatedBatch: batch.batchNumber,
+        relatedOrder: batch.orderNumber,
+        estimatedHours: 4 + (index * 2),
+        actualHours: step.completedAt ? 4 + (index * 1.5) : undefined,
+        startDate: new Date(Date.now() - (9 - index) * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() + (index + 1) * 24 * 60 * 60 * 1000),
+        completedDate: step.completedAt,
+        dependencies: index > 0 ? [`task-${batch.id}-step-${batch.id}-${index}`] : [],
+        tags: [step.category, batch.productName.split(' ')[0]],
+        checklist: [
+          { id: `check-1-${step.id}`, text: "Review documentation", completed: step.status === 'Approved' || step.status === 'Completed' },
+          { id: `check-2-${step.id}`, text: "Complete testing", completed: step.status === 'Approved' || step.status === 'Completed' },
+          { id: `check-3-${step.id}`, text: "Get approval", completed: step.status === 'Approved' }
+        ],
+        attachments: step.evidence,
+        comments: [
+          { id: `comment-1-${step.id}`, author: step.assignedTo, message: step.findings, timestamp: step.completedAt || new Date() }
+        ],
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        updatedAt: step.completedAt || new Date()
+      }))
+    );
+
+    // Add custom tasks
+    const customTasks: Task[] = [
+      {
+        id: "task-custom-1", title: "Equipment Calibration - HPLC System",
+        description: "Quarterly calibration of HPLC system in QC Lab A", type: "Equipment Audit", priority: "High",
+        status: "In Progress", assignedTo: "Michael Chen", assignedBy: "Dr. Sarah Johnson",
+        estimatedHours: 8, actualHours: 6, startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), dependencies: [], tags: ["Equipment", "HPLC"],
+        checklist: [
+          { id: "check-1-custom-1", text: "System verification", completed: true },
+          { id: "check-2-custom-1", text: "Run calibration protocol", completed: false }
+        ],
+        attachments: ["Calibration_Protocol_HPLC.pdf"], comments: [],
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
+      },
+      {
+        id: "task-custom-2", title: "Clean Room Audit - Production Area B",
+        description: "Monthly environmental monitoring and cleanliness audit", type: "Location Audit", priority: "Medium",
+        status: "Not Started", assignedTo: "James Wilson", assignedBy: "Dr. Sarah Johnson",
+        estimatedHours: 6, startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), dependencies: [], tags: ["Clean Room", "Audit"],
+        checklist: [
+          { id: "check-1-custom-2", text: "Particle count measurement", completed: false },
+          { id: "check-2-custom-2", text: "Microbiological sampling", completed: false }
+        ],
+        attachments: [], comments: [],
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      }
+    ];
+
+    return [...batchTasks, ...customTasks];
+  }, [batchReleases]);
+
   // Filtering
   const filteredCheckpoints = useMemo(() => {
     let filtered = qcCheckpoints;
@@ -489,178 +626,599 @@ export default function QACheckpoints() {
         </div>
       </div>
 
-      {/* Tabs for QC Checkpoints and Batch Release */}
-      <Tabs defaultValue="checkpoints" className="w-full">
+      {/* Tabs for Assignment Tracker and Batch Release */}
+      <Tabs defaultValue="assignment-tracker" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="checkpoints" data-testid="tab-checkpoints">QC Checkpoints</TabsTrigger>
+          <TabsTrigger value="assignment-tracker" data-testid="tab-assignment-tracker">Assignment Tracker</TabsTrigger>
           <TabsTrigger value="batch-release" data-testid="tab-batch-release">Batch Release</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="checkpoints" className="space-y-6">
-          {/* QC Checkpoints Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Checkpoints</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="total-checkpoints">
-              {stats.total}
+        <TabsContent value="assignment-tracker" className="space-y-6">
+          {/* Assignment Tracker Header with View Controls */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold flex items-center">
+                <Users className="h-6 w-6 mr-2 text-blue-600" />
+                Assignment Tracker
+              </h2>
+              <p className="text-muted-foreground">
+                Manage QA/QC team tasks with Gantt charts and calendar scheduling
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Across all production orders
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="completed-checkpoints">
-              {stats.completed}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+                <Button
+                  size="sm"
+                  variant={viewMode === 'gantt' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('gantt')}
+                >
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  Gantt
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('calendar')}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Calendar
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('list')}
+                >
+                  <ClipboardList className="h-4 w-4 mr-1" />
+                  List
+                </Button>
+              </div>
+              <Button onClick={() => setShowCreateTask(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Create Task
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.completionRate}% completion rate
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600" data-testid="inprogress-checkpoints">
-              {stats.inProgress}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Currently being executed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <AlertCircle className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600" data-testid="pending-checkpoints">
-              {stats.pending}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting execution
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search checkpoints..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="checkpoint-search"
-              />
-            </div>
-            <Select value={selectedOrder} onValueChange={setSelectedOrder}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Filter by production order" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all-orders">All Orders</SelectItem>
-                {(productionOrders as ProductionOrder[]).map((order: ProductionOrder) => (
-                  <SelectItem key={order.id} value={order.id}>
-                    {order.orderNumber}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedStage} onValueChange={setSelectedStage}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by stage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all-stages">All Stages</SelectItem>
-                <SelectItem value="Pre-Production">Pre-Production</SelectItem>
-                <SelectItem value="Production">Production</SelectItem>
-                <SelectItem value="Post-Production">Post-Production</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Checkpoints Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>QC Checkpoints</CardTitle>
-          <CardDescription>
-            Stage-wise quality control checkpoints with detailed criteria and results
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Checkpoint</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Production Order</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCheckpoints.map((checkpoint) => (
-                <TableRow key={checkpoint.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{checkpoint.name}</div>
-                      <div className="text-sm text-muted-foreground">{checkpoint.productName}</div>
+          {/* Team Overview Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tasks.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Across all team members
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+                <Clock className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {tasks.filter(t => t.status === 'In Progress').length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Currently active tasks
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+                <Users className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{teamMembers.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {teamMembers.filter(tm => tm.status === 'Available').length} available
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Critical Tasks</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {tasks.filter(t => t.priority === 'Critical').length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Require immediate attention
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* View Mode Content */}
+          {viewMode === 'gantt' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2" />
+                  Gantt Chart View
+                </CardTitle>
+                <CardDescription>
+                  Task timeline and dependencies visualization
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Gantt Chart Timeline Header */}
+                  <div className="flex items-center space-x-4 overflow-x-auto">
+                    <div className="w-64 flex-shrink-0">
+                      <div className="text-sm font-medium">Task / Assignee</div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{checkpoint.stage}</Badge>
-                  </TableCell>
-                  <TableCell>{checkpoint.orderNumber}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      {getStatusIcon(checkpoint.status)}
-                      <Badge variant={getStatusVariant(checkpoint.status)}>
-                        {checkpoint.status}
+                    <div className="flex space-x-1 min-w-max">
+                      {Array.from({ length: 14 }, (_, i) => {
+                        const date = new Date();
+                        date.setDate(date.getDate() - 7 + i);
+                        return (
+                          <div key={i} className="w-20 text-center text-xs font-medium py-2 border-r">
+                            {date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Gantt Chart Tasks */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {tasks.slice(0, 10).map((task) => (
+                      <div key={task.id} className="flex items-center space-x-4">
+                        <div className="w-64 flex-shrink-0">
+                          <div className="text-sm font-medium truncate">{task.title}</div>
+                          <div className="text-xs text-muted-foreground">{task.assignedTo}</div>
+                          <Badge 
+                            variant={
+                              task.priority === 'Critical' ? 'destructive' :
+                              task.priority === 'High' ? 'default' :
+                              task.priority === 'Medium' ? 'secondary' : 'outline'
+                            }
+                            className="text-xs"
+                          >
+                            {task.priority}
+                          </Badge>
+                        </div>
+                        <div className="flex space-x-1 min-w-max relative">
+                          {Array.from({ length: 14 }, (_, i) => {
+                            const date = new Date();
+                            date.setDate(date.getDate() - 7 + i);
+                            const taskStart = new Date(task.startDate);
+                            const taskEnd = new Date(task.dueDate);
+                            const isInRange = date >= taskStart && date <= taskEnd;
+                            const isToday = date.toDateString() === new Date().toDateString();
+                            
+                            return (
+                              <div 
+                                key={i} 
+                                className={`w-20 h-8 border-r flex items-center justify-center ${
+                                  isToday ? 'bg-blue-100' : ''
+                                }`}
+                              >
+                                {isInRange && (
+                                  <div 
+                                    className={`h-4 w-full rounded ${
+                                      task.status === 'Completed' ? 'bg-green-500' :
+                                      task.status === 'In Progress' ? 'bg-blue-500' :
+                                      task.status === 'Not Started' ? 'bg-gray-300' :
+                                      'bg-red-500'
+                                    }`}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {viewMode === 'calendar' && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Calendar className="h-5 w-5 mr-2" />
+                    <CardTitle>Calendar View</CardTitle>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Select value={calendarView} onValueChange={(value: 'day' | 'week' | 'month') => setCalendarView(value)}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Day</SelectItem>
+                        <SelectItem value="week">Week</SelectItem>
+                        <SelectItem value="month">Month</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <CardDescription>
+                  Hourly calendar view with task scheduling - {calendarView === 'day' ? 'Daily' : calendarView === 'week' ? 'Weekly' : 'Monthly'} View
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {calendarView === 'day' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">
+                        {selectedDate.toLocaleDateString('en-IN', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </h3>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedDate(new Date(selectedDate.getTime() - 24 * 60 * 60 * 1000))}
+                        >
+                          Previous Day
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedDate(new Date())}
+                        >
+                          Today
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedDate(new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000))}
+                        >
+                          Next Day
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {/* Hourly Schedule */}
+                    <div className="grid grid-cols-1 gap-1 max-h-96 overflow-y-auto">
+                      {Array.from({ length: 24 }, (_, hour) => (
+                        <div key={hour} className="flex border-b">
+                          <div className="w-20 py-2 text-sm font-medium text-muted-foreground">
+                            {hour.toString().padStart(2, '0')}:00
+                          </div>
+                          <div className="flex-1 py-2 px-4 min-h-[60px] border-l">
+                            {tasks
+                              .filter(task => {
+                                const taskDate = new Date(task.startDate);
+                                return taskDate.toDateString() === selectedDate.toDateString() && 
+                                       taskDate.getHours() === hour;
+                              })
+                              .map(task => (
+                                <div 
+                                  key={task.id}
+                                  className="bg-blue-100 text-blue-800 p-2 rounded mb-1 text-xs"
+                                >
+                                  <div className="font-medium truncate">{task.title}</div>
+                                  <div className="text-blue-600">{task.assignedTo}</div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {calendarView === 'week' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-8 gap-1">
+                      <div className="p-2"></div>
+                      {Array.from({ length: 7 }, (_, dayIndex) => {
+                        const date = new Date(selectedDate);
+                        date.setDate(date.getDate() - date.getDay() + dayIndex);
+                        return (
+                          <div key={dayIndex} className="p-2 text-center border-b">
+                            <div className="text-sm font-medium">
+                              {date.toLocaleDateString('en-IN', { weekday: 'short' })}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {date.getDate()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {Array.from({ length: 24 }, (_, hour) => (
+                        <>
+                          <div key={`hour-${hour}`} className="p-2 text-xs text-muted-foreground border-r">
+                            {hour.toString().padStart(2, '0')}:00
+                          </div>
+                          {Array.from({ length: 7 }, (_, dayIndex) => {
+                            const date = new Date(selectedDate);
+                            date.setDate(date.getDate() - date.getDay() + dayIndex);
+                            date.setHours(hour);
+                            
+                            const dayTasks = tasks.filter(task => {
+                              const taskDate = new Date(task.startDate);
+                              return taskDate.toDateString() === date.toDateString() && 
+                                     taskDate.getHours() === hour;
+                            });
+                            
+                            return (
+                              <div key={`${hour}-${dayIndex}`} className="p-1 border-b border-r min-h-[40px]">
+                                {dayTasks.map(task => (
+                                  <div 
+                                    key={task.id}
+                                    className="bg-blue-100 text-blue-800 p-1 rounded text-xs mb-1 truncate"
+                                    title={`${task.title} - ${task.assignedTo}`}
+                                  >
+                                    {task.title}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {calendarView === 'month' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-7 gap-1">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="p-2 text-center font-medium border-b">
+                          {day}
+                        </div>
+                      ))}
+                      
+                      {Array.from({ length: 35 }, (_, i) => {
+                        const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+                        date.setDate(date.getDate() - date.getDay() + i);
+                        
+                        const dayTasks = tasks.filter(task => {
+                          const taskDate = new Date(task.startDate);
+                          return taskDate.toDateString() === date.toDateString();
+                        });
+                        
+                        const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        
+                        return (
+                          <div 
+                            key={i} 
+                            className={`p-2 border min-h-[80px] ${
+                              !isCurrentMonth ? 'bg-gray-50 text-muted-foreground' : ''
+                            } ${isToday ? 'bg-blue-50 border-blue-200' : ''}`}
+                          >
+                            <div className="text-sm font-medium mb-1">{date.getDate()}</div>
+                            <div className="space-y-1">
+                              {dayTasks.slice(0, 3).map(task => (
+                                <div 
+                                  key={task.id}
+                                  className="bg-blue-100 text-blue-800 p-1 rounded text-xs truncate"
+                                  title={`${task.title} - ${task.assignedTo}`}
+                                >
+                                  {task.title}
+                                </div>
+                              ))}
+                              {dayTasks.length > 3 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{dayTasks.length - 3} more
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {viewMode === 'list' && (
+            <div className="space-y-4">
+              {/* Filters for List View */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task Management</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search tasks..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Select>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Filter by assignee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Team Members</SelectItem>
+                        {teamMembers.map(member => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select>
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Task type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="Batch Release">Batch Release</SelectItem>
+                        <SelectItem value="Equipment Audit">Equipment Audit</SelectItem>
+                        <SelectItem value="Location Audit">Location Audit</SelectItem>
+                        <SelectItem value="Custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tasks List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Task List</CardTitle>
+                  <CardDescription>
+                    All assigned tasks with details and progress tracking
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {tasks.map((task) => (
+                      <div key={task.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <h4 className="font-medium">{task.title}</h4>
+                              <Badge variant="outline">{task.type}</Badge>
+                              <Badge 
+                                variant={
+                                  task.priority === 'Critical' ? 'destructive' :
+                                  task.priority === 'High' ? 'default' :
+                                  task.priority === 'Medium' ? 'secondary' : 'outline'
+                                }
+                              >
+                                {task.priority}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                            <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
+                              <span>📋 {task.relatedBatch || 'N/A'}</span>
+                              <span>⏱️ {task.estimatedHours}h estimated</span>
+                              <span>📅 Due: {formatDate(task.dueDate)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge 
+                              variant={
+                                task.status === 'Completed' ? 'default' :
+                                task.status === 'In Progress' ? 'secondary' :
+                                task.status === 'Not Started' ? 'outline' : 'destructive'
+                              }
+                            >
+                              {task.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{task.assignedTo}</span>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button size="sm" variant="outline">
+                              <Eye className="mr-1 h-3 w-3" />
+                              View
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Settings className="mr-1 h-3 w-3" />
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {/* Progress bar for checklist completion */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span>Progress</span>
+                            <span>
+                              {task.checklist.filter(c => c.completed).length}/{task.checklist.length} completed
+                            </span>
+                          </div>
+                          <Progress 
+                            value={
+                              task.checklist.length > 0 
+                                ? (task.checklist.filter(c => c.completed).length / task.checklist.length) * 100 
+                                : 0
+                            } 
+                            className="h-2"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Team Members Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Team Overview
+              </CardTitle>
+              <CardDescription>
+                Current team capacity and workload distribution
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {teamMembers.map((member) => (
+                  <div key={member.id} className="border rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-medium">{member.name}</h4>
+                        <p className="text-sm text-muted-foreground">{member.role}</p>
+                        <p className="text-xs text-muted-foreground">{member.department}</p>
+                      </div>
+                      <Badge 
+                        variant={
+                          member.status === 'Available' ? 'default' :
+                          member.status === 'Busy' ? 'secondary' : 'outline'
+                        }
+                      >
+                        {member.status}
                       </Badge>
                     </div>
-                  </TableCell>
-                  <TableCell>{checkpoint.assignedTo}</TableCell>
-                  <TableCell>{formatDate(checkpoint.dueDate)}</TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline">
-                      <Eye className="mr-1 h-3 w-3" />
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span>Workload</span>
+                        <span>{member.workload}%</span>
+                      </div>
+                      <Progress value={member.workload} className="h-2" />
+                      
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Skills: </span>
+                        <span>{member.skills.join(', ')}</span>
+                      </div>
+                      
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Active Tasks: </span>
+                        <span>
+                          {tasks.filter(t => t.assignedTo === member.name && t.status === 'In Progress').length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="batch-release" className="space-y-6">
