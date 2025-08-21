@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { 
   ChevronRight, 
@@ -66,7 +66,7 @@ const menuItems = [
 
 export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['quality-assurance']);
 
   const toggleSubmenu = (menuId: string) => {
     setExpandedMenus(prev =>
@@ -75,6 +75,18 @@ export function Sidebar({ className }: SidebarProps) {
         : [...prev, menuId]
     );
   };
+
+  // Check if current location matches any QA routes
+  const isQARoute = location.startsWith('/quality-assurance') || 
+                   location.startsWith('/qa-') || 
+                   location === '/quality-assurance';
+
+  // Auto-expand Quality Assurance section when on QA routes
+  useEffect(() => {
+    if (isQARoute && !expandedMenus.includes('quality-assurance')) {
+      setExpandedMenus(prev => [...prev, 'quality-assurance']);
+    }
+  }, [location, isQARoute, expandedMenus]);
 
   return (
     <div className={cn("w-64 bg-navy-900 text-white flex flex-col h-screen", className)}>
@@ -100,7 +112,12 @@ export function Sidebar({ className }: SidebarProps) {
                 <>
                   <button
                     onClick={() => toggleSubmenu(item.id)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg text-gray-300 hover:bg-navy-800 transition-colors"
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors",
+                      item.id === 'quality-assurance' && isQARoute
+                        ? "text-white bg-navy-700 font-medium"
+                        : "text-gray-300 hover:bg-navy-800"
+                    )}
                     data-testid={`button-toggle-${item.id}`}
                   >
                     <div className="flex items-center">
@@ -118,7 +135,15 @@ export function Sidebar({ className }: SidebarProps) {
                     <div className="ml-6 mt-1 space-y-1">
                       {item.submenu.map((subItem) => (
                         <Link key={subItem.href} href={subItem.href}>
-                          <button className="block w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                          <button 
+                            className={cn(
+                              "block w-full text-left px-3 py-2 text-sm transition-colors rounded-md",
+                              location === subItem.href 
+                                ? "text-white bg-navy-700 font-medium" 
+                                : "text-gray-400 hover:text-white hover:bg-navy-800"
+                            )}
+                            data-testid={`nav-${subItem.href.replace('/', '')}`}
+                          >
                             {subItem.label}
                           </button>
                         </Link>
