@@ -12,7 +12,7 @@ import BomManagement from "@/pages/bom-management";
 import InventoryOverview from "@/pages/inventory-overview";
 import StockMovements from "@/pages/stock-movements";
 import QACheckpoints from "@/pages/qa-checkpoints";
-import QACertificates from "@/pages/qa-certificates";
+
 import QAAuditTrail from "@/pages/qa-audit-trail";
 import NotFound from "@/pages/not-found";
 
@@ -24,7 +24,7 @@ function Router() {
       <Route path="/inventory-overview" component={InventoryOverview} />
       <Route path="/stock-movements" component={StockMovements} />
       <Route path="/qa-checkpoints" component={QACheckpoints} />
-      <Route path="/qa-certificates" component={QACertificates} />
+
       <Route path="/qa-audit-trail" component={QAAuditTrail} />
       <Route path="/qc-setup" component={QCSetupEnhancedPage} />
       <Route path="/sop-management" component={SopManagement} />

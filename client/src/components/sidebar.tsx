@@ -44,7 +44,6 @@ const menuItems = [
     icon: Shield,
     submenu: [
       { label: "QC & Batch Release", href: "/qa-checkpoints" },
-      { label: "Digital Certificates", href: "/qa-certificates" },
       { label: "Audit Trail", href: "/qa-audit-trail" },
     ],
   },
