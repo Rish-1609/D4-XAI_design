@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Sidebar } from "@/components/sidebar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -229,7 +230,10 @@ export default function QualityAssurance() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qa-page">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qa-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -658,6 +662,8 @@ export default function QualityAssurance() {
           </Card>
         </TabsContent>
       </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
