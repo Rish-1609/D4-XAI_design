@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sidebar } from "@/components/sidebar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,6 +38,11 @@ import {
   Search,
   Eye,
   CheckSquare,
+  FileCheck,
+  Shield,
+  ClipboardList,
+  Download,
+  Award,
 } from "lucide-react";
 import type { ProductionOrder, TestResult } from "@shared/schema";
 
@@ -54,6 +60,23 @@ interface QCCheckpoint {
   criteria: string[];
   results: Record<string, string>;
   notes: string;
+}
+
+interface BatchRelease {
+  id: string;
+  batchNumber: string;
+  productionOrderId: string;
+  orderNumber: string;
+  productName: string;
+  manufacturingDate: Date;
+  expiryDate: Date;
+  quantity: number;
+  status: string;
+  qaManager: string;
+  releaseDate: Date | null;
+  certificateNumber: string | null;
+  testResults: Record<string, string>;
+  releaseNotes: string;
 }
 
 const formatDate = (date: string | Date) => {
@@ -108,6 +131,7 @@ export default function QACheckpoints() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<string>("");
   const [selectedStage, setSelectedStage] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("checkpoints");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -176,6 +200,35 @@ export default function QACheckpoints() {
     ]);
   }, [productionOrders]);
 
+  // Mock batch releases based on completed production orders
+  const batchReleases = useMemo(() => {
+    return (productionOrders as ProductionOrder[])
+      .filter(order => order.status === "Completed")
+      .map((order: ProductionOrder, index: number) => ({
+        id: `br-${order.id}`,
+        batchNumber: `BT-${new Date(order.createdAt || new Date()).getFullYear()}-${String(index + 1).padStart(4, '0')}`,
+        productionOrderId: order.id,
+        orderNumber: order.orderNumber,
+        productName: order.skuProduct,
+        manufacturingDate: new Date(order.createdAt || new Date()),
+        expiryDate: new Date(new Date(order.createdAt || new Date()).getTime() + (2 * 365 * 24 * 60 * 60 * 1000)), // 2 years
+        quantity: order.skuQty,
+        status: index === 0 ? "Released" : "Pending Release",
+        qaManager: "Dr. Sarah Johnson",
+        releaseDate: index === 0 ? new Date() : null,
+        certificateNumber: index === 0 ? `COA-${new Date().getFullYear()}-${String(index + 1).padStart(4, '0')}` : null,
+        testResults: {
+          assay: "99.2%",
+          dissolution: "Pass",
+          uniformity: "Pass",
+          microbial: "Pass",
+          heavyMetals: "Pass",
+          residualSolvents: "Pass"
+        },
+        releaseNotes: index === 0 ? "All quality parameters meet specifications. Batch approved for commercial distribution." : "Awaiting final QA review and approval"
+      }));
+  }, [productionOrders]);
+
   // Filtering
   const filteredCheckpoints = useMemo(() => {
     let filtered = qcCheckpoints;
@@ -223,16 +276,24 @@ export default function QACheckpoints() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="qc-checkpoints-title">
-            QC Checkpoints
+          <h1 className="text-3xl font-bold tracking-tight" data-testid="qc-batch-title">
+            QC & Batch Release
           </h1>
           <p className="text-muted-foreground">
-            Stage-wise quality control checkpoints with real-time monitoring and approval workflows
+            Comprehensive quality control checkpoints and batch release management
           </p>
         </div>
       </div>
 
-      {/* Statistics Cards */}
+      {/* Tabs for QC Checkpoints and Batch Release */}
+      <Tabs defaultValue="checkpoints" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="checkpoints" data-testid="tab-checkpoints">QC Checkpoints</TabsTrigger>
+          <TabsTrigger value="batch-release" data-testid="tab-batch-release">Batch Release</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="checkpoints" className="space-y-6">
+          {/* QC Checkpoints Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -396,6 +457,145 @@ export default function QACheckpoints() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="batch-release" className="space-y-6">
+          {/* Batch Release Statistics Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
+                <Award className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="total-batches">
+                  {batchReleases.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ready for release
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Released Batches</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600" data-testid="released-batches">
+                  {batchReleases.filter(batch => batch.status === "Released").length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Approved for distribution
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Release</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600" data-testid="pending-batches">
+                  {batchReleases.filter(batch => batch.status === "Pending Release").length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Awaiting QA approval
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Certificates Generated</CardTitle>
+                <FileCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="certificates-generated">
+                  {batchReleases.filter(batch => batch.certificateNumber).length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  With COA numbers
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Batch Release Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="h-5 w-5" />
+                <span>Batch Release Management</span>
+              </CardTitle>
+              <CardDescription>
+                Manage batch releases with QA approval workflows and certificate generation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Batch Number</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Manufacturing Date</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>QA Manager</TableHead>
+                    <TableHead>Certificate</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {batchReleases.map((batch) => (
+                    <TableRow key={batch.id}>
+                      <TableCell>
+                        <div className="font-medium">{batch.batchNumber}</div>
+                        <div className="text-sm text-muted-foreground">{batch.orderNumber}</div>
+                      </TableCell>
+                      <TableCell>{batch.productName}</TableCell>
+                      <TableCell>{formatDate(batch.manufacturingDate)}</TableCell>
+                      <TableCell>{batch.quantity?.toLocaleString() || 'N/A'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          {getStatusIcon(batch.status)}
+                          <Badge variant={getStatusVariant(batch.status)}>
+                            {batch.status}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>{batch.qaManager}</TableCell>
+                      <TableCell>
+                        {batch.certificateNumber ? (
+                          <Badge variant="outline">{batch.certificateNumber}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">Pending</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="mr-1 h-3 w-3" />
+                            Review
+                          </Button>
+                          {batch.certificateNumber && (
+                            <Button size="sm" variant="outline">
+                              <Download className="mr-1 h-3 w-3" />
+                              COA
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
         </div>
       </div>
     </div>

@@ -43,9 +43,7 @@ const menuItems = [
     label: "Quality Assurance",
     icon: Shield,
     submenu: [
-      { label: "QA Dashboard", href: "/quality-assurance" },
-      { label: "QC Checkpoints", href: "/qa-checkpoints" },
-      { label: "Batch Release", href: "/qa-batch-release" },
+      { label: "QC & Batch Release", href: "/qa-checkpoints" },
       { label: "Digital Certificates", href: "/qa-certificates" },
       { label: "Audit Trail", href: "/qa-audit-trail" },
     ],

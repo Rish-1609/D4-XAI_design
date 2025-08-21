@@ -11,9 +11,7 @@ import ProductionOrders from "@/pages/production-orders";
 import BomManagement from "@/pages/bom-management";
 import InventoryOverview from "@/pages/inventory-overview";
 import StockMovements from "@/pages/stock-movements";
-import QualityAssurance from "@/pages/quality-assurance";
 import QACheckpoints from "@/pages/qa-checkpoints";
-import QABatchRelease from "@/pages/qa-batch-release";
 import QACertificates from "@/pages/qa-certificates";
 import QAAuditTrail from "@/pages/qa-audit-trail";
 import NotFound from "@/pages/not-found";
@@ -25,9 +23,7 @@ function Router() {
       <Route path="/production-orders" component={ProductionOrders} />
       <Route path="/inventory-overview" component={InventoryOverview} />
       <Route path="/stock-movements" component={StockMovements} />
-      <Route path="/quality-assurance" component={QualityAssurance} />
       <Route path="/qa-checkpoints" component={QACheckpoints} />
-      <Route path="/qa-batch-release" component={QABatchRelease} />
       <Route path="/qa-certificates" component={QACertificates} />
       <Route path="/qa-audit-trail" component={QAAuditTrail} />
       <Route path="/qc-setup" component={QCSetupEnhancedPage} />
