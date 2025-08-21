@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Sidebar } from "@/components/sidebar";
 import {
   Award,
   Download,
@@ -88,7 +89,10 @@ export default function QACertificates() {
   }, [certificates]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qa-certificates-page">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qa-certificates-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -280,6 +284,8 @@ export default function QACertificates() {
           </div>
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 }

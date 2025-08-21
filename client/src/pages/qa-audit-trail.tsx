@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Sidebar } from "@/components/sidebar";
 import {
   Shield,
   User,
@@ -183,7 +184,10 @@ export default function QAAuditTrail() {
   }, [auditEntries]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qa-audit-trail-page">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qa-audit-trail-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -441,6 +445,8 @@ export default function QAAuditTrail() {
           </div>
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 }

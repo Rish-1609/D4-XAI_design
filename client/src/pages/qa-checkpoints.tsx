@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Sidebar } from "@/components/sidebar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -215,7 +216,10 @@ export default function QACheckpoints() {
   }, [qcCheckpoints]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qc-checkpoints-page">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="qc-checkpoints-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -392,6 +396,8 @@ export default function QACheckpoints() {
           </Table>
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 }
