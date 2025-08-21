@@ -38,7 +38,18 @@ const menuItems = [
       { label: "Stock Movements", href: "/stock-movements" },
     ],
   },
-  { id: "quality-assurance", label: "Quality Assurance", icon: Shield, href: "/quality-assurance" },
+  {
+    id: "quality-assurance",
+    label: "Quality Assurance",
+    icon: Shield,
+    submenu: [
+      { label: "QA Dashboard", href: "/quality-assurance" },
+      { label: "QC Checkpoints", href: "/qa-checkpoints" },
+      { label: "Batch Release", href: "/qa-batch-release" },
+      { label: "Digital Certificates", href: "/qa-certificates" },
+      { label: "Audit Trail", href: "/qa-audit-trail" },
+    ],
+  },
   {
     id: "qc-management",
     label: "QC Management",
