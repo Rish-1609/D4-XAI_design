@@ -57,6 +57,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
+  ClipboardCheck,
+  Edit,
+  MessageSquare,
 } from "lucide-react";
 import type { ProductionOrder, TestResult } from "@shared/schema";
 
@@ -649,27 +652,10 @@ export default function QACheckpoints() {
               <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
                 <Button
                   size="sm"
-                  variant={viewMode === 'gantt' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('gantt')}
-                >
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                  Gantt
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('calendar')}
+                  variant="default"
                 >
                   <Calendar className="h-4 w-4 mr-1" />
-                  Calendar
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('list')}
-                >
-                  <ClipboardList className="h-4 w-4 mr-1" />
-                  List
+                  Calendar View
                 </Button>
               </div>
               <Button onClick={() => setShowCreateTask(true)}>
@@ -738,95 +724,7 @@ export default function QACheckpoints() {
             </Card>
           </div>
 
-          {/* View Mode Content */}
-          {viewMode === 'gantt' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2" />
-                  Gantt Chart View
-                </CardTitle>
-                <CardDescription>
-                  Task timeline and dependencies visualization
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Gantt Chart Timeline Header */}
-                  <div className="flex items-center space-x-4 overflow-x-auto">
-                    <div className="w-64 flex-shrink-0">
-                      <div className="text-sm font-medium">Task / Assignee</div>
-                    </div>
-                    <div className="flex space-x-1 min-w-max">
-                      {Array.from({ length: 14 }, (_, i) => {
-                        const date = new Date();
-                        date.setDate(date.getDate() - 7 + i);
-                        return (
-                          <div key={i} className="w-20 text-center text-xs font-medium py-2 border-r">
-                            {date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Gantt Chart Tasks */}
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {tasks.slice(0, 10).map((task) => (
-                      <div key={task.id} className="flex items-center space-x-4">
-                        <div className="w-64 flex-shrink-0">
-                          <div className="text-sm font-medium truncate">{task.title}</div>
-                          <div className="text-xs text-muted-foreground">{task.assignedTo}</div>
-                          <Badge 
-                            variant={
-                              task.priority === 'Critical' ? 'destructive' :
-                              task.priority === 'High' ? 'default' :
-                              task.priority === 'Medium' ? 'secondary' : 'outline'
-                            }
-                            className="text-xs"
-                          >
-                            {task.priority}
-                          </Badge>
-                        </div>
-                        <div className="flex space-x-1 min-w-max relative">
-                          {Array.from({ length: 14 }, (_, i) => {
-                            const date = new Date();
-                            date.setDate(date.getDate() - 7 + i);
-                            const taskStart = new Date(task.startDate);
-                            const taskEnd = new Date(task.dueDate);
-                            const isInRange = date >= taskStart && date <= taskEnd;
-                            const isToday = date.toDateString() === new Date().toDateString();
-                            
-                            return (
-                              <div 
-                                key={i} 
-                                className={`w-20 h-8 border-r flex items-center justify-center ${
-                                  isToday ? 'bg-blue-100' : ''
-                                }`}
-                              >
-                                {isInRange && (
-                                  <div 
-                                    className={`h-4 w-full rounded ${
-                                      task.status === 'Completed' ? 'bg-green-500' :
-                                      task.status === 'In Progress' ? 'bg-blue-500' :
-                                      task.status === 'Not Started' ? 'bg-gray-300' :
-                                      'bg-red-500'
-                                    }`}
-                                  />
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {viewMode === 'calendar' && (
+          {/* Editable Calendar View */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -1026,125 +924,111 @@ export default function QACheckpoints() {
                 )}
               </CardContent>
             </Card>
-          )}
 
-          {viewMode === 'list' && (
-            <div className="space-y-4">
-              {/* Filters for List View */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Task Management</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search tasks..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Select>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Filter by assignee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Team Members</SelectItem>
-                        {teamMembers.map(member => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select>
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Task type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="Batch Release">Batch Release</SelectItem>
-                        <SelectItem value="Equipment Audit">Equipment Audit</SelectItem>
-                        <SelectItem value="Location Audit">Location Audit</SelectItem>
-                        <SelectItem value="Custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tasks List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Task List</CardTitle>
-                  <CardDescription>
-                    All assigned tasks with details and progress tracking
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {tasks.map((task) => (
-                      <div key={task.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <h4 className="font-medium">{task.title}</h4>
-                              <Badge variant="outline">{task.type}</Badge>
-                              <Badge 
-                                variant={
-                                  task.priority === 'Critical' ? 'destructive' :
-                                  task.priority === 'High' ? 'default' :
-                                  task.priority === 'Medium' ? 'secondary' : 'outline'
-                                }
-                              >
-                                {task.priority}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
-                            <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
-                              <span>📋 {task.relatedBatch || 'N/A'}</span>
-                              <span>⏱️ {task.estimatedHours}h estimated</span>
-                              <span>📅 Due: {formatDate(task.dueDate)}</span>
-                            </div>
+          {/* Audit Tracking Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <ClipboardCheck className="h-5 w-5 mr-2" />
+                Scheduled Audits Tracker
+              </CardTitle>
+              <CardDescription>
+                Comprehensive tracking of all scheduled audits with status monitoring and details management
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Audit Task</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Scheduled Date</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tasks.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{task.title}</div>
+                          <div className="text-sm text-muted-foreground truncate max-w-xs">
+                            {task.description}
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge 
-                              variant={
-                                task.status === 'Completed' ? 'default' :
-                                task.status === 'In Progress' ? 'secondary' :
-                                task.status === 'Not Started' ? 'outline' : 'destructive'
-                              }
-                            >
-                              {task.status}
+                          {task.relatedBatch && (
+                            <Badge variant="outline" className="mt-1 text-xs">
+                              {task.relatedBatch}
                             </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {task.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium">
+                            {task.assignedTo.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <span className="text-sm">{task.assignedTo}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{formatDate(task.startDate)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Due: {formatDate(task.dueDate)}
                           </div>
                         </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{task.assignedTo}</span>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
-                              <Eye className="mr-1 h-3 w-3" />
-                              View
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Settings className="mr-1 h-3 w-3" />
-                              Edit
-                            </Button>
-                          </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            task.priority === 'Critical' ? 'destructive' :
+                            task.priority === 'High' ? 'default' :
+                            task.priority === 'Medium' ? 'secondary' : 'outline'
+                          }
+                          className="text-xs"
+                        >
+                          {task.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            task.status === 'Completed' ? 'bg-green-500' :
+                            task.status === 'In Progress' ? 'bg-blue-500' :
+                            task.status === 'Not Started' ? 'bg-gray-300' :
+                            'bg-red-500'
+                          }`} />
+                          <Badge 
+                            variant={
+                              task.status === 'Completed' ? 'default' :
+                              task.status === 'In Progress' ? 'secondary' :
+                              task.status === 'Not Started' ? 'outline' : 'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {task.status}
+                          </Badge>
                         </div>
-                        
-                        {/* Progress bar for checklist completion */}
-                        <div className="space-y-1">
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 min-w-[120px]">
                           <div className="flex justify-between text-xs">
-                            <span>Progress</span>
                             <span>
-                              {task.checklist.filter(c => c.completed).length}/{task.checklist.length} completed
+                              {task.checklist.filter(c => c.completed).length}/{task.checklist.length}
+                            </span>
+                            <span>
+                              {task.checklist.length > 0 
+                                ? Math.round((task.checklist.filter(c => c.completed).length / task.checklist.length) * 100) 
+                                : 0}%
                             </span>
                           </div>
                           <Progress 
@@ -1156,13 +1040,26 @@ export default function QACheckpoints() {
                             className="h-2"
                           />
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-1">
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                            <MessageSquare className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
           {/* Team Members Overview */}
           <Card>
