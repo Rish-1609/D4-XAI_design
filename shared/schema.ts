@@ -141,6 +141,35 @@ export const sopVersions = pgTable("sop_versions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// SOP Change Requests for approval workflow
+export const sopChangeRequests = pgTable("sop_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sopId: varchar("sop_id").references(() => sops.id).notNull(),
+  requestType: text("request_type").notNull(), // 'update', 'revision', 'archive'
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  justification: text("justification").notNull(), // Business justification for change
+  proposedVersion: text("proposed_version"), // Next version number
+  newFilePath: text("new_file_path"), // Path to new document version
+  newFileName: text("new_file_name"), // New file name
+  newFileSize: integer("new_file_size"), // New file size
+  status: text("status").notNull().default('pending'), // 'pending', 'approved', 'rejected', 'cancelled'
+  priority: text("priority").notNull().default('medium'), // 'low', 'medium', 'high', 'urgent'
+  requestedBy: text("requested_by").notNull(),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewComments: text("review_comments"),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  implementedAt: timestamp("implemented_at"),
+  rejectedBy: text("rejected_by"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertSopSchema = createInsertSchema(sops).omit({
   id: true,
   createdAt: true,
@@ -152,10 +181,18 @@ export const insertSopVersionSchema = createInsertSchema(sopVersions).omit({
   createdAt: true,
 });
 
+export const insertSopChangeRequestSchema = createInsertSchema(sopChangeRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertSop = z.infer<typeof insertSopSchema>;
 export type Sop = typeof sops.$inferSelect;
 export type InsertSopVersion = z.infer<typeof insertSopVersionSchema>;
 export type SopVersion = typeof sopVersions.$inferSelect;
+export type InsertSopChangeRequest = z.infer<typeof insertSopChangeRequestSchema>;
+export type SopChangeRequest = typeof sopChangeRequests.$inferSelect;
 
 // Production Orders Schema
 export const productionOrders = pgTable("production_orders", {
