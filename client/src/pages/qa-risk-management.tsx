@@ -742,27 +742,14 @@ export default function QARiskManagement() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Risks</CardTitle>
-                    <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">Critical & High</CardTitle>
+                    <AlertTriangle className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-total-risks">{riskStats.total}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Identified and assessed
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Critical & High</CardTitle>
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600" data-testid="text-critical-high">{riskStats.critical + riskStats.high}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-red-600" data-testid="text-critical-high">{riskStats.critical + riskStats.high}</div>
                     <p className="text-xs text-muted-foreground">
                       Require priority attention
                     </p>
@@ -770,12 +757,12 @@ export default function QARiskManagement() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Controls</CardTitle>
-                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">Active Controls</CardTitle>
+                    <Shield className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600" data-testid="text-active-controls">{riskStats.activeControls}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-green-600" data-testid="text-active-controls">{riskStats.activeControls}</div>
                     <p className="text-xs text-muted-foreground">
                       Currently implemented
                     </p>
@@ -783,12 +770,12 @@ export default function QARiskManagement() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Avg. Risk Score</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">Avg. Risk Score</CardTitle>
+                    <Target className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-600" data-testid="text-avg-risk-score">{riskStats.avgRiskScore}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-blue-600" data-testid="text-avg-risk-score">{riskStats.avgRiskScore}</div>
                     <p className="text-xs text-muted-foreground">
                       Out of 25 maximum
                     </p>

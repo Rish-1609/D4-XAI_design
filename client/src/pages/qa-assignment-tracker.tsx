@@ -34,6 +34,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Sidebar } from "@/components/sidebar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle,
@@ -1583,6 +1591,190 @@ export default function QAAssignmentTracker() {
             </TabsContent>
           </Tabs>
         </main>
+
+        {/* Create Task Dialog */}
+        {showCreateTask && (
+          <Dialog open={showCreateTask} onOpenChange={setShowCreateTask}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-blue-600" />
+                  Create New QA Task
+                </DialogTitle>
+                <DialogDescription>
+                  Create a new quality assurance task and assign it to a team member
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Task Title *</label>
+                    <Input 
+                      placeholder="Enter task title"
+                      data-testid="input-task-title"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Category *</label>
+                    <Select>
+                      <SelectTrigger data-testid="select-task-category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(QA_TASK_CATEGORIES).map(([key, category]) => (
+                          <SelectItem key={key} value={key}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Description</label>
+                  <textarea 
+                    className="w-full min-h-[80px] p-2 border rounded-md resize-y"
+                    placeholder="Detailed task description..."
+                    data-testid="textarea-task-description"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Priority *</label>
+                    <Select>
+                      <SelectTrigger data-testid="select-task-priority">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Assigned To *</label>
+                    <Select>
+                      <SelectTrigger data-testid="select-task-assignee">
+                        <SelectValue placeholder="Select assignee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            <div className="flex items-center space-x-2">
+                              <span>{employee.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {employee.role}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Due Date *</label>
+                    <Input 
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      data-testid="input-task-due-date"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Estimated Hours</label>
+                    <Input 
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      placeholder="Hours"
+                      data-testid="input-estimated-hours"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Department</label>
+                    <Select>
+                      <SelectTrigger data-testid="select-task-department">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Quality Assurance">Quality Assurance</SelectItem>
+                        <SelectItem value="Quality Control">Quality Control</SelectItem>
+                        <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                        <SelectItem value="Regulatory Affairs">Regulatory Affairs</SelectItem>
+                        <SelectItem value="Research & Development">Research & Development</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Risk Level</label>
+                  <Select>
+                    <SelectTrigger data-testid="select-risk-level">
+                      <SelectValue placeholder="Select risk level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Task Checklist</label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                    <div className="flex items-center space-x-2">
+                      <Input 
+                        placeholder="Add checklist item..."
+                        className="h-8"
+                        data-testid="input-checklist-item"
+                      />
+                      <Button size="sm" className="h-8">
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="text-sm text-gray-600">
+                    <p><strong>Creation Date:</strong> {new Date().toLocaleDateString()}</p>
+                    <p><strong>Created By:</strong> Current User</p>
+                    <p><strong>Task ID:</strong> Will be auto-generated</p>
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setShowCreateTask(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => {
+                    // TODO: Implement task creation logic
+                    toast({
+                      title: "Task Created",
+                      description: "New QA task has been successfully created and assigned.",
+                    });
+                    setShowCreateTask(false);
+                  }}
+                  data-testid="button-submit-task"
+                >
+                  Create Task
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
