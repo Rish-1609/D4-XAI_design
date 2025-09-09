@@ -2,19 +2,20 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertBomSchema, type Bom, type InsertBom, type BomMaterial } from "@shared/schema";
-import { Layers, Plus, Search, Filter, ChevronDown, ChevronRight, Edit, Trash2, Package } from "lucide-react";
+import { insertBomSchema, insertBomChangeRequestSchema, type Bom, type InsertBom, type BomMaterial, type BomChangeRequest, type InsertBomChangeRequest } from "@shared/schema";
+import { Plus, Search, ChevronDown, ChevronRight, FileText, GitBranch, Clock, CheckCircle, XCircle, Package2, Palette, FileBox } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -31,43 +32,62 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const formatCurrency = (paise: number) => {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
-
-const formatShelfLife = (days: number | null | undefined) => {
-  if (!days) return 'N/A';
-  if (days >= 365) {
-    const years = Math.floor(days / 365);
-    const remainingDays = days % 365;
-    if (remainingDays === 0) {
-      return `${years} year${years > 1 ? 's' : ''}`;
-    }
-    const months = Math.round(remainingDays / 30);
-    return `${years}y ${months}m`;
+const getChangeRequestStatusColor = (status: string) => {
+  switch (status) {
+    case "approved":
+      return "bg-green-500";
+    case "rejected":
+      return "bg-red-500";
+    case "pending":
+    default:
+      return "bg-yellow-500";
   }
-  if (days >= 30) {
-    const months = Math.floor(days / 30);
-    const remainingDays = days % 30;
-    if (remainingDays === 0) {
-      return `${months} month${months > 1 ? 's' : ''}`;
-    }
-    return `${months}m ${remainingDays}d`;
+};
+
+const getChangeRequestStatusIcon = (status: string) => {
+  switch (status) {
+    case "approved":
+      return <CheckCircle className="w-4 h-4" />;
+    case "rejected":
+      return <XCircle className="w-4 h-4" />;
+    case "pending":
+    default:
+      return <Clock className="w-4 h-4" />;
   }
-  return `${days} day${days > 1 ? 's' : ''}`;
 };
 
-const formatQuantity = (quantity: number, precision = 1000) => {
-  return (quantity / precision).toString();
+const getMaterialTypeIcon = (type: string) => {
+  switch (type) {
+    case "raw-materials":
+      return <Package2 className="w-5 h-5 text-blue-600" />;
+    case "packaging-materials":
+      return <FileBox className="w-5 h-5 text-green-600" />;
+    case "artwork":
+      return <Palette className="w-5 h-5 text-purple-600" />;
+    default:
+      return <Package2 className="w-5 h-5 text-gray-600" />;
+  }
 };
 
-const formatScrapPercentage = (scrapPercentage: number) => {
-  return `${(scrapPercentage / 100)}%`;
+const getMaterialTypeName = (type: string) => {
+  switch (type) {
+    case "raw-materials":
+      return "Raw Materials";
+    case "packaging-materials":
+      return "Packaging Materials";
+    case "artwork":
+      return "Artwork";
+    default:
+      return "Other Materials";
+  }
 };
 
 export default function BomManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isChangeRequestDialogOpen, setIsChangeRequestDialogOpen] = useState(false);
+  const [selectedBom, setSelectedBom] = useState<string>("");
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("boms");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -76,9 +96,14 @@ export default function BomManagement() {
     queryFn: () => fetch("/api/boms").then(res => res.json()),
   });
 
-  const { data: bomStats } = useQuery({
-    queryKey: ["/api/bom-stats"],
-    queryFn: () => fetch("/api/bom-stats").then(res => res.json()),
+  const { data: materials = [] } = useQuery({
+    queryKey: ["/api/materials"],
+    queryFn: () => fetch("/api/materials").then(res => res.json()),
+  });
+
+  const { data: changeRequests = [] } = useQuery<BomChangeRequest[]>({
+    queryKey: ["/api/bom-change-requests"],
+    queryFn: () => fetch("/api/bom-change-requests").then(res => res.json()),
   });
 
   // Query for BOM materials when BOM is expanded
@@ -117,6 +142,19 @@ export default function BomManagement() {
     },
   });
 
+  const changeRequestForm = useForm<InsertBomChangeRequest>({
+    resolver: zodResolver(insertBomChangeRequestSchema),
+    defaultValues: {
+      bomId: "",
+      requestedBy: "system",
+      changeType: "version_update",
+      changeDescription: "",
+      businessJustification: "",
+      proposedVersion: "",
+      impactAssessment: "",
+    },
+  });
+
   const createBomMutation = useMutation({
     mutationFn: async (data: InsertBom) => {
       const response = await fetch("/api/boms", {
@@ -129,7 +167,6 @@ export default function BomManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/boms"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/bom-stats"] });
       setIsCreateDialogOpen(false);
       form.reset();
       toast({ title: "Success", description: "BOM created successfully." });
@@ -143,8 +180,77 @@ export default function BomManagement() {
     },
   });
 
+  const createChangeRequestMutation = useMutation({
+    mutationFn: async (data: InsertBomChangeRequest) => {
+      const response = await fetch("/api/bom-change-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to create change request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bom-change-requests"] });
+      setIsChangeRequestDialogOpen(false);
+      changeRequestForm.reset();
+      setSelectedBom("");
+      toast({ title: "Success", description: "Change request created successfully." });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create change request.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveChangeRequestMutation = useMutation({
+    mutationFn: async ({ id, approvedBy, reviewComments }: { id: string; approvedBy: string; reviewComments?: string }) => {
+      const response = await fetch(`/api/bom-change-requests/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvedBy, reviewComments }),
+      });
+      if (!response.ok) throw new Error("Failed to approve change request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bom-change-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boms"] });
+      toast({ title: "Success", description: "Change request approved successfully." });
+    },
+  });
+
+  const rejectChangeRequestMutation = useMutation({
+    mutationFn: async ({ id, rejectedBy, rejectionReason }: { id: string; rejectedBy: string; rejectionReason: string }) => {
+      const response = await fetch(`/api/bom-change-requests/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejectedBy, rejectionReason }),
+      });
+      if (!response.ok) throw new Error("Failed to reject change request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bom-change-requests"] });
+      toast({ title: "Success", description: "Change request rejected successfully." });
+    },
+  });
+
   const onSubmit = (data: InsertBom) => {
     createBomMutation.mutate(data);
+  };
+
+  const onChangeRequestSubmit = (data: InsertBomChangeRequest) => {
+    createChangeRequestMutation.mutate(data);
+  };
+
+  const handleRequestChange = (bomId: string) => {
+    setSelectedBom(bomId);
+    changeRequestForm.setValue("bomId", bomId);
+    setIsChangeRequestDialogOpen(true);
   };
 
   const toggleBomExpansion = (bomId: string) => {
@@ -158,6 +264,22 @@ export default function BomManagement() {
       return newSet;
     });
   };
+
+  // Group materials by type
+  const materialsByType = materials.reduce((acc: Record<string, any[]>, material: any) => {
+    const type = material.type || 'other';
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(material);
+    return acc;
+  }, {});
+
+  // Group BOMs by material types they contain
+  const bomsWithMaterials = boms.map(bom => ({
+    ...bom,
+    materialTypes: ['raw-materials', 'packaging-materials', 'artwork'], // For demo, in real app get from BOM materials
+  }));
+
+  const materialTypes = ['raw-materials', 'packaging-materials', 'artwork'];
 
   if (isLoading) {
     return (
@@ -180,16 +302,171 @@ export default function BomManagement() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">BOM Management</h2>
-              <p className="text-gray-600 text-sm mt-1">Manage your Bill of Materials and sub-assemblies</p>
+              <p className="text-gray-600 text-sm mt-1">Hierarchical Bill of Materials with change control</p>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-green-600 hover:bg-green-700 text-white" data-testid="button-create-bom">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create BOM
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
+            <div className="flex space-x-2">
+              <Dialog open={isChangeRequestDialogOpen} onOpenChange={setIsChangeRequestDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-request-change">
+                    <GitBranch className="w-4 h-4 mr-2" />
+                    Request Change
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Request BOM Change</DialogTitle>
+                  </DialogHeader>
+                  <Form {...changeRequestForm}>
+                    <form onSubmit={changeRequestForm.handleSubmit(onChangeRequestSubmit)} className="space-y-4">
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="bomId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>BOM *</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-bom">
+                                  <SelectValue placeholder="Select BOM" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {boms.map((bom) => (
+                                  <SelectItem key={bom.id} value={bom.id}>
+                                    {bom.bomNumber} - {bom.productName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="changeType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Change Type *</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-change-type">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="version_update">Version Update</SelectItem>
+                                <SelectItem value="material_change">Material Change</SelectItem>
+                                <SelectItem value="specification_change">Specification Change</SelectItem>
+                                <SelectItem value="process_change">Process Change</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="proposedVersion"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Proposed Version</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. 2.0" {...field} value={field.value || ""} data-testid="input-proposed-version" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="changeDescription"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Change Description *</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Describe the proposed changes..."
+                                {...field} 
+                                data-testid="textarea-change-description"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="businessJustification"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Business Justification *</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Explain the business reason for this change..."
+                                {...field} 
+                                data-testid="textarea-business-justification"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="impactAssessment"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Impact Assessment</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Assess the impact of this change..."
+                                {...field} 
+                                value={field.value || ""}
+                                data-testid="textarea-impact-assessment"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsChangeRequestDialogOpen(false)}
+                          data-testid="button-cancel-change"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="bg-blue-600 hover:bg-blue-700"
+                          disabled={createChangeRequestMutation.isPending}
+                          data-testid="button-submit-change"
+                        >
+                          {createChangeRequestMutation.isPending ? "Submitting..." : "Submit Request"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700 text-white" data-testid="button-create-bom">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create BOM
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create BOM</DialogTitle>
                 </DialogHeader>
@@ -297,241 +574,230 @@ export default function BomManagement() {
                 </Form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </header>
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-6">
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <Layers className="h-8 w-8 text-blue-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Total BOMs</p>
-                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-total-boms">
-                        {bomStats?.totalBoms || 0}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <Package className="h-8 w-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Raw Materials</p>
-                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-raw-materials">
-                        {bomStats?.rawMaterials || 0}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                      <div className="h-4 w-4 bg-yellow-600 rounded-full"></div>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Live Stock Items</p>
-                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-live-stock">
-                        {bomStats?.liveStockItems || 0}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-purple-600 font-bold text-lg">$</span>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Total BOM Value</p>
-                      <p className="text-2xl font-bold text-gray-900" data-testid="stat-total-value">
-                        {formatCurrency((bomStats?.totalBomValue || 0) * 100)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filters */}
+            {/* Search Bar */}
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
               <div className="flex items-center space-x-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    placeholder="Search BOMs by name, SKU, version, BOM number, or creator..."
+                    placeholder="Search BOMs and change requests..."
                     className="pl-10"
                     data-testid="input-search-boms"
                   />
                 </div>
-                <Button variant="outline" className="flex items-center">
-                  All Status
-                  <ChevronDown className="w-4 h-4 ml-2" />
-                </Button>
-                <Button variant="outline" className="flex items-center bg-green-600 text-white hover:bg-green-700">
-                  Export
-                </Button>
               </div>
             </div>
 
-            {/* BOMs Table */}
-            <Card>
-              <CardContent className="p-0">
-                <div className="space-y-0">
-                  {boms.map((bom) => {
-                    const isExpanded = expandedBoms.has(bom.id);
-                    const materials = bomMaterialsQueries.data?.[bom.id] || [];
-                    
-                    return (
-                      <div key={bom.id} className="border-b border-gray-100 last:border-b-0">
-                        <Collapsible>
-                          <CollapsibleTrigger asChild>
-                            <div
-                              className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
-                              onClick={() => toggleBomExpansion(bom.id)}
-                              data-testid={`bom-row-${bom.id}`}
-                            >
-                              <div className="flex items-center space-x-4">
-                                <div className="flex items-center">
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4 text-gray-500" />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-gray-900">
-                                    SKU: {bom.bomNumber} - {bom.productName}
+            {/* Tabbed Content */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="boms" data-testid="tab-boms">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Bill of Materials
+                </TabsTrigger>
+                <TabsTrigger value="change-requests" data-testid="tab-change-requests">
+                  <GitBranch className="w-4 h-4 mr-2" />
+                  Change Requests ({changeRequests.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="boms" className="space-y-4">
+                {/* Hierarchical BOM Display */}
+                {materialTypes.map((type) => {
+                  const relevantBoms = bomsWithMaterials.filter(bom => bom.materialTypes.includes(type));
+                  if (relevantBoms.length === 0) return null;
+                  
+                  return (
+                    <Card key={type}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center text-lg">
+                          {getMaterialTypeIcon(type)}
+                          <span className="ml-2">{getMaterialTypeName(type)}</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {relevantBoms.length} BOMs
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          {relevantBoms.map((bom) => (
+                            <div key={bom.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                  <div>
+                                    <h4 className="font-semibold text-gray-900">
+                                      {bom.bomNumber} - {bom.productName}
+                                    </h4>
+                                    <p className="text-sm text-gray-500">
+                                      Version {bom.version} • Created by {bom.createdBy}
+                                    </p>
                                   </div>
-                                  <div className="text-sm text-gray-500">
-                                    Version {bom.version} | Status: {bom.status}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center space-x-6">
-                                <div className="text-right mr-4">
-                                  <div className="font-semibold text-gray-900">
-                                    {formatCurrency(bom.totalCost)}
-                                  </div>
-                                  <div className="text-sm text-gray-500">Total Cost</div>
-                                </div>
-                                
-                                <div className="text-right">
-                                  <div className="font-semibold text-gray-900">
-                                    {formatShelfLife(bom.shelfLifeDays)}
-                                  </div>
-                                  <div className="text-sm text-gray-500">Shelf Life</div>
                                 </div>
                                 
-                                <Badge className={`${getStatusColor(bom.status)} text-white`}>
-                                  {bom.status.toUpperCase()}
-                                </Badge>
-                                
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-3">
+                                  <Badge className={`${getStatusColor(bom.status)} text-white`}>
+                                    {bom.status.toUpperCase()}
+                                  </Badge>
+                                  
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    data-testid={`button-edit-${bom.id}`}
+                                    onClick={() => handleRequestChange(bom.id)}
+                                    data-testid={`button-request-change-${bom.id}`}
                                   >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    data-testid={`button-delete-${bom.id}`}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
+                                    <GitBranch className="w-4 h-4 mr-1" />
+                                    Request Change
                                   </Button>
                                 </div>
                               </div>
                             </div>
-                          </CollapsibleTrigger>
-                          
-                          {isExpanded && (
-                            <CollapsibleContent>
-                              <div className="bg-gray-50 px-4 pb-4">
-                                <div className="mb-2">
-                                  <span className="text-sm font-medium text-gray-700">
-                                    📦 Raw Materials ({materials.length})
-                                  </span>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+                
+                {boms.length === 0 && (
+                  <Card>
+                    <CardContent className="text-center py-12">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No BOMs Found</h3>
+                      <p className="text-gray-600 mb-4">Create your first BOM to get started.</p>
+                      <Button 
+                        onClick={() => setIsCreateDialogOpen(true)}
+                        className="bg-green-600 hover:bg-green-700"
+                        data-testid="button-create-first-bom"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create BOM
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="change-requests" className="space-y-4">
+                {changeRequests.length > 0 ? (
+                  <Card>
+                    <CardContent className="p-0">
+                      <div className="divide-y divide-gray-200">
+                        {changeRequests.map((request) => {
+                          const bom = boms.find(b => b.id === request.bomId);
+                          return (
+                            <div key={request.id} className="p-6 hover:bg-gray-50">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start space-x-4">
+                                  <div className="flex-shrink-0">
+                                    {getChangeRequestStatusIcon(request.status)}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <h4 className="font-semibold text-gray-900">
+                                        {bom ? `${bom.bomNumber} - ${bom.productName}` : 'Unknown BOM'}
+                                      </h4>
+                                      <Badge className={`${getChangeRequestStatusColor(request.status)} text-white`}>
+                                        {request.status.toUpperCase()}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mb-3">
+                                      {request.changeDescription}
+                                    </p>
+                                    <div className="text-xs text-gray-500 space-x-4">
+                                      <span>Type: {request.changeType.replace('_', ' ').toUpperCase()}</span>
+                                      <span>•</span>
+                                      <span>Requested by: {request.requestedBy}</span>
+                                      <span>•</span>
+                                      <span>Requested: {new Date(request.requestedAt).toLocaleDateString()}</span>
+                                      {request.proposedVersion && (
+                                        <>
+                                          <span>•</span>
+                                          <span>Version: {request.proposedVersion}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                                 
-                                <div className="bg-white rounded border">
-                                  <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                      <tr>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">MATERIAL</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">QUANTITY</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">UOM</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">UNIT COST</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">SCRAP %</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">TOTAL COST</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">SHELF LIFE</th>
-                                        <th className="text-left py-2 px-3 font-medium text-gray-600">STOCK STATUS</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {materials.map((material) => (
-                                        <tr key={material.id} className="border-t border-gray-100">
-                                          <td className="py-2 px-3">
-                                            <div>
-                                              <div className="font-medium">{material.materialCode}</div>
-                                              <div className="text-gray-500 text-xs">{material.materialName}</div>
-                                            </div>
-                                          </td>
-                                          <td className="py-2 px-3">{formatQuantity(material.quantity)}</td>
-                                          <td className="py-2 px-3">{material.uom}</td>
-                                          <td className="py-2 px-3">{formatCurrency(material.unitCost)}</td>
-                                          <td className="py-2 px-3">{formatScrapPercentage(material.scrapPercentage)}</td>
-                                          <td className="py-2 px-3 font-medium">{formatCurrency(material.totalCost)}</td>
-                                          <td className="py-2 px-3 text-sm">{formatShelfLife(material.shelfLifeDays)}</td>
-                                          <td className="py-2 px-3">
-                                            <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                                              Unknown
-                                            </Badge>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                
-                                <div className="mt-3 flex justify-between items-center text-sm">
-                                  <div className="text-gray-600">
-                                    <span>Created By: {bom.createdBy}</span>
-                                    <span className="mx-2">|</span>
-                                    <span>Approved By: {bom.approvedBy}</span>
-                                    <span className="mx-2">|</span>
-                                    <span>Created At: {bom.createdAt ? new Date(bom.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                {request.status === 'pending' && (
+                                  <div className="flex items-center space-x-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-green-600 border-green-600 hover:bg-green-50"
+                                      onClick={() => approveChangeRequestMutation.mutate({ 
+                                        id: request.id, 
+                                        approvedBy: 'system', 
+                                        reviewComments: 'Approved via UI'
+                                      })}
+                                      disabled={approveChangeRequestMutation.isPending}
+                                      data-testid={`button-approve-${request.id}`}
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600 border-red-600 hover:bg-red-50"
+                                      onClick={() => rejectChangeRequestMutation.mutate({ 
+                                        id: request.id, 
+                                        rejectedBy: 'system', 
+                                        rejectionReason: 'Rejected via UI'
+                                      })}
+                                      disabled={rejectChangeRequestMutation.isPending}
+                                      data-testid={`button-reject-${request.id}`}
+                                    >
+                                      <XCircle className="w-4 h-4 mr-1" />
+                                      Reject
+                                    </Button>
                                   </div>
-                                  <div className="text-gray-600">
-                                    Items Count: {materials.length} items
-                                  </div>
-                                </div>
+                                )}
                               </div>
-                            </CollapsibleContent>
-                          )}
-                        </Collapsible>
+                              
+                              {(request.reviewComments || request.rejectionReason) && (
+                                <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+                                  <p className="text-sm font-medium text-gray-700 mb-1">
+                                    {request.status === 'approved' ? 'Review Comments:' : 'Rejection Reason:'}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    {request.reviewComments || request.rejectionReason}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="text-center py-12">
+                      <GitBranch className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Change Requests</h3>
+                      <p className="text-gray-600 mb-4">All BOM change requests will appear here.</p>
+                      <Button 
+                        onClick={() => setIsChangeRequestDialogOpen(true)}
+                        variant="outline"
+                        disabled={boms.length === 0}
+                        data-testid="button-create-change-request"
+                      >
+                        <GitBranch className="w-4 h-4 mr-2" />
+                        Request Change
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
