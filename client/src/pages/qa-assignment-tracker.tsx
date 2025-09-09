@@ -88,6 +88,7 @@ import {
   X,
   Copy,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 
 // Comprehensive QA Task Categories and Types
@@ -500,6 +501,25 @@ export default function QAAssignmentTracker() {
   const [dueDateFilter, setDueDateFilter] = useState<string>("");
   const [dateFilterType, setDateFilterType] = useState<"all" | "today" | "this_week" | "this_month" | "overdue" | "custom">("all");
   
+  // Table column filters for QA Tasks
+  const [taskColumnFilters, setTaskColumnFilters] = useState({
+    title: [] as string[],
+    category: [] as string[],
+    assignedTo: [] as string[],
+    priority: [] as string[],
+    status: [] as string[],
+    department: [] as string[]
+  });
+  
+  // Table column filters for Employee Assignments
+  const [employeeColumnFilters, setEmployeeColumnFilters] = useState({
+    name: [] as string[],
+    role: [] as string[],
+    department: [] as string[],
+    status: [] as string[],
+    shift: [] as string[]
+  });
+  
   // Date tracking states
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -517,6 +537,116 @@ export default function QAAssignmentTracker() {
   const [taskHistory, setTaskHistory] = useState<HistoricalEntry<QATask>[]>([]);
 
   const { toast } = useToast();
+
+  // Helper functions for table column filters
+  const getUniqueValues = (data: any[], key: string) => {
+    return Array.from(new Set(data.map(item => item[key]))).filter(Boolean).sort();
+  };
+
+  const toggleColumnFilter = (column: string, value: string, isTask: boolean = true) => {
+    if (isTask) {
+      setTaskColumnFilters(prev => ({
+        ...prev,
+        [column]: prev[column as keyof typeof prev].includes(value)
+          ? prev[column as keyof typeof prev].filter((v: string) => v !== value)
+          : [...prev[column as keyof typeof prev], value]
+      }));
+    } else {
+      setEmployeeColumnFilters(prev => ({
+        ...prev,
+        [column]: prev[column as keyof typeof prev].includes(value)
+          ? prev[column as keyof typeof prev].filter((v: string) => v !== value)
+          : [...prev[column as keyof typeof prev], value]
+      }));
+    }
+  };
+
+  const clearColumnFilter = (column: string, isTask: boolean = true) => {
+    if (isTask) {
+      setTaskColumnFilters(prev => ({ ...prev, [column]: [] }));
+    } else {
+      setEmployeeColumnFilters(prev => ({ ...prev, [column]: [] }));
+    }
+  };
+
+  // Column Filter Component
+  const ColumnFilter = ({ 
+    column, 
+    data, 
+    currentFilters, 
+    isTask = true,
+    keyExtractor = (item) => item 
+  }: {
+    column: string;
+    data: any[];
+    currentFilters: string[];
+    isTask?: boolean;
+    keyExtractor?: (item: any) => string;
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const uniqueValues = getUniqueValues(data, column);
+    
+    return (
+      <div className="relative inline-block">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 hover:bg-gray-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          data-testid={`filter-${column}-${isTask ? 'task' : 'employee'}`}
+        >
+          <ChevronDown className={`h-3 w-3 ${currentFilters.length > 0 ? 'text-blue-600' : 'text-gray-400'}`} />
+        </Button>
+        {isOpen && (
+          <div className="absolute top-8 right-0 z-50 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            <div className="p-2">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-medium text-gray-700">Filter by {column}</span>
+                {currentFilters.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
+                    onClick={() => clearColumnFilter(column, isTask)}
+                    data-testid={`clear-filter-${column}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {uniqueValues.map((value) => (
+                  <label key={value} className="flex items-center space-x-2 text-xs hover:bg-gray-50 p-1 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={currentFilters.includes(value)}
+                      onChange={() => toggleColumnFilter(column, value, isTask)}
+                      className="h-3 w-3 text-blue-600 rounded border-gray-300"
+                      data-testid={`filter-option-${value}`}
+                    />
+                    <span className="truncate">{value}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="pt-2 mt-2 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-6 text-xs"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Save historical data function
   const saveToHistory = useCallback((type: 'employees' | 'tasks', changes: string[]) => {
@@ -656,8 +786,33 @@ export default function QAAssignmentTracker() {
       filtered = filtered.filter(emp => emp.department === departmentFilter);
     }
 
+    // Apply table column filters for employees
+    if (employeeColumnFilters.name.length > 0) {
+      filtered = filtered.filter(emp => 
+        employeeColumnFilters.name.some(filterValue => 
+          emp.name.toLowerCase().includes(filterValue.toLowerCase())
+        )
+      );
+    }
+    
+    if (employeeColumnFilters.role.length > 0) {
+      filtered = filtered.filter(emp => employeeColumnFilters.role.includes(emp.role));
+    }
+    
+    if (employeeColumnFilters.department.length > 0) {
+      filtered = filtered.filter(emp => employeeColumnFilters.department.includes(emp.department));
+    }
+    
+    if (employeeColumnFilters.status.length > 0) {
+      filtered = filtered.filter(emp => employeeColumnFilters.status.includes(emp.status));
+    }
+    
+    if (employeeColumnFilters.shift.length > 0) {
+      filtered = filtered.filter(emp => employeeColumnFilters.shift.includes(emp.shift));
+    }
+
     return filtered;
-  }, [searchTerm, statusFilter, departmentFilter]);
+  }, [searchTerm, statusFilter, departmentFilter, employeeColumnFilters]);
 
   // Filter tasks based on search and filters
   const filteredTasks = useMemo(() => {
@@ -681,6 +836,35 @@ export default function QAAssignmentTracker() {
 
     if (priorityFilter !== "all") {
       filtered = filtered.filter(task => task.priority === priorityFilter);
+    }
+
+    // Apply table column filters
+    if (taskColumnFilters.title.length > 0) {
+      filtered = filtered.filter(task => 
+        taskColumnFilters.title.some(filterValue => 
+          task.title.toLowerCase().includes(filterValue.toLowerCase())
+        )
+      );
+    }
+    
+    if (taskColumnFilters.category.length > 0) {
+      filtered = filtered.filter(task => taskColumnFilters.category.includes(task.category));
+    }
+    
+    if (taskColumnFilters.assignedTo.length > 0) {
+      filtered = filtered.filter(task => taskColumnFilters.assignedTo.includes(task.assignedTo));
+    }
+    
+    if (taskColumnFilters.priority.length > 0) {
+      filtered = filtered.filter(task => taskColumnFilters.priority.includes(task.priority));
+    }
+    
+    if (taskColumnFilters.status.length > 0) {
+      filtered = filtered.filter(task => taskColumnFilters.status.includes(task.status));
+    }
+    
+    if (taskColumnFilters.department.length > 0) {
+      filtered = filtered.filter(task => taskColumnFilters.department.includes(task.department));
     }
 
     // Date filtering logic
@@ -719,7 +903,7 @@ export default function QAAssignmentTracker() {
     }
 
     return filtered;
-  }, [searchTerm, statusFilter, categoryFilter, priorityFilter, dateFilterType, creationDateFilter, dueDateFilter]);
+  }, [searchTerm, statusFilter, categoryFilter, priorityFilter, dateFilterType, creationDateFilter, dueDateFilter, taskColumnFilters]);
 
   // Statistics for employees
   const employeeStats = useMemo(() => {
@@ -961,9 +1145,39 @@ export default function QAAssignmentTracker() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Role & Department</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Employee</span>
+                            <ColumnFilter 
+                              column="name" 
+                              data={employees} 
+                              currentFilters={employeeColumnFilters.name}
+                              isTask={false}
+                            />
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Role & Department</span>
+                            <ColumnFilter 
+                              column="role" 
+                              data={employees} 
+                              currentFilters={employeeColumnFilters.role}
+                              isTask={false}
+                            />
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Status</span>
+                            <ColumnFilter 
+                              column="status" 
+                              data={employees} 
+                              currentFilters={employeeColumnFilters.status}
+                              isTask={false}
+                            />
+                          </div>
+                        </TableHead>
                         <TableHead>Workload</TableHead>
                         <TableHead>Current Tasks</TableHead>
                         <TableHead>Skills & Certifications</TableHead>
@@ -1286,11 +1500,61 @@ export default function QAAssignmentTracker() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Task Details</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Priority</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Task Details</span>
+                            <ColumnFilter 
+                              column="title" 
+                              data={tasks} 
+                              currentFilters={taskColumnFilters.title}
+                              isTask={true}
+                            />
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Category</span>
+                            <ColumnFilter 
+                              column="category" 
+                              data={tasks} 
+                              currentFilters={taskColumnFilters.category}
+                              isTask={true}
+                            />
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Assigned To</span>
+                            <ColumnFilter 
+                              column="assignedTo" 
+                              data={tasks} 
+                              currentFilters={taskColumnFilters.assignedTo}
+                              isTask={true}
+                            />
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Priority</span>
+                            <ColumnFilter 
+                              column="priority" 
+                              data={tasks} 
+                              currentFilters={taskColumnFilters.priority}
+                              isTask={true}
+                            />
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center justify-between">
+                            <span>Status</span>
+                            <ColumnFilter 
+                              column="status" 
+                              data={tasks} 
+                              currentFilters={taskColumnFilters.status}
+                              isTask={true}
+                            />
+                          </div>
+                        </TableHead>
                         <TableHead>Progress</TableHead>
                         <TableHead>Due Date</TableHead>
                         <TableHead>Actions</TableHead>
