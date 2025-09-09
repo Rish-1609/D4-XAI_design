@@ -31,12 +31,6 @@ export default function Dashboard() {
               <h2 className="text-2xl font-semibold text-gray-900">Materials and QC</h2>
               <p className="text-gray-600 text-sm mt-1">Manage materials with quality control protocols</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-real-time-monitoring">
-                <Radio className="w-4 h-4 mr-2" />
-                Real-time Monitoring
-              </Button>
-            </div>
           </div>
         </header>
 
