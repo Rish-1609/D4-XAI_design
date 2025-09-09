@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -288,15 +288,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SOP Change Request routes
+  app.get("/api/sop-change-requests", async (req, res) => {
+    try {
+      const { sopId } = req.query;
+      let changeRequests;
+      if (sopId && typeof sopId === 'string') {
+        changeRequests = await storage.getSopChangeRequestsBySop(sopId);
+      } else {
+        changeRequests = await storage.getSopChangeRequests();
+      }
+      res.json(changeRequests);
+    } catch (error) {
+      console.error("Error fetching SOP change requests:", error);
+      res.status(500).json({ error: "Failed to fetch SOP change requests" });
+    }
+  });
+
+  app.get("/api/sop-change-requests/:id", async (req, res) => {
+    try {
+      const changeRequest = await storage.getSopChangeRequest(req.params.id);
+      if (!changeRequest) {
+        return res.status(404).json({ error: "Change request not found" });
+      }
+      res.json(changeRequest);
+    } catch (error) {
+      console.error("Error fetching change request:", error);
+      res.status(500).json({ error: "Failed to fetch change request" });
+    }
+  });
+
+  app.post("/api/sop-change-requests", async (req, res) => {
+    try {
+      const validatedData = insertSopChangeRequestSchema.parse(req.body);
+      const changeRequest = await storage.createSopChangeRequest(validatedData);
+      res.status(201).json(changeRequest);
+    } catch (error) {
+      console.error("Error creating change request:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid change request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create change request" });
+    }
+  });
+
+  app.patch("/api/sop-change-requests/:id", async (req, res) => {
+    try {
+      const changeRequest = await storage.updateSopChangeRequest(req.params.id, req.body);
+      if (!changeRequest) {
+        return res.status(404).json({ error: "Change request not found" });
+      }
+      res.json(changeRequest);
+    } catch (error) {
+      console.error("Error updating change request:", error);
+      res.status(500).json({ error: "Failed to update change request" });
+    }
+  });
+
+  app.post("/api/sop-change-requests/:id/approve", async (req, res) => {
+    try {
+      const { approvedBy, reviewComments } = req.body;
+      if (!approvedBy) {
+        return res.status(400).json({ error: "approvedBy is required" });
+      }
+      
+      const changeRequest = await storage.approveSopChangeRequest(req.params.id, {
+        approvedBy,
+        reviewComments
+      });
+      
+      if (!changeRequest) {
+        return res.status(404).json({ error: "Change request not found" });
+      }
+      
+      res.json(changeRequest);
+    } catch (error) {
+      console.error("Error approving change request:", error);
+      res.status(500).json({ error: "Failed to approve change request" });
+    }
+  });
+
+  app.post("/api/sop-change-requests/:id/reject", async (req, res) => {
+    try {
+      const { rejectedBy, rejectionReason } = req.body;
+      if (!rejectedBy || !rejectionReason) {
+        return res.status(400).json({ error: "rejectedBy and rejectionReason are required" });
+      }
+      
+      const changeRequest = await storage.rejectSopChangeRequest(req.params.id, {
+        rejectedBy,
+        rejectionReason
+      });
+      
+      if (!changeRequest) {
+        return res.status(404).json({ error: "Change request not found" });
+      }
+      
+      res.json(changeRequest);
+    } catch (error) {
+      console.error("Error rejecting change request:", error);
+      res.status(500).json({ error: "Failed to reject change request" });
+    }
+  });
+
   // Object storage routes for file uploads
   app.post("/api/objects/upload", async (req, res) => {
     try {
-      // This would integrate with ObjectStorageService to get presigned URL
-      // For now, return a placeholder response
-      res.json({ uploadURL: "https://example.com/upload-placeholder" });
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getSopDocumentUploadURL();
+      res.json({ uploadURL });
     } catch (error) {
       console.error("Error generating upload URL:", error);
       res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Serve SOP documents
+  app.get("/objects/sop-documents/:objectPath(*)", async (req, res) => {
+    try {
+      const { ObjectStorageService, ObjectNotFoundError } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getSopDocumentFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error accessing SOP document:", error);
+      if (error instanceof (await import("./objectStorage")).ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
     }
   });
 

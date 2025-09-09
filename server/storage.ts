@@ -179,6 +179,7 @@ export class MemStorage implements IStorage {
   private testInstructions: Map<string, TestInstruction>;
   private sops: Map<string, Sop>;
   private sopVersions: Map<string, SopVersion[]>;
+  private sopChangeRequests: Map<string, SopChangeRequest>;
   private productionOrders: Map<string, ProductionOrder>;
   private boms: Map<string, Bom>;
   private bomMaterials: Map<string, BomMaterial[]>;
@@ -213,6 +214,7 @@ export class MemStorage implements IStorage {
     this.testInstructions = new Map();
     this.sops = new Map();
     this.sopVersions = new Map();
+    this.sopChangeRequests = new Map();
     this.productionOrders = new Map();
     this.boms = new Map();
     this.bomMaterials = new Map();
@@ -1650,6 +1652,124 @@ export class MemStorage implements IStorage {
     this.sopVersions.set(insertSopVersion.sopId, existingVersions);
     
     return sopVersion;
+  }
+
+  // SOP Change Request operations
+  async getSopChangeRequests(): Promise<SopChangeRequest[]> {
+    return Array.from(this.sopChangeRequests.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getSopChangeRequestsBySop(sopId: string): Promise<SopChangeRequest[]> {
+    return Array.from(this.sopChangeRequests.values())
+      .filter(cr => cr.sopId === sopId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async getSopChangeRequest(id: string): Promise<SopChangeRequest | undefined> {
+    return this.sopChangeRequests.get(id);
+  }
+
+  async createSopChangeRequest(insertChangeRequest: InsertSopChangeRequest): Promise<SopChangeRequest> {
+    const id = randomUUID();
+    const now = new Date();
+    const changeRequest: SopChangeRequest = {
+      ...insertChangeRequest,
+      id,
+      status: 'pending',
+      requestedAt: now,
+      reviewedBy: insertChangeRequest.reviewedBy || null,
+      reviewedAt: insertChangeRequest.reviewedAt || null,
+      reviewComments: insertChangeRequest.reviewComments || null,
+      approvedBy: insertChangeRequest.approvedBy || null,
+      approvedAt: insertChangeRequest.approvedAt || null,
+      implementedAt: insertChangeRequest.implementedAt || null,
+      rejectedBy: insertChangeRequest.rejectedBy || null,
+      rejectedAt: insertChangeRequest.rejectedAt || null,
+      rejectionReason: insertChangeRequest.rejectionReason || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.sopChangeRequests.set(id, changeRequest);
+    return changeRequest;
+  }
+
+  async updateSopChangeRequest(id: string, updateData: Partial<InsertSopChangeRequest>): Promise<SopChangeRequest | undefined> {
+    const existing = this.sopChangeRequests.get(id);
+    if (!existing) return undefined;
+
+    const updated: SopChangeRequest = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.sopChangeRequests.set(id, updated);
+    return updated;
+  }
+
+  async approveSopChangeRequest(id: string, approvalData: { approvedBy: string; reviewComments?: string; }): Promise<SopChangeRequest | undefined> {
+    const existing = this.sopChangeRequests.get(id);
+    if (!existing) return undefined;
+
+    const now = new Date();
+    const updated: SopChangeRequest = {
+      ...existing,
+      status: 'approved',
+      approvedBy: approvalData.approvedBy,
+      approvedAt: now,
+      reviewComments: approvalData.reviewComments || existing.reviewComments,
+      updatedAt: now,
+    };
+    this.sopChangeRequests.set(id, updated);
+
+    // When approved, create new SOP version and update SOP
+    if (existing.newFilePath && existing.proposedVersion) {
+      await this.createSopVersion({
+        sopId: existing.sopId,
+        version: existing.proposedVersion,
+        filePath: existing.newFilePath,
+        fileName: existing.newFileName || null,
+        fileSize: existing.newFileSize || null,
+        changeLog: `Change Request #${existing.id}: ${existing.title}`,
+        createdBy: approvalData.approvedBy,
+      });
+
+      // Update the main SOP record
+      await this.updateSop(existing.sopId, {
+        version: existing.proposedVersion,
+        filePath: existing.newFilePath,
+        fileName: existing.newFileName,
+        fileSize: existing.newFileSize,
+        status: 'approved',
+        approvedBy: approvalData.approvedBy,
+        approvedDate: now,
+        updatedAt: now,
+      });
+
+      // Mark as implemented
+      updated.implementedAt = now;
+      this.sopChangeRequests.set(id, updated);
+    }
+
+    return updated;
+  }
+
+  async rejectSopChangeRequest(id: string, rejectionData: { rejectedBy: string; rejectionReason: string; }): Promise<SopChangeRequest | undefined> {
+    const existing = this.sopChangeRequests.get(id);
+    if (!existing) return undefined;
+
+    const now = new Date();
+    const updated: SopChangeRequest = {
+      ...existing,
+      status: 'rejected',
+      rejectedBy: rejectionData.rejectedBy,
+      rejectedAt: now,
+      rejectionReason: rejectionData.rejectionReason,
+      updatedAt: now,
+    };
+    this.sopChangeRequests.set(id, updated);
+    return updated;
   }
 
   // Production Order operations
