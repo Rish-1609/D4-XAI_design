@@ -48,6 +48,7 @@ const menuItems = [
       { label: "QC & Batch Release", href: "/qa-checkpoints" },
       { label: "Audit Trail", href: "/qa-audit-trail" },
       { label: "CAPA Management", href: "/qa-capa" },
+      { label: "Enhanced CAPA", href: "/qa-capa-enhanced" },
       { label: "Risk Management", href: "/qa-risk-management" },
     ],
   },

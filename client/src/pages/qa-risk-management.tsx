@@ -44,7 +44,10 @@ import {
   XCircle,
   Clock,
   Shield,
-  Info
+  Info,
+  Edit,
+  Save,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -128,7 +131,54 @@ export default function QARiskManagement() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showNewRiskDialog, setShowNewRiskDialog] = useState(false);
   const [showMitigationDialog, setShowMitigationDialog] = useState(false);
+  const [editingCells, setEditingCells] = useState<Array<{id: string, field: string, isEditing: boolean, originalValue: string, newValue: string}>>([]);
   const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null);
+
+  // Enhanced editing functions
+  const startEditing = (id: string, field: string, currentValue: string) => {
+    const newEditableCell = {
+      id,
+      field,
+      isEditing: true,
+      originalValue: currentValue,
+      newValue: currentValue
+    };
+    setEditingCells(prev => [...prev.filter(cell => !(cell.id === id && cell.field === field)), newEditableCell]);
+  };
+
+  const updateEditingValue = (id: string, field: string, newValue: string) => {
+    setEditingCells(prev => 
+      prev.map(cell => 
+        cell.id === id && cell.field === field 
+          ? { ...cell, newValue }
+          : cell
+      )
+    );
+  };
+
+  const saveEdit = (id: string, field: string) => {
+    const editingCell = editingCells.find(cell => cell.id === id && cell.field === field);
+    if (editingCell && editingCell.newValue !== editingCell.originalValue) {
+      toast({
+        title: "Updated Successfully",
+        description: `${field} has been updated.`,
+      });
+    }
+    setEditingCells(prev => prev.filter(cell => !(cell.id === id && cell.field === field)));
+  };
+
+  const cancelEdit = (id: string, field: string) => {
+    setEditingCells(prev => prev.filter(cell => !(cell.id === id && cell.field === field)));
+  };
+
+  const isEditing = (id: string, field: string) => {
+    return editingCells.some(cell => cell.id === id && cell.field === field);
+  };
+
+  const getEditingValue = (id: string, field: string) => {
+    const editingCell = editingCells.find(cell => cell.id === id && cell.field === field);
+    return editingCell?.newValue || "";
+  };
 
   // Generate comprehensive risk data
   const riskData: Risk[] = useMemo(() => [
@@ -925,15 +975,79 @@ export default function QARiskManagement() {
                         <TableRow key={risk.id} data-testid={`row-risk-${risk.id}`}>
                           <TableCell className="font-medium">{risk.riskId}</TableCell>
                           <TableCell>
-                            <div>
-                              <p className="font-medium">{risk.title}</p>
-                              <p className="text-sm text-gray-500 truncate max-w-xs">{risk.description}</p>
-                            </div>
+                            {isEditing(risk.id, "title") ? (
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  value={getEditingValue(risk.id, "title")}
+                                  onChange={(e) => updateEditingValue(risk.id, "title", e.target.value)}
+                                  className="h-8"
+                                />
+                                <Button size="sm" variant="ghost" onClick={() => saveEdit(risk.id, "title")}>
+                                  <Save className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => cancelEdit(risk.id, "title")}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <p className="font-medium">{risk.title}</p>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => startEditing(risk.id, "title", risk.title)}
+                                    data-testid={`button-edit-title-${risk.id}`}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <p className="text-sm text-gray-500 truncate max-w-xs">{risk.description}</p>
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{risk.category}</Badge>
                           </TableCell>
-                          <TableCell>{risk.owner}</TableCell>
+                          <TableCell>
+                            {isEditing(risk.id, "owner") ? (
+                              <div className="flex items-center space-x-2">
+                                <Select 
+                                  value={getEditingValue(risk.id, "owner")} 
+                                  onValueChange={(value) => updateEditingValue(risk.id, "owner", value)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Manufacturing Manager">Manufacturing Manager</SelectItem>
+                                    <SelectItem value="QA Director">QA Director</SelectItem>
+                                    <SelectItem value="Supply Chain Director">Supply Chain Director</SelectItem>
+                                    <SelectItem value="IT Manager">IT Manager</SelectItem>
+                                    <SelectItem value="Maintenance Manager">Maintenance Manager</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button size="sm" variant="ghost" onClick={() => saveEdit(risk.id, "owner")}>
+                                  <Save className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => cancelEdit(risk.id, "owner")}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <span>{risk.owner}</span>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => startEditing(risk.id, "owner", risk.owner)}
+                                  data-testid={`button-edit-owner-${risk.id}`}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center">
                               <span className="text-sm">{risk.probability}</span>
