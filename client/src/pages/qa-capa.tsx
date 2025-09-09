@@ -1258,19 +1258,34 @@ export default function QACAPAManagement() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>CAPA Number</TableHead>
+                        <TableHead>Deviation ID</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Category</TableHead>
-                        <TableHead>Assigned To</TableHead>
                         <TableHead>Priority</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Current Step</TableHead>
+                        <TableHead>Assigned To</TableHead>
                         <TableHead>Target Date</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredCapas.map(capa => (
-                        <TableRow key={capa.id} data-testid={`row-capa-${capa.id}`}>
+                        <TableRow 
+                          key={capa.id} 
+                          data-testid={`row-capa-${capa.id}`}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            setSelectedCapa(capa);
+                            setShowWorkflowDialog(true);
+                          }}
+                        >
                           <TableCell className="font-medium">{capa.capaNumber}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              {capa.deviationId}
+                            </Badge>
+                          </TableCell>
                           <TableCell>
                             <div>
                               <p className="font-medium">{capa.title}</p>
@@ -1280,7 +1295,6 @@ export default function QACAPAManagement() {
                           <TableCell>
                             <Badge variant="outline">{capa.category}</Badge>
                           </TableCell>
-                          <TableCell>{capa.assignedTo}</TableCell>
                           <TableCell>
                             <Badge variant={getPriorityBadgeVariant(capa.priority)}>
                               {capa.priority}
@@ -1291,8 +1305,20 @@ export default function QACAPAManagement() {
                               {capa.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>{format(capa.targetCloseDate, "MMM dd, yyyy")}</TableCell>
                           <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Workflow className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm font-medium">
+                                {capa.currentWorkflowStep + 1}/{capa.workflowSteps.length}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {capa.workflowSteps[capa.currentWorkflowStep]?.title}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>{capa.assignedTo}</TableCell>
+                          <TableCell>{format(capa.targetCloseDate, "MMM dd, yyyy")}</TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0" data-testid={`button-actions-${capa.id}`}>
@@ -1300,11 +1326,29 @@ export default function QACAPAManagement() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setSelectedCapa(capa)}>View Details</DropdownMenuItem>
-                                <DropdownMenuItem>Edit CAPA</DropdownMenuItem>
-                                <DropdownMenuItem>Update Status</DropdownMenuItem>
-                                <DropdownMenuItem>Add Comment</DropdownMenuItem>
-                                <DropdownMenuItem>Generate Report</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedCapa(capa);
+                                  setShowWorkflowDialog(true);
+                                }}>
+                                  <Workflow className="mr-2 h-4 w-4" />
+                                  View Workflow
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setSelectedCapa(capa)}>
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit CAPA
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Update Status
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <ArrowRight className="mr-2 h-4 w-4" />
+                                  Advance Workflow
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -1545,9 +1589,182 @@ export default function QACAPAManagement() {
         </main>
       </div>
 
+      {/* Enhanced Workflow Dialog */}
+      {selectedCapa && showWorkflowDialog && (
+        <Dialog open={showWorkflowDialog} onOpenChange={setShowWorkflowDialog}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-xl">
+                <Workflow className="h-6 w-6 text-blue-600" />
+                CAPA Workflow - {selectedCapa.capaNumber}
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {selectedCapa.deviationId}
+                </Badge>
+              </DialogTitle>
+              <div className="text-sm text-gray-600">
+                <p className="font-medium">{selectedCapa.title}</p>
+                <p>{selectedCapa.description}</p>
+              </div>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Workflow Progress */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <GitBranch className="h-5 w-5 text-blue-600" />
+                  Workflow Progress
+                </h3>
+                <div className="grid grid-cols-6 gap-2">
+                  {selectedCapa.workflowSteps.map((step, index) => (
+                    <div key={step.id} className="text-center">
+                      <div className={`
+                        w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold
+                        ${step.status === 'completed' ? 'bg-green-100 text-green-700 border-2 border-green-300' :
+                          step.status === 'in_progress' ? 'bg-blue-100 text-blue-700 border-2 border-blue-300' :
+                          step.status === 'rejected' ? 'bg-red-100 text-red-700 border-2 border-red-300' :
+                          'bg-gray-100 text-gray-500 border-2 border-gray-200'}
+                      `}>
+                        {step.status === 'completed' ? <CheckCircle className="h-5 w-5" /> :
+                         step.status === 'in_progress' ? <Clock className="h-5 w-5" /> :
+                         step.status === 'rejected' ? <XCircle className="h-5 w-5" /> :
+                         step.stepNumber}
+                      </div>
+                      <p className="text-xs font-medium text-gray-700">{step.title}</p>
+                      <p className="text-xs text-gray-500">{step.department}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Current Step Details */}
+              <div className="border rounded-lg p-4 bg-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-orange-500" />
+                    Current Step: {selectedCapa.workflowSteps[selectedCapa.currentWorkflowStep]?.title}
+                  </h3>
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                    Step {selectedCapa.currentWorkflowStep + 1} of {selectedCapa.workflowSteps.length}
+                  </Badge>
+                </div>
+                
+                {(() => {
+                  const currentStep = selectedCapa.workflowSteps[selectedCapa.currentWorkflowStep];
+                  return currentStep ? (
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Department</p>
+                          <p className="text-gray-900">{currentStep.department}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Assigned Team</p>
+                          <p className="text-gray-900">{currentStep.assignedTeam}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Assigned To</p>
+                          <p className="text-gray-900">{currentStep.assignedTo || 'Not assigned'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Status</p>
+                          <Badge variant={
+                            currentStep.status === 'completed' ? 'default' :
+                            currentStep.status === 'in_progress' ? 'secondary' :
+                            currentStep.status === 'rejected' ? 'destructive' :
+                            'outline'
+                          }>
+                            {currentStep.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Required Actions</p>
+                          <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                            {currentStep.requiredActions.map((action, idx) => (
+                              <li key={idx} className={
+                                currentStep.completedActions.includes(action) 
+                                  ? 'line-through text-green-600' 
+                                  : ''
+                              }>
+                                {action}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        {currentStep.approvalRequired && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Approvers</p>
+                            <div className="flex flex-wrap gap-2">
+                              {currentStep.approvers?.map((approver, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  <UserCheck className="h-3 w-3 mr-1" />
+                                  {approver}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {currentStep.comments && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Comments</p>
+                            <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{currentStep.comments}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowWorkflowDialog(false)}
+                >
+                  Close
+                </Button>
+                
+                <div className="flex items-center gap-3">
+                  {selectedCapa.currentWorkflowStep < selectedCapa.workflowSteps.length - 1 && (
+                    <Button 
+                      onClick={() => {
+                        advanceWorkflow(selectedCapa.id);
+                        setShowWorkflowDialog(false);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Advance to Next Step
+                    </Button>
+                  )}
+                  
+                  {selectedCapa.currentWorkflowStep === selectedCapa.workflowSteps.length - 1 && (
+                    <Button 
+                      onClick={() => {
+                        setShowClosureDialog(true);
+                        setShowWorkflowDialog(false);
+                      }}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Close CAPA
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* CAPA Details Dialog */}
-      {selectedCapa && (
-        <Dialog open={!!selectedCapa} onOpenChange={() => setSelectedCapa(null)}>
+      {selectedCapa && !showWorkflowDialog && (
+        <Dialog open={!!selectedCapa && !showWorkflowDialog} onOpenChange={() => setSelectedCapa(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedCapa.capaNumber}: {selectedCapa.title}</DialogTitle>
