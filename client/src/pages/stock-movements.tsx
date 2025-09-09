@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Sidebar } from "@/components/sidebar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -121,15 +122,25 @@ export default function StockMovements() {
   };
 
   return (
-    <div className="p-6 max-w-full" data-testid="page-stock-movements">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">Stock Movements</h2>
+              <p className="text-gray-600 text-sm mt-1">Track all inventory movements including stock in, stock out, and adjustments</p>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6 max-w-full" data-testid="page-stock-movements">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100" data-testid="heading-stock-movements">
-            Stock Movements
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400" data-testid="text-subtitle">
-            Track all inventory movements including stock in, stock out, and adjustments
-          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -406,6 +417,9 @@ export default function StockMovements() {
           )}
         </CardContent>
       </Card>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
