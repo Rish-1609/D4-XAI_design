@@ -449,6 +449,38 @@ export const batchReleases = pgTable("batch_releases", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Batch Release Workflow Steps
+export const batchWorkflowSteps = pgTable("batch_workflow_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchReleaseId: varchar("batch_release_id").references(() => batchReleases.id).notNull(),
+  stepNumber: integer("step_number").notNull(),
+  stepName: text("step_name").notNull(),
+  stepCategory: text("step_category").notNull(), // 'Materials Verification', 'Process Controls', etc.
+  status: text("status").notNull().default("pending"), // 'pending', 'in_progress', 'completed', 'approved', 'rejected', 'on_hold'
+  assignedTo: text("assigned_to").notNull(),
+  assignedTeam: text("assigned_team").notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  dueDate: timestamp("due_date"),
+  approvalRequired: boolean("approval_required").default(true),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: text("rejected_by"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  findings: text("findings"),
+  evidence: text("evidence"), // JSON array of evidence files/links
+  deviations: text("deviations"), // JSON array of deviation descriptions
+  correctiveActions: text("corrective_actions"), // JSON array of corrective actions
+  requiredActions: text("required_actions"), // JSON array of required actions
+  completedActions: text("completed_actions"), // JSON array of completed actions
+  comments: text("comments"),
+  estimatedHours: integer("estimated_hours"),
+  actualHours: integer("actual_hours"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Digital Batch Release Certificates/CoA
 export const batchCertificates = pgTable("batch_certificates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -531,6 +563,12 @@ export const insertBatchReleaseSchema = createInsertSchema(batchReleases).omit({
   updatedAt: true,
 });
 
+export const insertBatchWorkflowStepSchema = createInsertSchema(batchWorkflowSteps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertBatchCertificateSchema = createInsertSchema(batchCertificates).omit({
   id: true,
   createdAt: true,
@@ -563,6 +601,9 @@ export type QcApproval = typeof qcApprovals.$inferSelect;
 
 export type InsertBatchRelease = z.infer<typeof insertBatchReleaseSchema>;
 export type BatchRelease = typeof batchReleases.$inferSelect;
+
+export type InsertBatchWorkflowStep = z.infer<typeof insertBatchWorkflowStepSchema>;
+export type BatchWorkflowStep = typeof batchWorkflowSteps.$inferSelect;
 
 export type InsertBatchCertificate = z.infer<typeof insertBatchCertificateSchema>;
 export type BatchCertificate = typeof batchCertificates.$inferSelect;
