@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -41,6 +41,15 @@ export interface IStorage {
   deleteSop(id: string): Promise<boolean>;
   getSopVersions(sopId: string): Promise<SopVersion[]>;
   createSopVersion(sopVersion: InsertSopVersion): Promise<SopVersion>;
+
+  // SOP Change Request operations
+  getSopChangeRequests(): Promise<SopChangeRequest[]>;
+  getSopChangeRequestsBySop(sopId: string): Promise<SopChangeRequest[]>;
+  getSopChangeRequest(id: string): Promise<SopChangeRequest | undefined>;
+  createSopChangeRequest(changeRequest: InsertSopChangeRequest): Promise<SopChangeRequest>;
+  updateSopChangeRequest(id: string, changeRequest: Partial<InsertSopChangeRequest>): Promise<SopChangeRequest | undefined>;
+  approveSopChangeRequest(id: string, approvalData: { approvedBy: string; reviewComments?: string; }): Promise<SopChangeRequest | undefined>;
+  rejectSopChangeRequest(id: string, rejectionData: { rejectedBy: string; rejectionReason: string; }): Promise<SopChangeRequest | undefined>;
 
   // Production Order operations
   getProductionOrders(): Promise<ProductionOrder[]>;
