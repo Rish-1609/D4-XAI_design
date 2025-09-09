@@ -495,6 +495,11 @@ export default function QAAssignmentTracker() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showCreateTask, setShowCreateTask] = useState(false);
   
+  // Date filtering states
+  const [creationDateFilter, setCreationDateFilter] = useState<string>("");
+  const [dueDateFilter, setDueDateFilter] = useState<string>("");
+  const [dateFilterType, setDateFilterType] = useState<"all" | "today" | "this_week" | "this_month" | "overdue" | "custom">("all");
+  
   // Date tracking states
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -678,8 +683,43 @@ export default function QAAssignmentTracker() {
       filtered = filtered.filter(task => task.priority === priorityFilter);
     }
 
+    // Date filtering logic
+    if (dateFilterType !== "all") {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(task => {
+        switch (dateFilterType) {
+          case "today":
+            return task.createdAt.toDateString() === today.toDateString();
+          case "this_week":
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            return task.createdAt >= weekStart;
+          case "this_month":
+            return task.createdAt.getMonth() === now.getMonth() && 
+                   task.createdAt.getFullYear() === now.getFullYear();
+          case "overdue":
+            return task.dueDate < now && task.status !== 'Completed';
+          case "custom":
+            let matchesFilter = true;
+            if (creationDateFilter) {
+              const filterDate = new Date(creationDateFilter);
+              matchesFilter = matchesFilter && task.createdAt.toDateString() === filterDate.toDateString();
+            }
+            if (dueDateFilter) {
+              const filterDate = new Date(dueDateFilter);
+              matchesFilter = matchesFilter && task.dueDate.toDateString() === filterDate.toDateString();
+            }
+            return matchesFilter;
+          default:
+            return true;
+        }
+      });
+    }
+
     return filtered;
-  }, [searchTerm, statusFilter, categoryFilter, priorityFilter]);
+  }, [searchTerm, statusFilter, categoryFilter, priorityFilter, dateFilterType, creationDateFilter, dueDateFilter]);
 
   // Statistics for employees
   const employeeStats = useMemo(() => {
@@ -1325,6 +1365,66 @@ export default function QAAssignmentTracker() {
                         <SelectItem value="Low">Low</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  
+                  {/* Date Filters */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Date Filter</label>
+                      <Select value={dateFilterType} onValueChange={setDateFilterType}>
+                        <SelectTrigger data-testid="select-date-filter-type">
+                          <SelectValue placeholder="All Dates" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Dates</SelectItem>
+                          <SelectItem value="today">Created Today</SelectItem>
+                          <SelectItem value="this_week">This Week</SelectItem>
+                          <SelectItem value="this_month">This Month</SelectItem>
+                          <SelectItem value="overdue">Overdue Tasks</SelectItem>
+                          <SelectItem value="custom">Custom Range</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {dateFilterType === "custom" && (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Creation Date</label>
+                          <Input
+                            type="date"
+                            value={creationDateFilter}
+                            onChange={(e) => setCreationDateFilter(e.target.value)}
+                            data-testid="input-creation-date-filter"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Due Date</label>
+                          <Input
+                            type="date"
+                            value={dueDateFilter}
+                            onChange={(e) => setDueDateFilter(e.target.value)}
+                            data-testid="input-due-date-filter"
+                          />
+                        </div>
+                      </>
+                    )}
+                    
+                    {dateFilterType !== "all" && dateFilterType !== "custom" && (
+                      <div className="flex items-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setDateFilterType("all");
+                            setCreationDateFilter("");
+                            setDueDateFilter("");
+                          }}
+                          data-testid="button-clear-date-filter"
+                        >
+                          Clear Filter
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
