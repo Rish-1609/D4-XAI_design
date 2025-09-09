@@ -12,6 +12,8 @@ import BomManagement from "@/pages/bom-management";
 import InventoryOverview from "@/pages/inventory-overview";
 import StockMovements from "@/pages/stock-movements";
 import QACheckpoints from "@/pages/qa-checkpoints";
+import QAAssignmentTracker from "@/pages/qa-assignment-tracker";
+import QABatchRelease from "@/pages/qa-batch-release";
 
 import QAAuditTrail from "@/pages/qa-audit-trail";
 import QACAPAManagement from "@/pages/qa-capa";
@@ -26,6 +28,8 @@ function Router() {
       <Route path="/inventory-overview" component={InventoryOverview} />
       <Route path="/stock-movements" component={StockMovements} />
       <Route path="/qa-checkpoints" component={QACheckpoints} />
+      <Route path="/qa-assignment-tracker" component={QAAssignmentTracker} />
+      <Route path="/qa-batch-release" component={QABatchRelease} />
       <Route path="/qa-audit-trail" component={QAAuditTrail} />
       <Route path="/qa-capa" component={QACAPAManagement} />
       <Route path="/qa-risk-management" component={QARiskManagement} />

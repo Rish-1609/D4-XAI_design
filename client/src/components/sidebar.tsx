@@ -45,7 +45,8 @@ const menuItems = [
     label: "Quality Assurance",
     icon: Shield,
     submenu: [
-      { label: "QC & Batch Release", href: "/qa-checkpoints" },
+      { label: "Assignment Tracker", href: "/qa-assignment-tracker" },
+      { label: "QC & Batch Release", href: "/qa-batch-release" },
       { label: "Audit Trail", href: "/qa-audit-trail" },
       { label: "CAPA Management", href: "/qa-capa" },
       { label: "Risk Management", href: "/qa-risk-management" },
