@@ -16,371 +16,315 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Sidebar } from "@/components/sidebar";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import {
   CheckCircle,
   AlertCircle,
   XCircle,
   Clock,
-  FileCheck,
+  Plus,
   Search,
   Eye,
-  Download,
-  Shield,
-  Award,
-  User,
-  CalendarDays,
-  FileText,
   CheckSquare,
-  ChevronDown,
-  ChevronRight,
-  Play,
-  Pause,
-  RotateCcw,
-  MessageSquare,
+  FileCheck,
+  Shield,
+  ClipboardList,
+  Download,
+  Award,
+  Users,
+  Calendar,
+  TrendingUp,
+  FileText,
+  Package,
+  Target,
+  Zap,
+  Settings,
+  BookOpen,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
-import type { ProductionOrder, BatchRelease as SchemaBatchRelease, BatchWorkflowStep } from "@shared/schema";
+import type { ProductionOrder } from "@shared/schema";
 
-interface ExtendedBatchRelease extends SchemaBatchRelease {
-  orderNumber?: string;
-  workflowSteps?: BatchWorkflowStep[];
+interface QAAuditStep {
+  id: string;
+  name: string;
+  category: string;
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Approved' | 'Rejected';
+  assignedTo: string;
+  reviewedBy?: string;
+  completedAt?: Date;
+  reviewedAt?: Date;
+  findings: string;
+  evidence: string[];
+  deviations: string[];
+  corrective_actions: string[];
+  approval_required: boolean;
 }
 
+interface BatchRelease {
+  id: string;
+  batchNumber: string;
+  jobId: string;
+  productionOrderId: string;
+  orderNumber: string;
+  productName: string;
+  manufacturingDate: Date;
+  expiryDate: Date;
+  quantity: number;
+  status: string;
+  qaManager: string;
+  releaseDate: Date | null;
+  certificateNumber: string | null;
+  testResults: Record<string, string>;
+  releaseNotes: string;
+  auditSteps: QAAuditStep[];
+  overallProgress: number;
+  yield_reconciliation: {
+    material_balance: number;
+    wastage_percentage: number;
+    packaging_reconciliation: number;
+  };
+  document_status: {
+    bmr_bpr_complete: boolean;
+    sop_adherence: boolean;
+    deviation_investigations: boolean;
+    environmental_monitoring: boolean;
+    cleaning_validation: boolean;
+  };
+  release_criteria: {
+    identity_tests: boolean;
+    assay_results: boolean;
+    impurity_profile: boolean;
+    microbial_limits: boolean;
+    sterility_testing: boolean;
+    endotoxin_testing: boolean;
+  };
+}
+
+// Helper functions
 const formatDate = (date: string | Date) => {
   return new Date(date).toLocaleDateString("en-IN", {
     year: "numeric",
-    month: "short",
+    month: "short", 
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 };
 
 const getStatusIcon = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "released":
-    case "approved":
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case "under review":
-    case "pending approval":
-      return <Clock className="h-4 w-4 text-yellow-500" />;
-    case "rejected":
-    case "on hold":
-      return <XCircle className="h-4 w-4 text-red-500" />;
-    default:
-      return <AlertCircle className="h-4 w-4 text-gray-500" />;
+  switch (status) {
+    case 'Completed': case 'Released': case 'Approved': return <CheckCircle className="h-4 w-4 text-green-500" />;
+    case 'In Progress': case 'Pending Release': return <Clock className="h-4 w-4 text-blue-500" />;
+    case 'Pending': case 'Not Started': return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+    case 'Rejected': case 'Failed': return <XCircle className="h-4 w-4 text-red-500" />;
+    default: return <AlertCircle className="h-4 w-4 text-gray-500" />;
   }
 };
 
 const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (status.toLowerCase()) {
-    case "released":
-    case "approved":
-      return "default";
-    case "under-testing":
-    case "pending":
-      return "secondary";
-    case "rejected":
-    case "on-hold":
-      return "destructive";
-    default:
-      return "outline";
+  switch (status) {
+    case 'Completed': case 'Released': case 'Approved': return "default";
+    case 'In Progress': case 'Pending Release': return "secondary";
+    case 'Rejected': case 'Failed': return "destructive";
+    default: return "outline";
   }
 };
 
-const getStepStatusIcon = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "completed":
-    case "approved":
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case "in-progress":
-      return <Play className="h-4 w-4 text-blue-500" />;
-    case "pending":
-      return <Clock className="h-4 w-4 text-yellow-500" />;
-    case "rejected":
-      return <XCircle className="h-4 w-4 text-red-500" />;
-    default:
-      return <AlertCircle className="h-4 w-4 text-gray-500" />;
+// Mock batch release data
+const mockBatchReleases: BatchRelease[] = [
+  {
+    id: 'br1',
+    batchNumber: 'BATCH-2024-001',
+    jobId: 'JOB-001',
+    productionOrderId: 'po1',
+    orderNumber: 'PO-2024-001',
+    productName: 'Amoxicillin Capsules 500mg',
+    manufacturingDate: new Date('2024-01-15'),
+    expiryDate: new Date('2027-01-15'),
+    quantity: 100000,
+    status: 'Pending Release',
+    qaManager: 'Dr. Priya Sharma',
+    releaseDate: null,
+    certificateNumber: null,
+    testResults: {
+      'Identity': 'Pass',
+      'Assay': '99.8%',
+      'Dissolution': 'Pass',
+      'Microbial Limits': 'Pass'
+    },
+    releaseNotes: '',
+    overallProgress: 85,
+    yield_reconciliation: {
+      material_balance: 99.2,
+      wastage_percentage: 0.8,
+      packaging_reconciliation: 100.0
+    },
+    document_status: {
+      bmr_bpr_complete: true,
+      sop_adherence: true,
+      deviation_investigations: false,
+      environmental_monitoring: true,
+      cleaning_validation: true
+    },
+    release_criteria: {
+      identity_tests: true,
+      assay_results: true,
+      impurity_profile: true,
+      microbial_limits: true,
+      sterility_testing: false,
+      endotoxin_testing: false
+    },
+    auditSteps: [
+      {
+        id: 'step1',
+        name: 'Manufacturing Record Review',
+        category: 'Documentation',
+        status: 'Completed',
+        assignedTo: 'Dr. Priya Sharma',
+        reviewedBy: 'QA Manager',
+        completedAt: new Date('2024-01-20'),
+        reviewedAt: new Date('2024-01-21'),
+        findings: 'All manufacturing records complete and compliant',
+        evidence: ['BMR-2024-001.pdf', 'Equipment_logs.pdf'],
+        deviations: [],
+        corrective_actions: [],
+        approval_required: true
+      },
+      {
+        id: 'step2',
+        name: 'Quality Control Testing',
+        category: 'Testing',
+        status: 'In Progress',
+        assignedTo: 'Rajesh Kumar',
+        findings: 'Testing in progress - preliminary results within specifications',
+        evidence: ['QC_results_preliminary.pdf'],
+        deviations: [],
+        corrective_actions: [],
+        approval_required: true
+      },
+      {
+        id: 'step3',
+        name: 'Stability Data Review',
+        category: 'Testing',
+        status: 'Pending',
+        assignedTo: 'Sneha Patel',
+        findings: '',
+        evidence: [],
+        deviations: [],
+        corrective_actions: [],
+        approval_required: true
+      }
+    ]
+  },
+  {
+    id: 'br2',
+    batchNumber: 'BATCH-2024-002',
+    jobId: 'JOB-002',
+    productionOrderId: 'po2',
+    orderNumber: 'PO-2024-002',
+    productName: 'Metformin Tablets 500mg',
+    manufacturingDate: new Date('2024-01-18'),
+    expiryDate: new Date('2027-01-18'),
+    quantity: 50000,
+    status: 'Released',
+    qaManager: 'Dr. Priya Sharma',
+    releaseDate: new Date('2024-01-25'),
+    certificateNumber: 'COA-2024-002',
+    testResults: {
+      'Identity': 'Pass',
+      'Assay': '100.1%',
+      'Dissolution': 'Pass',
+      'Uniformity': 'Pass'
+    },
+    releaseNotes: 'Batch released for distribution on 2024-01-25',
+    overallProgress: 100,
+    yield_reconciliation: {
+      material_balance: 98.9,
+      wastage_percentage: 1.1,
+      packaging_reconciliation: 100.0
+    },
+    document_status: {
+      bmr_bpr_complete: true,
+      sop_adherence: true,
+      deviation_investigations: true,
+      environmental_monitoring: true,
+      cleaning_validation: true
+    },
+    release_criteria: {
+      identity_tests: true,
+      assay_results: true,
+      impurity_profile: true,
+      microbial_limits: true,
+      sterility_testing: true,
+      endotoxin_testing: true
+    },
+    auditSteps: [
+      {
+        id: 'step4',
+        name: 'Manufacturing Record Review',
+        category: 'Documentation',
+        status: 'Approved',
+        assignedTo: 'Dr. Priya Sharma',
+        reviewedBy: 'QA Manager',
+        completedAt: new Date('2024-01-22'),
+        reviewedAt: new Date('2024-01-23'),
+        findings: 'All documentation complete and approved',
+        evidence: ['BMR-2024-002.pdf'],
+        deviations: [],
+        corrective_actions: [],
+        approval_required: true
+      }
+    ]
   }
-};
-
-const getStepStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-  switch (status.toLowerCase()) {
-    case "completed":
-    case "approved":
-      return "default";
-    case "in-progress":
-      return "secondary";
-    case "rejected":
-      return "destructive";
-    default:
-      return "outline";
-  }
-};
-
-// Component for displaying workflow steps
-function WorkflowSteps({ batchId }: { batchId: string }) {
-  const queryClient = useQueryClient();
-  
-  const { data: workflowSteps = [] } = useQuery({
-    queryKey: [`/api/batch-workflow-steps/batch/${batchId}`],
-  });
-
-  const updateStepMutation = useMutation({
-    mutationFn: async ({ stepId, data }: { stepId: string; data: any }) => {
-      const response = await fetch(`/api/batch-workflow-steps/${stepId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update step');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/batch-workflow-steps/batch/${batchId}`],
-      });
-    },
-  });
-
-  const approveStepMutation = useMutation({
-    mutationFn: async ({ stepId, approvedBy }: { stepId: string; approvedBy: string }) => {
-      const response = await fetch(`/api/batch-workflow-steps/${stepId}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approvedBy }),
-      });
-      if (!response.ok) throw new Error('Failed to approve step');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/batch-workflow-steps/batch/${batchId}`],
-      });
-    },
-  });
-
-  const calculateProgress = () => {
-    if (workflowSteps.length === 0) return 0;
-    const completedSteps = workflowSteps.filter((step: BatchWorkflowStep) => 
-      step.status === 'completed' || step.status === 'approved'
-    ).length;
-    return Math.round((completedSteps / workflowSteps.length) * 100);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-medium">Workflow Progress</h4>
-        <div className="flex items-center space-x-2">
-          <Progress value={calculateProgress()} className="w-32" />
-          <span className="text-sm text-muted-foreground">{calculateProgress()}%</span>
-        </div>
-      </div>
-      
-      <div className="space-y-3">
-        {(workflowSteps as BatchWorkflowStep[]).map((step, index) => (
-          <div key={step.id} className="border rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                  {step.stepNumber}
-                </div>
-                <div>
-                  <div className="font-medium">{step.stepName}</div>
-                  <div className="text-sm text-muted-foreground">{step.stepCategory}</div>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                {getStepStatusIcon(step.status)}
-                <Badge variant={getStepStatusVariant(step.status)}>
-                  {step.status}
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Assigned to:</span>
-                <div className="flex items-center space-x-1 mt-1">
-                  <User className="h-3 w-3" />
-                  <span>{step.assignedTo}</span>
-                </div>
-                <div className="text-muted-foreground">{step.assignedTeam}</div>
-              </div>
-              
-              <div>
-                <span className="font-medium">Due Date:</span>
-                <div className="flex items-center space-x-1 mt-1">
-                  <CalendarDays className="h-3 w-3" />
-                  <span>{step.dueDate ? formatDate(step.dueDate) : 'Not set'}</span>
-                </div>
-              </div>
-              
-              <div>
-                <span className="font-medium">Estimated:</span>
-                <div className="flex items-center space-x-1 mt-1">
-                  <Clock className="h-3 w-3" />
-                  <span>{step.estimatedHours || 0}h</span>
-                  {step.actualHours && (
-                    <span className="text-muted-foreground">/ {step.actualHours}h actual</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {step.requiredActions && (
-              <div>
-                <span className="font-medium text-sm">Required Actions:</span>
-                <ul className="mt-1 text-sm text-muted-foreground list-disc list-inside">
-                  {JSON.parse(step.requiredActions).map((action: string, idx: number) => (
-                    <li key={idx}>{action}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {step.findings && (
-              <div className="bg-muted p-3 rounded">
-                <span className="font-medium text-sm">Findings:</span>
-                <p className="mt-1 text-sm">{step.findings}</p>
-              </div>
-            )}
-
-            {step.status === 'pending' && (
-              <div className="flex space-x-2">
-                <Button 
-                  size="sm" 
-                  onClick={() => approveStepMutation.mutate({ 
-                    stepId: step.id, 
-                    approvedBy: 'Current User' 
-                  })}
-                  disabled={approveStepMutation.isPending}
-                >
-                  <CheckSquare className="mr-1 h-3 w-3" />
-                  Approve Step
-                </Button>
-                <Button size="sm" variant="outline">
-                  <MessageSquare className="mr-1 h-3 w-3" />
-                  Add Comments
-                </Button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+];
 
 export default function QABatchRelease() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [expandedBatch, setExpandedBatch] = useState<string>("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Batch approval handler
-  const handleBatchApproval = async (batchId: string) => {
-    try {
-      const response = await fetch(`/api/batch-releases/${batchId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          releaseStatus: 'released',
-          releaseDate: new Date(),
-          qaComments: 'Batch approved through workflow completion',
-        }),
-      });
-      
-      if (!response.ok) throw new Error('Failed to approve batch');
-
-      queryClient.invalidateQueries({
-        queryKey: ['/api/batch-releases'],
-      });
-
-      toast({
-        title: 'Batch Approved',
-        description: 'The batch has been successfully approved for release.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Approval Failed',
-        description: 'Failed to approve the batch. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
 
   // Data fetching
   const { data: productionOrders = [] } = useQuery({
     queryKey: ["/api/production-orders"],
   });
 
-  const { data: batchReleases = [] } = useQuery({
-    queryKey: ["/api/batch-releases"],
-  });
-
-  // Enhanced batch releases with production order data
-  const enhancedBatchReleases = useMemo(() => {
-    return (batchReleases as SchemaBatchRelease[]).map(release => {
-      const order = (productionOrders as ProductionOrder[]).find(po => po.id === release.productionOrderId);
-      return {
-        ...release,
-        orderNumber: order?.orderNumber || 'Unknown',
-      };
-    });
-  }, [batchReleases, productionOrders]);
-
-  // Filtering
-  const filteredReleases = useMemo(() => {
-    let filtered = enhancedBatchReleases;
+  // Filter batches based on search and status
+  const filteredBatches = useMemo(() => {
+    let filtered = mockBatchReleases;
 
     if (searchTerm) {
-      filtered = filtered.filter((release: ExtendedBatchRelease) =>
-        release.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        release.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        release.productName.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(batch =>
+        batch.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        batch.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        batch.orderNumber.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (selectedStatus && selectedStatus !== "all-statuses") {
-      filtered = filtered.filter((release: ExtendedBatchRelease) => release.releaseStatus === selectedStatus);
+    if (selectedStatus !== "all") {
+      filtered = filtered.filter(batch => batch.status === selectedStatus);
     }
 
     return filtered;
-  }, [enhancedBatchReleases, searchTerm, selectedStatus]);
+  }, [searchTerm, selectedStatus]);
 
   // Statistics
   const stats = useMemo(() => {
-    const total = enhancedBatchReleases.length;
-    const released = enhancedBatchReleases.filter((br: ExtendedBatchRelease) => br.releaseStatus === "released").length;
-    const underReview = enhancedBatchReleases.filter((br: ExtendedBatchRelease) => br.releaseStatus === "under-testing").length;
-    const awaiting = enhancedBatchReleases.filter((br: ExtendedBatchRelease) => br.releaseStatus === "pending").length;
+    const total = mockBatchReleases.length;
+    const released = mockBatchReleases.filter(batch => batch.status === "Released").length;
+    const pending = mockBatchReleases.filter(batch => batch.status === "Pending Release").length;
+    const certificates = mockBatchReleases.filter(batch => batch.certificateNumber).length;
 
-    return {
-      total,
-      released,
-      underReview,
-      awaiting,
-      releaseRate: total > 0 ? Math.round((released / total) * 100) : 0,
-    };
-  }, [batchReleases]);
+    return { total, released, pending, certificates };
+  }, []);
 
-  // Mutation for batch approval
+  // Batch approval mutation
   const approveBatchMutation = useMutation({
     mutationFn: ({ batchId }: { batchId: string }) =>
       // This would typically update a batch release record in the database
@@ -398,307 +342,351 @@ export default function QABatchRelease() {
     approveBatchMutation.mutate({ batchId });
   };
 
+  // Step approval mutation
+  const approveStepMutation = useMutation({
+    mutationFn: ({ stepId, approvedBy }: { stepId: string; approvedBy: string }) =>
+      Promise.resolve({ success: true }),
+    onSuccess: () => {
+      toast({ title: "Step approved successfully" });
+    },
+  });
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar />
-      <div className="flex-1 overflow-auto">
-        <div className="p-6 max-w-7xl mx-auto space-y-6" data-testid="batch-release-page">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="batch-release-title">
-            Batch Release Management
-          </h1>
-          <p className="text-muted-foreground">
-            Pharmaceutical batch release workflow with QA approval and certificate generation
-          </p>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
-            <FileCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="total-batches">
-              {stats.total}
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">QC & Batch Release</h2>
+              <p className="text-gray-600 text-sm mt-1">
+                Pharmaceutical batch release workflow with QA approval and certificate generation
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Across all production orders
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Released</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="released-batches">
-              {stats.released}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.releaseRate}% release rate
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Under Review</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600" data-testid="review-batches">
-              {stats.underReview}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Pending QA approval
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Awaiting Production</CardTitle>
-            <AlertCircle className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600" data-testid="awaiting-batches">
-              {stats.awaiting}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Production in progress
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search batches..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="batch-search"
-              />
-            </div>
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all-statuses">All Statuses</SelectItem>
-                <SelectItem value="Released">Released</SelectItem>
-                <SelectItem value="Under Review">Under Review</SelectItem>
-                <SelectItem value="Awaiting Production">Awaiting Production</SelectItem>
-              </SelectContent>
-            </Select>
+            <Button onClick={() => {/* Add batch creation logic */}} data-testid="button-create-batch">
+              <Plus className="h-4 w-4 mr-2" />
+              New Batch Release
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </header>
 
-      {/* Batch Release Management with Collapsible Workflow */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Batch Release Management</CardTitle>
-          <CardDescription>
-            Comprehensive batch release workflow with collapsible step tracking and QA approval
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredReleases.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No batch releases found matching your criteria.
-            </div>
-          ) : (
-            <Accordion type="multiple" className="space-y-4">
-              {filteredReleases.map((release: ExtendedBatchRelease) => (
-                <AccordionItem key={release.id} value={release.id} className="border rounded-lg">
-                  <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                    <div className="flex items-center justify-between w-full mr-4">
-                      <div className="flex items-center space-x-4">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Statistics Cards */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
+                <Award className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="total-batches">
+                  {stats.total}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ready for release
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Released Batches</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600" data-testid="released-batches">
+                  {stats.released}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Approved for distribution
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Release</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600" data-testid="pending-batches">
+                  {stats.pending}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Awaiting QA approval
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Certificates Generated</CardTitle>
+                <FileCheck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="certificates-generated">
+                  {stats.certificates}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  With COA numbers
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search and Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Batch Search & Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search batches, products, or order numbers..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                      data-testid="input-search-batches"
+                    />
+                  </div>
+                </div>
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="Pending Release">Pending Release</SelectItem>
+                    <SelectItem value="Released">Released</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Batch Release Management */}
+          <div className="space-y-6">
+            {filteredBatches.map((batch) => (
+              <Card key={batch.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <Package className="h-5 w-5 text-blue-600" />
                         <div>
-                          <div className="font-medium text-left">{release.batchNumber}</div>
-                          <div className="text-sm text-muted-foreground text-left">
-                            Order: {release.orderNumber}
-                          </div>
-                        </div>
-                        <div className="hidden md:block">
-                          <div className="font-medium text-left">{release.productName}</div>
-                          <div className="text-sm text-muted-foreground text-left">
-                            {release.batchSize?.toLocaleString()} units
-                          </div>
+                          <CardTitle className="text-lg">{batch.batchNumber}</CardTitle>
+                          <CardDescription>
+                            Job ID: {batch.jobId} | Order: {batch.orderNumber} | Product: {batch.productName}
+                          </CardDescription>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center space-x-4">
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">Overall Progress</div>
                         <div className="flex items-center space-x-2">
-                          {getStatusIcon(release.releaseStatus)}
-                          <Badge variant={getStatusVariant(release.releaseStatus)}>
-                            {release.releaseStatus}
-                          </Badge>
+                          <Progress value={batch.overallProgress} className="w-24" />
+                          <span className="text-sm font-medium">{batch.overallProgress}%</span>
                         </div>
-                        
-                        {release.releaseDate && (
-                          <div className="hidden md:block text-sm text-muted-foreground">
-                            Released: {formatDate(release.releaseDate)}
-                          </div>
-                        )}
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {getStatusIcon(batch.status)}
+                        <Badge variant={getStatusVariant(batch.status)} className="text-xs">
+                          {batch.status}
+                        </Badge>
                       </div>
                     </div>
-                  </AccordionTrigger>
+                  </div>
                   
-                  <AccordionContent className="px-6 pb-6">
-                    <div className="space-y-6">
-                      {/* Batch Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-                        <div>
-                          <h5 className="font-medium">Manufacturing Details</h5>
-                          <div className="space-y-1 text-sm text-muted-foreground mt-2">
-                            <div>Manufacturing: {formatDate(release.manufacturedDate)}</div>
-                            <div>Expiry: {formatDate(release.expiryDate)}</div>
-                            <div>Batch Size: {release.batchSize?.toLocaleString()} units</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium">Product Information</h5>
-                          <div className="space-y-1 text-sm text-muted-foreground mt-2">
-                            <div>Product: {release.productName}</div>
-                            <div>Code: {release.productCode}</div>
-                            <div>Shelf Life: {release.shelfLife} months</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium">Storage & Handling</h5>
-                          <div className="space-y-1 text-sm text-muted-foreground mt-2">
-                            <div>Storage: {release.storageConditions}</div>
-                            <div>Packaging: {release.packagingDetails}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Workflow Steps */}
+                  {/* Batch Summary Info */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <WorkflowSteps batchId={release.id} />
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex space-x-2 pt-4 border-t">
-                        <Button size="sm" variant="outline">
-                          <Eye className="mr-1 h-3 w-3" />
-                          View Details
-                        </Button>
-                        
-                        {release.releaseStatus === "under-testing" && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleBatchApproval(release.id)}
-                            data-testid={`button-approve-batch-${release.id}`}
-                          >
-                            <Shield className="mr-1 h-3 w-3" />
-                            Approve Batch
-                          </Button>
-                        )}
-                        
-                        <Button size="sm" variant="outline">
-                          <Download className="mr-1 h-3 w-3" />
-                          Download CoA
-                        </Button>
-                        
-                        <Button size="sm" variant="outline">
-                          <FileText className="mr-1 h-3 w-3" />
-                          Batch Records
-                        </Button>
+                        <div className="text-xs text-muted-foreground">Manufacturing Date</div>
+                        <div className="text-sm font-medium">{formatDate(batch.manufacturingDate)}</div>
                       </div>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
-        </CardContent>
-      </Card>
+                    <div className="flex items-center space-x-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Quantity</div>
+                        <div className="text-sm font-medium">{batch.quantity?.toLocaleString() || 'N/A'} units</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">QA Manager</div>
+                        <div className="text-sm font-medium">{batch.qaManager}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Award className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Certificate</div>
+                        <div className="text-sm font-medium">
+                          {batch.certificateNumber ? (
+                            <Badge variant="outline">{batch.certificateNumber}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">Pending</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
 
-      {/* Quality Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quality Summary</CardTitle>
-          <CardDescription>
-            Overview of quality parameters and compliance status
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <h4 className="font-medium">Critical Quality Attributes</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Assay (%):</span>
-                  <span className="text-green-600">95.0 - 105.0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Dissolution:</span>
-                  <span className="text-green-600">Q+15min ≥ 85%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Content Uniformity:</span>
-                  <span className="text-green-600">85.0 - 115.0%</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-medium">Regulatory Compliance</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>FDA Guidelines:</span>
-                  <Badge variant="default">Compliant</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>ICH Guidelines:</span>
-                  <Badge variant="default">Compliant</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>GMP Standards:</span>
-                  <Badge variant="default">Compliant</Badge>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-medium">Documentation Status</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Batch Records:</span>
-                  <Badge variant="default">Complete</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Test Results:</span>
-                  <Badge variant="default">Reviewed</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span>Release Notes:</span>
-                  <Badge variant="default">Approved</Badge>
-                </div>
-              </div>
-            </div>
+                <CardContent>
+                  {/* Audit Steps Workflow */}
+                  <Accordion 
+                    type="single" 
+                    collapsible 
+                    value={expandedBatch === batch.id ? "item-1" : ""} 
+                    onValueChange={(value) => setExpandedBatch(value ? batch.id : "")}
+                  >
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center space-x-2">
+                          <CheckSquare className="h-4 w-4" />
+                          <span>Audit Steps & Workflow ({batch.auditSteps.filter(step => step.status === 'Completed' || step.status === 'Approved').length}/{batch.auditSteps.length} Complete)</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          {batch.auditSteps.map((step) => (
+                            <div key={step.id} className="border rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-3">
+                                  {getStatusIcon(step.status)}
+                                  <div>
+                                    <h4 className="font-medium">{step.name}</h4>
+                                    <p className="text-sm text-muted-foreground">{step.category}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant={getStatusVariant(step.status)}>
+                                    {step.status}
+                                  </Badge>
+                                  {step.approval_required && (
+                                    <Badge variant="outline" className="text-xs">
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Approval Required
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                <div>
+                                  <div className="text-xs text-muted-foreground">Assigned To</div>
+                                  <div className="text-sm font-medium">{step.assignedTo}</div>
+                                </div>
+                                {step.reviewedBy && (
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Reviewed By</div>
+                                    <div className="text-sm font-medium">{step.reviewedBy}</div>
+                                  </div>
+                                )}
+                                {step.completedAt && (
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Completed Date</div>
+                                    <div className="text-sm">{formatDate(step.completedAt)}</div>
+                                  </div>
+                                )}
+                                {step.reviewedAt && (
+                                  <div>
+                                    <div className="text-xs text-muted-foreground">Reviewed Date</div>
+                                    <div className="text-sm">{formatDate(step.reviewedAt)}</div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {step.findings && (
+                                <div className="mb-3">
+                                  <div className="text-xs text-muted-foreground mb-1">Findings</div>
+                                  <div className="text-sm bg-gray-50 rounded p-2">{step.findings}</div>
+                                </div>
+                              )}
+
+                              {step.evidence.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="text-xs text-muted-foreground mb-1">Evidence</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {step.evidence.map((evidence, index) => (
+                                      <Badge key={index} variant="outline" className="text-xs">
+                                        <FileText className="h-3 w-3 mr-1" />
+                                        {evidence}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {step.status === 'Completed' && step.approval_required && (
+                                <div className="flex space-x-2">
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => approveStepMutation.mutate({ 
+                                      stepId: step.id, 
+                                      approvedBy: 'Current User' 
+                                    })}
+                                    disabled={approveStepMutation.isPending}
+                                  >
+                                    <CheckSquare className="mr-1 h-3 w-3" />
+                                    Approve Step
+                                  </Button>
+                                  <Button size="sm" variant="outline">
+                                    <Eye className="mr-1 h-3 w-3" />
+                                    Review Details
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="flex space-x-2">
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Details
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <Download className="h-4 w-4 mr-1" />
+                        Download Report
+                      </Button>
+                    </div>
+                    
+                    {batch.status === 'Pending Release' && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleBatchApproval(batch.id)}
+                        disabled={approveBatchMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve & Release Batch
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
-        </div>
+        </main>
       </div>
     </div>
   );
