@@ -1336,7 +1336,7 @@ export default function QAAssignmentTracker() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
                     <div>
                       <label className="text-sm font-medium mb-2 block">Date Filter</label>
-                      <Select value={dateFilterType} onValueChange={setDateFilterType}>
+                      <Select value={dateFilterType} onValueChange={(value) => setDateFilterType(value as typeof dateFilterType)}>
                         <SelectTrigger data-testid="select-date-filter-type">
                           <SelectValue placeholder="All Dates" />
                         </SelectTrigger>
