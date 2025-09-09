@@ -252,7 +252,7 @@ export class MemStorage implements IStorage {
     this.qaAuditTrails = new Map();
     this.qaAuditTrailsByEntity = new Map();
     this.qcStageTemplates = new Map();
-    this.initializeDummyData();
+    this.initializeDummyData().catch(console.error);
   }
 
   async getMaterials(): Promise<Material[]> {
@@ -597,7 +597,7 @@ export class MemStorage implements IStorage {
   }
 
   // Initialize dummy pharma manufacturing data
-  private initializeDummyData() {
+  private async initializeDummyData() {
     // Add pharma test configurations
     const testConfigData = [
       {
@@ -1174,6 +1174,11 @@ export class MemStorage implements IStorage {
     ];
 
     productionOrderData.forEach(order => this.productionOrders.set(order.id, order));
+    
+    // Create batch releases for sample production orders
+    for (const order of productionOrderData) {
+      await this.createBatchReleaseWithWorkflow(order);
+    }
     
     // Add sample BOM data
     const bomData = [
