@@ -1043,27 +1043,14 @@ export default function QACAPAManagement() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total CAPAs</CardTitle>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">Open CAPAs</CardTitle>
+                    <Clock className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-total-capas">{capaStats.total}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {capaStats.open} currently open
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Open CAPAs</CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-yellow-600" data-testid="text-open-capas">{capaStats.open}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-yellow-600" data-testid="text-open-capas">{capaStats.open}</div>
                     <p className="text-xs text-muted-foreground">
                       {capaStats.overdue} overdue
                     </p>
@@ -1071,12 +1058,12 @@ export default function QACAPAManagement() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Critical CAPAs</CardTitle>
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">Critical CAPAs</CardTitle>
+                    <AlertCircle className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600" data-testid="text-critical-capas">{capaStats.critical}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-red-600" data-testid="text-critical-capas">{capaStats.critical}</div>
                     <p className="text-xs text-muted-foreground">
                       Require immediate attention
                     </p>
@@ -1084,12 +1071,12 @@ export default function QACAPAManagement() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Avg. Closure Time</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">Avg. Closure Time</CardTitle>
+                    <TrendingUp className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600" data-testid="text-avg-closure">{capaStats.avgClosureTime}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-green-600" data-testid="text-avg-closure">{capaStats.avgClosureTime}</div>
                     <p className="text-xs text-muted-foreground">
                       days to closure
                     </p>
@@ -1097,27 +1084,14 @@ export default function QACAPAManagement() {
                 </Card>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Deviations</CardTitle>
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">CAPA Required</CardTitle>
+                    <Target className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-total-deviations">{deviationStats.total}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {deviationStats.thisMonth} this month
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">CAPA Required</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-orange-600" data-testid="text-capa-required">{deviationStats.capaRequired}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-orange-600" data-testid="text-capa-required">{deviationStats.capaRequired}</div>
                     <p className="text-xs text-muted-foreground">
                       Deviations requiring CAPA
                     </p>
@@ -1125,12 +1099,12 @@ export default function QACAPAManagement() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">GMP Impact</CardTitle>
-                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">GMP Impact</CardTitle>
+                    <Shield className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600" data-testid="text-gmp-impact">{deviationStats.gmpImpact}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold text-red-600" data-testid="text-gmp-impact">{deviationStats.gmpImpact}</div>
                     <p className="text-xs text-muted-foreground">
                       GMP-impacting deviations
                     </p>
@@ -1138,12 +1112,12 @@ export default function QACAPAManagement() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">This Month</CardTitle>
-                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-xs font-medium">This Month</CardTitle>
+                    <Activity className="h-3 w-3 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-month-deviations">{deviationStats.thisMonth}</div>
+                  <CardContent className="pt-1">
+                    <div className="text-lg font-bold" data-testid="text-month-deviations">{deviationStats.thisMonth}</div>
                     <p className="text-xs text-muted-foreground">
                       New deviations
                     </p>
