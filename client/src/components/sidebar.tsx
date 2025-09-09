@@ -47,7 +47,6 @@ const menuItems = [
     submenu: [
       { label: "Assignment Tracker", href: "/qa-assignment-tracker" },
       { label: "QC & Batch Release", href: "/qa-batch-release" },
-      { label: "Audit Trail", href: "/qa-audit-trail" },
       { label: "CAPA Management", href: "/qa-capa" },
       { label: "Risk Management", href: "/qa-risk-management" },
     ],
@@ -63,6 +62,7 @@ const menuItems = [
   },
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
   { id: "bom-management", label: "BOM Management", icon: Layers, href: "/bom-management" },
+  { id: "audit-trail", label: "Audit Trail", icon: FileCheck, href: "/qa-audit-trail" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
 ];
 
