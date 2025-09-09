@@ -1272,41 +1272,6 @@ export default function QAAssignmentTracker() {
                 </Card>
               </div>
 
-              {/* Task Categories Overview */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>QA Task Categories</CardTitle>
-                  <CardDescription>
-                    Comprehensive overview of all quality assurance task categories and types
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {Object.entries(QA_TASK_CATEGORIES).map(([key, category]) => {
-                      const categoryTasks = tasks.filter(task => task.category === key);
-                      const IconComponent = category.icon;
-                      
-                      return (
-                        <div key={key} className="border rounded-lg p-4">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <IconComponent className="h-5 w-5" />
-                            <h4 className="font-medium text-sm">{category.name}</h4>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-lg font-bold">{categoryTasks.length}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {categoryTasks.filter(t => t.status === 'Completed').length} completed
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {categoryTasks.filter(t => t.status === 'In Progress').length} in progress
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
 
               {/* Task Search and Filters */}
               <Card>
