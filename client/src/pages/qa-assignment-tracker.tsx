@@ -80,7 +80,6 @@ import {
   X,
   Copy,
   RefreshCw,
-  History,
 } from "lucide-react";
 
 // Comprehensive QA Task Categories and Types
@@ -782,12 +781,6 @@ export default function QAAssignmentTracker() {
                   </div>
                 </PopoverContent>
               </Popover>
-              
-              {/* History Button */}
-              <Button variant="outline" data-testid="button-view-history">
-                <History className="h-4 w-4 mr-2" />
-                History ({employeeHistory.length + taskHistory.length})
-              </Button>
               
               <Button onClick={() => setShowCreateTask(true)} data-testid="button-create-task">
                 <Plus className="h-4 w-4 mr-2" />
