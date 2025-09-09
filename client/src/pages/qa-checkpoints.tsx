@@ -649,15 +649,6 @@ export default function QACheckpoints() {
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
-                <Button
-                  size="sm"
-                  variant="default"
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  Calendar View
-                </Button>
-              </div>
               <Button onClick={() => setShowCreateTask(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Create Task
