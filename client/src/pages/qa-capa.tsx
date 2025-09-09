@@ -46,14 +46,24 @@ import {
   ClipboardCheck,
   FileX,
   Settings,
-  Shield
+  Shield,
+  Edit,
+  Save,
+  X,
+  ArrowRight,
+  CheckSquare,
+  UserCheck,
+  Zap,
+  Workflow,
+  GitBranch
 } from "lucide-react";
 import { format } from "date-fns";
 
-// CAPA interfaces
+// Enhanced CAPA interfaces with workflow
 interface CAPA {
   id: string;
   capaNumber: string;
+  deviationId: string;
   title: string;
   description: string;
   category: string;
@@ -68,6 +78,8 @@ interface CAPA {
   priority: string;
   severity: string;
   status: string;
+  currentWorkflowStep: number;
+  workflowSteps: WorkflowStep[];
   rootCauseAnalysis: string;
   correctiveActions: CorrectiveAction[];
   preventiveActions: PreventiveAction[];
@@ -83,6 +95,26 @@ interface CAPA {
   regulatoryReporting: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+interface WorkflowStep {
+  id: string;
+  stepNumber: number;
+  title: string;
+  department: string;
+  assignedTeam: string;
+  assignedTo?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'rejected';
+  requiredActions: string[];
+  completedActions: string[];
+  comments?: string;
+  completedBy?: string;
+  completedDate?: Date;
+  evidence?: string[];
+  approvalRequired: boolean;
+  approvers?: string[];
+  approvedBy?: string[];
+  rejectionReason?: string;
 }
 
 interface CorrectiveAction {
@@ -144,12 +176,82 @@ export default function QACAPAManagement() {
   const [showNewCAPADialog, setShowNewCAPADialog] = useState(false);
   const [showNewDeviationDialog, setShowNewDeviationDialog] = useState(false);
   const [selectedCapa, setSelectedCapa] = useState<CAPA | null>(null);
+  const [showWorkflowDialog, setShowWorkflowDialog] = useState(false);
+  const [showClosureDialog, setShowClosureDialog] = useState(false);
+  const [editingCells, setEditingCells] = useState<Array<{id: string, field: string, isEditing: boolean, originalValue: string, newValue: string}>>([]);
 
-  // Generate comprehensive CAPA data
+  // Enhanced editing functions
+  const startEditing = (id: string, field: string, currentValue: string) => {
+    const newEditableCell = {
+      id,
+      field,
+      isEditing: true,
+      originalValue: currentValue,
+      newValue: currentValue
+    };
+    setEditingCells(prev => [...prev.filter(cell => !(cell.id === id && cell.field === field)), newEditableCell]);
+  };
+
+  const updateEditingValue = (id: string, field: string, newValue: string) => {
+    setEditingCells(prev => 
+      prev.map(cell => 
+        cell.id === id && cell.field === field 
+          ? { ...cell, newValue }
+          : cell
+      )
+    );
+  };
+
+  const saveEdit = (id: string, field: string) => {
+    const editingCell = editingCells.find(cell => cell.id === id && cell.field === field);
+    if (editingCell && editingCell.newValue !== editingCell.originalValue) {
+      toast({
+        title: "Updated Successfully",
+        description: `${field} has been updated.`,
+      });
+    }
+    setEditingCells(prev => prev.filter(cell => !(cell.id === id && cell.field === field)));
+  };
+
+  const cancelEdit = (id: string, field: string) => {
+    setEditingCells(prev => prev.filter(cell => !(cell.id === id && cell.field === field)));
+  };
+
+  const isEditing = (id: string, field: string) => {
+    return editingCells.some(cell => cell.id === id && cell.field === field);
+  };
+
+  const getEditingValue = (id: string, field: string) => {
+    const editingCell = editingCells.find(cell => cell.id === id && cell.field === field);
+    return editingCell?.newValue || "";
+  };
+
+  // Workflow functions
+  const advanceWorkflow = (capaId: string) => {
+    const capa = capaData.find(c => c.id === capaId);
+    if (capa && capa.currentWorkflowStep < capa.workflowSteps.length - 1) {
+      toast({
+        title: "Workflow Advanced",
+        description: `CAPA moved to next step: ${capa.workflowSteps[capa.currentWorkflowStep + 1].title}`,
+      });
+    }
+  };
+
+  const generateDeviationId = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `DEV-${year}${month}${day}-${random}`;
+  };
+
+  // Generate comprehensive CAPA data with workflows
   const capaData: CAPA[] = useMemo(() => [
     {
       id: "CAPA-001",
       capaNumber: "CAPA-2024-001",
+      deviationId: "DEV-20240115-001",
       title: "Temperature Excursion in Cold Storage",
       description: "Temperature exceeded acceptable range (2-8°C) during weekend shift, reaching 12°C for 4 hours",
       category: "Equipment",
@@ -163,7 +265,89 @@ export default function QACAPAManagement() {
       department: "Warehouse Operations",
       priority: "High",
       severity: "Major",
-      status: "Investigation",
+      status: "In Progress",
+      currentWorkflowStep: 1,
+      workflowSteps: [
+        {
+          id: "ws-001-1",
+          stepNumber: 1,
+          title: "Initial Investigation",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          assignedTo: "Alex Thompson",
+          status: "completed",
+          requiredActions: ["Document incident", "Immediate containment", "Initial assessment"],
+          completedActions: ["Document incident", "Immediate containment", "Initial assessment"],
+          comments: "Temperature excursion documented. Affected products quarantined.",
+          completedBy: "Alex Thompson",
+          completedDate: new Date("2024-01-16"),
+          evidence: ["Incident Report IR-2024-001", "Temperature logs"],
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-001-2",
+          stepNumber: 2,
+          title: "Root Cause Analysis",
+          department: "Engineering",
+          assignedTeam: "Maintenance Team",
+          assignedTo: "John Smith",
+          status: "in_progress",
+          requiredActions: ["Equipment inspection", "Failure analysis", "Root cause determination"],
+          completedActions: ["Equipment inspection"],
+          comments: "HVAC compressor belt found worn. Investigating maintenance schedule gaps.",
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-001-3",
+          stepNumber: 3,
+          title: "Corrective Actions",
+          department: "Maintenance",
+          assignedTeam: "Maintenance Team",
+          status: "pending",
+          requiredActions: ["Implement immediate fixes", "Replace faulty components", "Verify effectiveness"],
+          completedActions: [],
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-001-4",
+          stepNumber: 4,
+          title: "Preventive Actions",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Update procedures", "Training", "Prevention measures"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Manager", "Plant Manager"]
+        },
+        {
+          id: "ws-001-5",
+          stepNumber: 5,
+          title: "Effectiveness Verification",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Monitor for 30 days", "Verify no recurrence", "Document effectiveness"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Director"]
+        },
+        {
+          id: "ws-001-6",
+          stepNumber: 6,
+          title: "CAPA Closure",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Final review", "Documentation complete", "Close CAPA"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Director", "Plant Manager"]
+        }
+      ],
       rootCauseAnalysis: "HVAC system failure due to worn compressor belt. Weekend maintenance schedule inadequate.",
       correctiveActions: [
         {
@@ -217,6 +401,7 @@ export default function QACAPAManagement() {
     {
       id: "CAPA-002",
       capaNumber: "CAPA-2024-002",
+      deviationId: "DEV-20240118-002",
       title: "Label Mix-up in Packaging",
       description: "Incorrect labels applied to finished product batch ABC-123, detected during final inspection",
       category: "Human Error",
@@ -231,6 +416,93 @@ export default function QACAPAManagement() {
       priority: "Critical",
       severity: "Major",
       status: "Corrective Actions",
+      currentWorkflowStep: 2,
+      workflowSteps: [
+        {
+          id: "ws-002-1",
+          stepNumber: 1,
+          title: "Initial Investigation",
+          department: "Quality Control",
+          assignedTeam: "QC Team",
+          assignedTo: "Emma Rodriguez",
+          status: "completed",
+          requiredActions: ["Quarantine batch", "Document deviation", "Impact assessment"],
+          completedActions: ["Quarantine batch", "Document deviation", "Impact assessment"],
+          comments: "Batch ABC-123 quarantined. No product released to market.",
+          completedBy: "Emma Rodriguez",
+          completedDate: new Date("2024-01-18"),
+          evidence: ["Deviation Report DEV-2024-002", "Batch records"],
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-002-2",
+          stepNumber: 2,
+          title: "Root Cause Analysis",
+          department: "Operations",
+          assignedTeam: "Packaging Team",
+          assignedTo: "Lisa Wang",
+          status: "completed",
+          requiredActions: ["Interview operators", "Review procedures", "Identify root cause"],
+          completedActions: ["Interview operators", "Review procedures", "Identify root cause"],
+          comments: "Operator training gap identified. Label changeover procedure not followed.",
+          completedBy: "Lisa Wang",
+          completedDate: new Date("2024-01-19"),
+          evidence: ["Interview records", "Procedure review"],
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-002-3",
+          stepNumber: 3,
+          title: "Corrective Actions",
+          department: "Operations",
+          assignedTeam: "Packaging Team",
+          assignedTo: "Lisa Wang",
+          status: "in_progress",
+          requiredActions: ["Re-label batch", "Update procedures", "Additional training"],
+          completedActions: ["Re-label batch"],
+          comments: "Batch re-labeling completed. Procedure updates in progress.",
+          approvalRequired: true,
+          approvers: ["Operations Manager"]
+        },
+        {
+          id: "ws-002-4",
+          stepNumber: 4,
+          title: "Preventive Actions",
+          department: "Training",
+          assignedTeam: "Training Team",
+          status: "pending",
+          requiredActions: ["Enhanced training program", "Competency assessment", "Procedure update"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["Training Manager", "QA Manager"]
+        },
+        {
+          id: "ws-002-5",
+          stepNumber: 5,
+          title: "Effectiveness Verification",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Monitor packaging operations", "Verify no recurrence", "Audit compliance"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Director"]
+        },
+        {
+          id: "ws-002-6",
+          stepNumber: 6,
+          title: "CAPA Closure",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Final review", "Effectiveness confirmed", "Close CAPA"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Director", "Plant Manager"]
+        }
+      ],
       rootCauseAnalysis: "Inadequate verification process during label changeover. Operator training insufficient on new label verification procedure.",
       correctiveActions: [
         {
@@ -284,6 +556,7 @@ export default function QACAPAManagement() {
     {
       id: "CAPA-003",
       capaNumber: "CAPA-2024-003",
+      deviationId: "DEV-20240120-003",
       title: "Out-of-Specification Test Results",
       description: "API assay results consistently below specification (98.5% vs 99.0-101.0% spec)",
       category: "Process",
@@ -298,6 +571,88 @@ export default function QACAPAManagement() {
       priority: "High",
       severity: "Major",
       status: "Root Cause Analysis",
+      currentWorkflowStep: 1,
+      workflowSteps: [
+        {
+          id: "ws-003-1",
+          stepNumber: 1,
+          title: "Initial Investigation",
+          department: "Quality Control",
+          assignedTeam: "QC Team",
+          assignedTo: "Robert Kim",
+          status: "completed",
+          requiredActions: ["Document OOS results", "Initiate investigation", "Check equipment"],
+          completedActions: ["Document OOS results", "Initiate investigation", "Check equipment"],
+          comments: "OOS results documented. Equipment calibration verified.",
+          completedBy: "Robert Kim",
+          completedDate: new Date("2024-01-21"),
+          evidence: ["Test Results TR-API-2024-001", "Equipment logs"],
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-003-2",
+          stepNumber: 2,
+          title: "Root Cause Analysis",
+          department: "Manufacturing",
+          assignedTeam: "Process Development",
+          assignedTo: "David Brown",
+          status: "in_progress",
+          requiredActions: ["Raw material analysis", "Process parameter review", "Historical data analysis"],
+          completedActions: ["Raw material analysis"],
+          comments: "Raw material variability identified. Reviewing mixing parameters.",
+          approvalRequired: false,
+          approvers: []
+        },
+        {
+          id: "ws-003-3",
+          stepNumber: 3,
+          title: "Corrective Actions",
+          department: "Manufacturing",
+          assignedTeam: "Production Team",
+          status: "pending",
+          requiredActions: ["Process optimization", "Parameter adjustment", "Validation"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["Manufacturing Manager"]
+        },
+        {
+          id: "ws-003-4",
+          stepNumber: 4,
+          title: "Preventive Actions",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Process controls update", "Monitoring enhancement", "Training"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Manager", "Manufacturing Manager"]
+        },
+        {
+          id: "ws-003-5",
+          stepNumber: 5,
+          title: "Effectiveness Verification",
+          department: "Quality Control",
+          assignedTeam: "QC Team",
+          status: "pending",
+          requiredActions: ["Monitor next 5 batches", "Verify specification compliance", "Statistical analysis"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QC Manager"]
+        },
+        {
+          id: "ws-003-6",
+          stepNumber: 6,
+          title: "CAPA Closure",
+          department: "Quality Assurance",
+          assignedTeam: "QA Team",
+          status: "pending",
+          requiredActions: ["Final review", "Effectiveness confirmed", "Close CAPA"],
+          completedActions: [],
+          approvalRequired: true,
+          approvers: ["QA Director", "Manufacturing Director"]
+        }
+      ],
       rootCauseAnalysis: "In progress: investigating raw material variability and mixing parameters",
       correctiveActions: [],
       preventiveActions: [],
