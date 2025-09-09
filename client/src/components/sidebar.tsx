@@ -18,7 +18,9 @@ import {
   Shield,
   Award,
   FileCheck,
-  ClipboardList
+  ClipboardList,
+  AlertCircle,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,6 +47,8 @@ const menuItems = [
     submenu: [
       { label: "QC & Batch Release", href: "/qa-checkpoints" },
       { label: "Audit Trail", href: "/qa-audit-trail" },
+      { label: "CAPA Management", href: "/qa-capa" },
+      { label: "Risk Management", href: "/qa-risk-management" },
     ],
   },
   {
