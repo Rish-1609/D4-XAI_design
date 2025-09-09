@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { DocumentViewer } from "@/components/DocumentViewer";
 import { Sidebar } from "@/components/sidebar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertSopSchema, type Sop, type SopVersion } from "@shared/schema";
+import { insertSopSchema, insertSopChangeRequestSchema, type Sop, type SopVersion, type SopChangeRequest } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { 
@@ -31,6 +32,10 @@ import {
   AlertCircle, 
   Archive,
   AlertTriangle,
+  FileCheck,
+  History,
+  UserCheck,
+  XCircle,
 } from "lucide-react";
 import type { UploadResult } from "@uppy/core";
 import { z } from "zod";
@@ -66,6 +71,11 @@ export default function SopManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isVersionsDialogOpen, setIsVersionsDialogOpen] = useState(false);
+  const [isChangeRequestDialogOpen, setIsChangeRequestDialogOpen] = useState(false);
+  const [isChangeRequestsDialogOpen, setIsChangeRequestsDialogOpen] = useState(false);
+  const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
+  const [selectedDocumentUrl, setSelectedDocumentUrl] = useState<string>("");
+  const [selectedDocumentName, setSelectedDocumentName] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -78,6 +88,18 @@ export default function SopManagement() {
   const { data: sopVersions = [] } = useQuery<SopVersion[]>({
     queryKey: ['/api/sops', selectedSop?.id, 'versions'],
     enabled: !!selectedSop && isVersionsDialogOpen,
+  });
+
+  // Fetch SOP change requests
+  const { data: changeRequests = [] } = useQuery<SopChangeRequest[]>({
+    queryKey: ['/api/sop-change-requests'],
+    enabled: isChangeRequestsDialogOpen,
+  });
+
+  // Fetch change requests for specific SOP
+  const { data: sopChangeRequests = [] } = useQuery<SopChangeRequest[]>({
+    queryKey: ['/api/sop-change-requests', { sopId: selectedSop?.id }],
+    enabled: !!selectedSop && isChangeRequestsDialogOpen,
   });
 
 
@@ -123,6 +145,68 @@ export default function SopManagement() {
     },
   });
 
+  // Create change request mutation
+  const createChangeRequestMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof insertSopChangeRequestSchema>) => {
+      const response = await fetch("/api/sop-change-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to create change request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sop-change-requests'] });
+      setIsChangeRequestDialogOpen(false);
+      toast({ title: "Success", description: "Change request created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create change request", variant: "destructive" });
+    },
+  });
+
+  // Approve change request mutation
+  const approveChangeRequestMutation = useMutation({
+    mutationFn: async ({ id, approvedBy, reviewComments }: { id: string; approvedBy: string; reviewComments?: string }) => {
+      const response = await fetch(`/api/sop-change-requests/${id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvedBy, reviewComments }),
+      });
+      if (!response.ok) throw new Error("Failed to approve change request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sop-change-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sops'] });
+      toast({ title: "Success", description: "Change request approved and implemented" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to approve change request", variant: "destructive" });
+    },
+  });
+
+  // Reject change request mutation
+  const rejectChangeRequestMutation = useMutation({
+    mutationFn: async ({ id, rejectedBy, rejectionReason }: { id: string; rejectedBy: string; rejectionReason: string }) => {
+      const response = await fetch(`/api/sop-change-requests/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejectedBy, rejectionReason }),
+      });
+      if (!response.ok) throw new Error("Failed to reject change request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sop-change-requests'] });
+      toast({ title: "Success", description: "Change request rejected" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to reject change request", variant: "destructive" });
+    },
+  });
+
   // Delete SOP mutation
   const deleteSopMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -153,6 +237,20 @@ export default function SopManagement() {
     },
   });
 
+  // Form for creating change requests
+  const changeRequestForm = useForm<z.infer<typeof insertSopChangeRequestSchema>>({
+    resolver: zodResolver(insertSopChangeRequestSchema),
+    defaultValues: {
+      sopId: "",
+      requestType: "update",
+      title: "",
+      description: "",
+      justification: "",
+      priority: "medium",
+      requestedBy: "Current User",
+    },
+  });
+
   // Filter SOPs based on active tab
   const filteredSops = sops.filter((sop: Sop) => {
     if (sopTab === "all") return true;
@@ -163,14 +261,65 @@ export default function SopManagement() {
   // Handle file upload - this would need to be implemented with object storage routes
   const handleFileUpload = async () => {
     try {
-      // This would call a backend route to get presigned upload URL
+      const response = await fetch('/api/objects/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
       return {
         method: "PUT" as const,
-        url: "https://example.com/upload", // Placeholder
+        url: data.uploadURL,
       };
     } catch (error) {
       console.error("Failed to get upload URL:", error);
       throw error;
+    }
+  };
+
+  // Handler functions for the enhanced SOP management
+  const handleViewDocument = (sop: Sop) => {
+    if (sop.filePath && sop.fileName) {
+      setSelectedDocumentUrl(sop.filePath);
+      setSelectedDocumentName(sop.fileName);
+      setIsDocumentViewerOpen(true);
+    } else {
+      toast({
+        title: "No document",
+        description: "This SOP doesn't have a document attached",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateChangeRequest = (sop: Sop) => {
+    changeRequestForm.setValue("sopId", sop.id);
+    const nextVersion = parseFloat(sop.version) + 0.1;
+    changeRequestForm.setValue("proposedVersion", nextVersion.toFixed(1));
+    setSelectedSop(sop);
+    setIsChangeRequestDialogOpen(true);
+  };
+
+  const handleViewChangeRequests = (sop: Sop) => {
+    setSelectedSop(sop);
+    setIsChangeRequestsDialogOpen(true);
+  };
+
+  const handleApproveChangeRequest = (changeRequest: SopChangeRequest) => {
+    approveChangeRequestMutation.mutate({
+      id: changeRequest.id,
+      approvedBy: "Current User",
+      reviewComments: "Approved via UI",
+    });
+  };
+
+  const handleRejectChangeRequest = (changeRequest: SopChangeRequest) => {
+    const reason = prompt("Please provide a reason for rejection:");
+    if (reason) {
+      rejectChangeRequestMutation.mutate({
+        id: changeRequest.id,
+        rejectedBy: "Current User", 
+        rejectionReason: reason,
+      });
     }
   };
 
@@ -453,33 +602,71 @@ export default function SopManagement() {
                                       {sop.updatedAt ? format(new Date(sop.updatedAt), 'MMM dd, yyyy') : 'N/A'}
                                     </TableCell>
                                     <TableCell>
-                                      <div className="flex space-x-2">
+                                      <div className="flex space-x-1 flex-wrap gap-1">
+                                        {/* View Document */}
+                                        {sop.filePath && (
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={() => handleViewDocument(sop)}
+                                            data-testid={`button-view-${sop.id}`}
+                                            title="View Document"
+                                          >
+                                            <Eye className="h-4 w-4" />
+                                          </Button>
+                                        )}
+                                        
+                                        {/* Request Change */}
                                         <Button 
                                           size="sm" 
                                           variant="outline" 
-                                          onClick={() => handleEdit(sop)}
-                                          data-testid={`button-edit-${sop.id}`}
+                                          onClick={() => handleCreateChangeRequest(sop)}
+                                          data-testid={`button-change-request-${sop.id}`}
+                                          title="Request Change"
                                         >
-                                          <Edit className="h-4 w-4" />
+                                          <FileCheck className="h-4 w-4" />
                                         </Button>
+                                        
+                                        {/* View Change Requests */}
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          onClick={() => handleViewChangeRequests(sop)}
+                                          data-testid={`button-change-requests-${sop.id}`}
+                                          title="View Change Requests"
+                                        >
+                                          <History className="h-4 w-4" />
+                                        </Button>
+                                        
+                                        {/* View Versions */}
                                         <Button 
                                           size="sm" 
                                           variant="outline" 
                                           onClick={() => handleViewVersions(sop)}
                                           data-testid={`button-versions-${sop.id}`}
+                                          title="View Versions"
                                         >
                                           <Clock className="h-4 w-4" />
                                         </Button>
-                                        {sop.filePath && (
-                                          <Button size="sm" variant="outline" data-testid={`button-download-${sop.id}`}>
-                                            <Download className="h-4 w-4" />
-                                          </Button>
-                                        )}
+                                        
+                                        {/* Edit */}
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline" 
+                                          onClick={() => handleEdit(sop)}
+                                          data-testid={`button-edit-${sop.id}`}
+                                          title="Edit SOP"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        
+                                        {/* Delete */}
                                         <Button 
                                           size="sm" 
                                           variant="destructive" 
                                           onClick={() => deleteSopMutation.mutate(sop.id)}
                                           data-testid={`button-delete-${sop.id}`}
+                                          title="Delete SOP"
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -636,6 +823,260 @@ export default function SopManagement() {
                         {version.filePath && (
                           <Button size="sm" variant="outline">
                             <Download className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Viewer */}
+      <DocumentViewer
+        isOpen={isDocumentViewerOpen}
+        onClose={() => setIsDocumentViewerOpen(false)}
+        documentUrl={selectedDocumentUrl}
+        documentName={selectedDocumentName}
+      />
+
+      {/* Create Change Request Dialog */}
+      <Dialog open={isChangeRequestDialogOpen} onOpenChange={setIsChangeRequestDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Change Request - {selectedSop?.title}</DialogTitle>
+          </DialogHeader>
+          <Form {...changeRequestForm}>
+            <form onSubmit={changeRequestForm.handleSubmit((data) => createChangeRequestMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={changeRequestForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Change Title *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Brief title for the change" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={changeRequestForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description *</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Detailed description of the proposed changes" rows={3} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={changeRequestForm.control}
+                name="justification"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Business Justification *</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Why is this change necessary?" rows={3} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={changeRequestForm.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={changeRequestForm.control}
+                  name="requestType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Request Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="update">Update</SelectItem>
+                          <SelectItem value="revision">Revision</SelectItem>
+                          <SelectItem value="archive">Archive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Upload New Document Version (Optional)</Label>
+                <ObjectUploader
+                  maxNumberOfFiles={1}
+                  maxFileSize={50 * 1024 * 1024} // 50MB
+                  allowedFileTypes={[
+                    'application/pdf',
+                    'application/msword', 
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                  ]}
+                  fileTypeDescription="Only PDF and Word documents are allowed"
+                  onGetUploadParameters={handleFileUpload}
+                  onComplete={(result) => {
+                    if (result.successful && result.successful.length > 0) {
+                      const file = result.successful[0];
+                      changeRequestForm.setValue("newFilePath", file.uploadURL || "");
+                      changeRequestForm.setValue("newFileName", file.name);
+                      changeRequestForm.setValue("newFileSize", file.size || 0);
+                      toast({
+                        title: "File uploaded",
+                        description: `${file.name} has been uploaded successfully`,
+                      });
+                    }
+                  }}
+                  buttonClassName="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Updated Document
+                </ObjectUploader>
+                {changeRequestForm.watch("newFileName") && (
+                  <p className="text-sm text-muted-foreground">
+                    Uploaded: {changeRequestForm.watch("newFileName")} 
+                    ({Math.round((changeRequestForm.watch("newFileSize") || 0) / 1024)}KB)
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsChangeRequestDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createChangeRequestMutation.isPending}>
+                  Submit Change Request
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Change Requests Dialog */}
+      <Dialog open={isChangeRequestsDialogOpen} onOpenChange={setIsChangeRequestsDialogOpen}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>Change Requests - {selectedSop?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Requested By</TableHead>
+                  <TableHead>Requested Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sopChangeRequests.map((cr: SopChangeRequest) => (
+                  <TableRow key={cr.id}>
+                    <TableCell className="font-medium">{cr.title}</TableCell>
+                    <TableCell>{cr.requestType}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          cr.status === 'approved' ? 'default' : 
+                          cr.status === 'rejected' ? 'destructive' : 
+                          'secondary'
+                        }
+                      >
+                        {cr.status === 'approved' && <UserCheck className="h-3 w-3 mr-1" />}
+                        {cr.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
+                        {cr.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                        {cr.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        cr.priority === 'urgent' ? 'destructive' :
+                        cr.priority === 'high' ? 'default' :
+                        'secondary'
+                      }>
+                        {cr.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{cr.requestedBy}</TableCell>
+                    <TableCell>
+                      {cr.requestedAt ? format(new Date(cr.requestedAt), 'MMM dd, yyyy') : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        {cr.status === 'pending' && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleApproveChangeRequest(cr)}
+                              data-testid={`button-approve-${cr.id}`}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              onClick={() => handleRejectChangeRequest(cr)}
+                              data-testid={`button-reject-${cr.id}`}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {cr.newFilePath && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedDocumentUrl(cr.newFilePath!);
+                              setSelectedDocumentName(cr.newFileName || "Document");
+                              setIsDocumentViewerOpen(true);
+                            }}
+                            data-testid={`button-view-cr-doc-${cr.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
