@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -16,6 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Table,
   TableBody,
@@ -39,7 +45,7 @@ import {
   Eye,
   CheckSquare,
   Users,
-  Calendar,
+  CalendarIcon,
   TrendingUp,
   FileCheck,
   Package,
@@ -70,6 +76,11 @@ import {
   DropletIcon as Droplet,
   TestTube,
   ClipboardList,
+  Save,
+  X,
+  Copy,
+  RefreshCw,
+  History,
 } from "lucide-react";
 
 // Comprehensive QA Task Categories and Types
@@ -217,6 +228,16 @@ interface QAEmployee {
   hireDate: string;
   lastTrainingDate: string;
   nextTrainingDue: string;
+  dateCreated: Date;
+  lastModified: Date;
+}
+
+// Historical data interface for tracking changes
+interface HistoricalEntry<T> {
+  date: Date;
+  data: T[];
+  modifiedBy: string;
+  changes: string[];
 }
 
 // Comprehensive QA Task interface
@@ -280,7 +301,9 @@ const mockQAEmployees: QAEmployee[] = [
     supervisor: 'Head of Quality',
     hireDate: '2018-03-15',
     lastTrainingDate: '2024-11-01',
-    nextTrainingDue: '2025-05-01'
+    nextTrainingDue: '2025-05-01',
+    dateCreated: new Date('2018-03-15'),
+    lastModified: new Date()
   },
   {
     id: 'emp2',
@@ -301,7 +324,9 @@ const mockQAEmployees: QAEmployee[] = [
     supervisor: 'Dr. Priya Sharma',
     hireDate: '2020-07-20',
     lastTrainingDate: '2024-10-15',
-    nextTrainingDue: '2025-04-15'
+    nextTrainingDue: '2025-04-15',
+    dateCreated: new Date('2020-07-20'),
+    lastModified: new Date()
   },
   {
     id: 'emp3',
@@ -322,7 +347,9 @@ const mockQAEmployees: QAEmployee[] = [
     supervisor: 'Dr. Priya Sharma',
     hireDate: '2019-11-10',
     lastTrainingDate: '2024-09-20',
-    nextTrainingDue: '2025-03-20'
+    nextTrainingDue: '2025-03-20',
+    dateCreated: new Date('2019-11-10'),
+    lastModified: new Date()
   },
   {
     id: 'emp4',
@@ -343,7 +370,9 @@ const mockQAEmployees: QAEmployee[] = [
     supervisor: 'Dr. Priya Sharma',
     hireDate: '2017-09-05',
     lastTrainingDate: '2024-12-01',
-    nextTrainingDue: '2025-06-01'
+    nextTrainingDue: '2025-06-01',
+    dateCreated: new Date('2017-09-05'),
+    lastModified: new Date()
   },
   {
     id: 'emp5',
@@ -364,7 +393,9 @@ const mockQAEmployees: QAEmployee[] = [
     supervisor: 'Rajesh Kumar',
     hireDate: '2023-06-01',
     lastTrainingDate: '2024-12-15',
-    nextTrainingDue: '2025-03-15'
+    nextTrainingDue: '2025-03-15',
+    dateCreated: new Date('2023-06-01'),
+    lastModified: new Date()
   },
   {
     id: 'emp6',
@@ -385,7 +416,9 @@ const mockQAEmployees: QAEmployee[] = [
     supervisor: 'Dr. Priya Sharma',
     hireDate: '2021-01-18',
     lastTrainingDate: '2024-11-10',
-    nextTrainingDue: '2025-05-10'
+    nextTrainingDue: '2025-05-10',
+    dateCreated: new Date('2021-01-18'),
+    lastModified: new Date()
   }
 ];
 
@@ -454,12 +487,146 @@ export default function QAAssignmentTracker() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [showCreateTask, setShowCreateTask] = useState(false);
+  
+  // Date tracking states
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Edit mode states
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingEmployeeData, setEditingEmployeeData] = useState<QAEmployee | null>(null);
+  const [editingTaskData, setEditingTaskData] = useState<QATask | null>(null);
+  
+  // Historical data states
+  const [employees, setEmployees] = useState<QAEmployee[]>(mockQAEmployees);
+  const [tasks, setTasks] = useState<QATask[]>(mockQATasks);
+  const [employeeHistory, setEmployeeHistory] = useState<HistoricalEntry<QAEmployee>[]>([]);
+  const [taskHistory, setTaskHistory] = useState<HistoricalEntry<QATask>[]>([]);
 
   const { toast } = useToast();
 
+  // Save historical data function
+  const saveToHistory = useCallback((type: 'employees' | 'tasks', changes: string[]) => {
+    const now = new Date();
+    if (type === 'employees') {
+      setEmployeeHistory(prev => [...prev, {
+        date: now,
+        data: [...employees],
+        modifiedBy: 'Current User',
+        changes
+      }]);
+    } else {
+      setTaskHistory(prev => [...prev, {
+        date: now,
+        data: [...tasks],
+        modifiedBy: 'Current User',
+        changes
+      }]);
+    }
+  }, [employees, tasks]);
+
+  // Edit functions for employees
+  const startEditingEmployee = (employee: QAEmployee) => {
+    setEditingEmployeeId(employee.id);
+    setEditingEmployeeData({...employee});
+  };
+
+  const saveEmployeeEdit = () => {
+    if (!editingEmployeeData || !editingEmployeeId) return;
+    
+    const updatedEmployees = employees.map(emp => 
+      emp.id === editingEmployeeId ? 
+      {...editingEmployeeData, lastModified: new Date()} : emp
+    );
+    
+    setEmployees(updatedEmployees);
+    saveToHistory('employees', [`Updated employee: ${editingEmployeeData.name}`]);
+    setEditingEmployeeId(null);
+    setEditingEmployeeData(null);
+    
+    toast({
+      title: "Employee Updated",
+      description: `Successfully updated ${editingEmployeeData.name}'s information.`,
+    });
+  };
+
+  const cancelEmployeeEdit = () => {
+    setEditingEmployeeId(null);
+    setEditingEmployeeData(null);
+  };
+
+  // Edit functions for tasks
+  const startEditingTask = (task: QATask) => {
+    setEditingTaskId(task.id);
+    setEditingTaskData({...task});
+  };
+
+  const saveTaskEdit = () => {
+    if (!editingTaskData || !editingTaskId) return;
+    
+    const updatedTasks = tasks.map(task => 
+      task.id === editingTaskId ? 
+      {...editingTaskData, updatedAt: new Date()} : task
+    );
+    
+    setTasks(updatedTasks);
+    saveToHistory('tasks', [`Updated task: ${editingTaskData.title}`]);
+    setEditingTaskId(null);
+    setEditingTaskData(null);
+    
+    toast({
+      title: "Task Updated",
+      description: `Successfully updated task: ${editingTaskData.title}`,
+    });
+  };
+
+  const cancelTaskEdit = () => {
+    setEditingTaskId(null);
+    setEditingTaskData(null);
+  };
+
+  // Pull tasks from previous date
+  const pullTasksFromDate = (fromDate: Date) => {
+    // Find historical data for the selected date
+    const historicalData = taskHistory.find(entry => 
+      entry.date.toDateString() === fromDate.toDateString()
+    );
+    
+    if (historicalData) {
+      // Create new tasks based on historical data with updated dates
+      const newTasks = historicalData.data.map(task => ({
+        ...task,
+        id: `${task.id}-copy-${Date.now()}`,
+        status: 'Not Started' as const,
+        startDate: selectedDate,
+        dueDate: new Date(selectedDate.getTime() + (task.dueDate.getTime() - task.startDate.getTime())),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedDate: undefined,
+        reviewedDate: undefined,
+        actualHours: undefined,
+      }));
+      
+      setTasks(prev => [...prev, ...newTasks]);
+      saveToHistory('tasks', [`Pulled ${newTasks.length} tasks from ${fromDate.toDateString()}`]);
+      
+      toast({
+        title: "Tasks Pulled Successfully",
+        description: `Added ${newTasks.length} tasks from ${fromDate.toDateString()}`,
+      });
+    } else {
+      toast({
+        title: "No Data Found",
+        description: `No task data found for ${fromDate.toDateString()}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   // Filter employees based on search and filters
   const filteredEmployees = useMemo(() => {
-    let filtered = mockQAEmployees;
+    let filtered = employees;
 
     if (searchTerm) {
       filtered = filtered.filter(emp =>
@@ -482,7 +649,7 @@ export default function QAAssignmentTracker() {
 
   // Filter tasks based on search and filters
   const filteredTasks = useMemo(() => {
-    let filtered = mockQATasks;
+    let filtered = tasks;
 
     if (searchTerm) {
       filtered = filtered.filter(task =>
@@ -509,25 +676,25 @@ export default function QAAssignmentTracker() {
 
   // Statistics for employees
   const employeeStats = useMemo(() => {
-    const totalEmployees = mockQAEmployees.length;
-    const available = mockQAEmployees.filter(emp => emp.status === 'Available').length;
-    const busy = mockQAEmployees.filter(emp => emp.status === 'Busy').length;
-    const onLeave = mockQAEmployees.filter(emp => emp.status === 'On Leave').length;
-    const avgWorkload = Math.round(mockQAEmployees.reduce((sum, emp) => sum + emp.workload, 0) / totalEmployees);
+    const totalEmployees = employees.length;
+    const available = employees.filter(emp => emp.status === 'Available').length;
+    const busy = employees.filter(emp => emp.status === 'Busy').length;
+    const onLeave = employees.filter(emp => emp.status === 'On Leave').length;
+    const avgWorkload = totalEmployees > 0 ? Math.round(employees.reduce((sum, emp) => sum + emp.workload, 0) / totalEmployees) : 0;
 
     return { totalEmployees, available, busy, onLeave, avgWorkload };
-  }, []);
+  }, [employees]);
 
   // Statistics for tasks
   const taskStats = useMemo(() => {
-    const totalTasks = mockQATasks.length;
-    const notStarted = mockQATasks.filter(task => task.status === 'Not Started').length;
-    const inProgress = mockQATasks.filter(task => task.status === 'In Progress').length;
-    const completed = mockQATasks.filter(task => task.status === 'Completed').length;
-    const critical = mockQATasks.filter(task => task.priority === 'Critical').length;
+    const totalTasks = tasks.length;
+    const notStarted = tasks.filter(task => task.status === 'Not Started').length;
+    const inProgress = tasks.filter(task => task.status === 'In Progress').length;
+    const completed = tasks.filter(task => task.status === 'Completed').length;
+    const critical = tasks.filter(task => task.priority === 'Critical').length;
 
     return { totalTasks, notStarted, inProgress, completed, critical };
-  }, []);
+  }, [tasks]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -573,13 +740,60 @@ export default function QAAssignmentTracker() {
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">QA Assignment Tracker</h2>
               <p className="text-gray-600 text-sm mt-1">
-                Comprehensive quality assurance team assignments and task management
+                Comprehensive quality assurance team assignments and task management with date tracking
               </p>
             </div>
-            <Button onClick={() => setShowCreateTask(true)} data-testid="button-create-task">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Task
-            </Button>
+            <div className="flex items-center space-x-2">
+              {/* Date Picker */}
+              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" data-testid="button-date-picker">
+                    <CalendarDays className="h-4 w-4 mr-2" />
+                    {selectedDate.toLocaleDateString()}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(date);
+                        setShowDatePicker(false);
+                      }
+                    }}
+                    initialFocus
+                  />
+                  <div className="p-3 border-t">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        pullTasksFromDate(yesterday);
+                        setShowDatePicker(false);
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Pull Tasks from Yesterday
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              {/* History Button */}
+              <Button variant="outline" data-testid="button-view-history">
+                <History className="h-4 w-4 mr-2" />
+                History ({employeeHistory.length + taskHistory.length})
+              </Button>
+              
+              <Button onClick={() => setShowCreateTask(true)} data-testid="button-create-task">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Task
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -717,98 +931,243 @@ export default function QAAssignmentTracker() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredEmployees.map((employee) => (
-                        <TableRow key={employee.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{employee.name}</div>
-                              <div className="text-sm text-muted-foreground">{employee.email}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {employee.location} • Ext: {employee.phoneExtension}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{employee.role}</div>
-                              <div className="text-sm text-muted-foreground">{employee.department}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {employee.shift} Shift • {employee.experience}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              {getStatusIcon(employee.status)}
-                              <Badge variant={getStatusVariant(employee.status)}>
-                                {employee.status}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>{employee.workload}%</span>
-                              </div>
-                              <Progress value={employee.workload} className="h-2" />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="text-sm">
-                                <span className="font-medium">{employee.currentTasks}</span> active
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {employee.completedTasks} completed
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
+                      {filteredEmployees.map((employee) => {
+                        const isEditing = editingEmployeeId === employee.id;
+                        const editData = isEditing ? editingEmployeeData : employee;
+                        
+                        return (
+                          <TableRow key={employee.id} className={isEditing ? "bg-blue-50" : ""}>
+                            <TableCell>
                               <div>
-                                <div className="text-xs font-medium">Skills:</div>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {employee.skills.slice(0, 3).map((skill, index) => (
-                                    <Badge key={index} variant="outline" className="text-xs">
-                                      {skill}
-                                    </Badge>
-                                  ))}
-                                  {employee.skills.length > 3 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      +{employee.skills.length - 3}
-                                    </Badge>
-                                  )}
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      value={editData?.name || ''}
+                                      onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, name: e.target.value} : null)}
+                                      className="h-8"
+                                      data-testid={`input-edit-name-${employee.id}`}
+                                    />
+                                    <Input
+                                      value={editData?.email || ''}
+                                      onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, email: e.target.value} : null)}
+                                      className="h-8 text-sm"
+                                      data-testid={`input-edit-email-${employee.id}`}
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="font-medium">{employee.name}</div>
+                                    <div className="text-sm text-muted-foreground">{employee.email}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {employee.location} • Ext: {employee.phoneExtension}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      value={editData?.role || ''}
+                                      onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, role: e.target.value} : null)}
+                                      className="h-8"
+                                      data-testid={`input-edit-role-${employee.id}`}
+                                    />
+                                    <Select 
+                                      value={editData?.department || ''}
+                                      onValueChange={(value) => setEditingEmployeeData(prev => prev ? {...prev, department: value} : null)}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Quality Assurance">Quality Assurance</SelectItem>
+                                        <SelectItem value="Quality Control">Quality Control</SelectItem>
+                                        <SelectItem value="Regulatory Affairs">Regulatory Affairs</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="font-medium">{employee.role}</div>
+                                    <div className="text-sm text-muted-foreground">{employee.department}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {employee.shift} Shift • {employee.experience}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Select 
+                                  value={editData?.status || ''}
+                                  onValueChange={(value) => setEditingEmployeeData(prev => prev ? {...prev, status: value as QAEmployee['status']} : null)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Available">Available</SelectItem>
+                                    <SelectItem value="Busy">Busy</SelectItem>
+                                    <SelectItem value="On Leave">On Leave</SelectItem>
+                                    <SelectItem value="Training">Training</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  {getStatusIcon(employee.status)}
+                                  <Badge variant={getStatusVariant(employee.status)}>
+                                    {employee.status}
+                                  </Badge>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                {isEditing ? (
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={editData?.workload || 0}
+                                    onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, workload: parseInt(e.target.value)} : null)}
+                                    className="h-8"
+                                    data-testid={`input-edit-workload-${employee.id}`}
+                                  />
+                                ) : (
+                                  <>
+                                    <div className="flex justify-between text-sm">
+                                      <span>{employee.workload}%</span>
+                                    </div>
+                                    <Progress value={employee.workload} className="h-2" />
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={editData?.currentTasks || 0}
+                                    onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, currentTasks: parseInt(e.target.value)} : null)}
+                                    className="h-8"
+                                    placeholder="Current tasks"
+                                    data-testid={`input-edit-current-tasks-${employee.id}`}
+                                  />
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={editData?.completedTasks || 0}
+                                    onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, completedTasks: parseInt(e.target.value)} : null)}
+                                    className="h-8"
+                                    placeholder="Completed tasks"
+                                    data-testid={`input-edit-completed-tasks-${employee.id}`}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <div className="text-sm">
+                                    <span className="font-medium">{employee.currentTasks}</span> active
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {employee.completedTasks} completed
+                                  </div>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                <div>
+                                  <div className="text-xs font-medium">Skills:</div>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {employee.skills.slice(0, 3).map((skill, index) => (
+                                      <Badge key={index} variant="outline" className="text-xs">
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                    {employee.skills.length > 3 && (
+                                      <Badge variant="outline" className="text-xs">
+                                        +{employee.skills.length - 3}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="text-xs font-medium">Certifications:</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {employee.certifications.join(', ')}
+                                  </div>
                                 </div>
                               </div>
-                              <div>
-                                <div className="text-xs font-medium">Certifications:</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {employee.certifications.join(', ')}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Input
+                                  type="date"
+                                  value={editData?.nextTrainingDue || ''}
+                                  onChange={(e) => setEditingEmployeeData(prev => prev ? {...prev, nextTrainingDue: e.target.value} : null)}
+                                  className="h-8"
+                                  data-testid={`input-edit-training-due-${employee.id}`}
+                                />
+                              ) : (
+                                <div className="text-xs">
+                                  <div className="text-muted-foreground">Due:</div>
+                                  <div>{employee.nextTrainingDue}</div>
                                 </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-1">
+                                {isEditing ? (
+                                  <>
+                                    <Button 
+                                      size="sm" 
+                                      variant="default" 
+                                      className="h-8 w-8 p-0"
+                                      onClick={saveEmployeeEdit}
+                                      data-testid={`button-save-employee-${employee.id}`}
+                                    >
+                                      <Save className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-8 w-8 p-0"
+                                      onClick={cancelEmployeeEdit}
+                                      data-testid={`button-cancel-employee-${employee.id}`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => startEditingEmployee(employee)}
+                                      data-testid={`button-edit-employee-${employee.id}`}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-xs">
-                              <div className="text-muted-foreground">Due:</div>
-                              <div>{employee.nextTrainingDue}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-1">
-                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -883,7 +1242,7 @@ export default function QAAssignmentTracker() {
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {Object.entries(QA_TASK_CATEGORIES).map(([key, category]) => {
-                      const categoryTasks = mockQATasks.filter(task => task.category === key);
+                      const categoryTasks = tasks.filter(task => task.category === key);
                       const IconComponent = category.icon;
                       
                       return (
@@ -998,30 +1357,52 @@ export default function QAAssignmentTracker() {
                         const completedItems = task.checklist.filter(item => item.completed).length;
                         const totalItems = task.checklist.length;
                         const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+                        const isEditing = editingTaskId === task.id;
+                        const editData = isEditing ? editingTaskData : task;
 
                         return (
-                          <TableRow key={task.id}>
+                          <TableRow key={task.id} className={isEditing ? "bg-blue-50" : ""}>
                             <TableCell>
                               <div>
-                                <div className="font-medium">{task.title}</div>
-                                <div className="text-sm text-muted-foreground truncate max-w-xs">
-                                  {task.description}
-                                </div>
-                                <div className="flex space-x-2 mt-1">
-                                  {task.batchNumber && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {task.batchNumber}
-                                    </Badge>
-                                  )}
-                                  {task.equipment && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {task.equipment}
-                                    </Badge>
-                                  )}
-                                  <Badge variant="outline" className="text-xs">
-                                    {task.department}
-                                  </Badge>
-                                </div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Input
+                                      value={editData?.title || ''}
+                                      onChange={(e) => setEditingTaskData(prev => prev ? {...prev, title: e.target.value} : null)}
+                                      className="h-8"
+                                      data-testid={`input-edit-task-title-${task.id}`}
+                                    />
+                                    <Input
+                                      value={editData?.description || ''}
+                                      onChange={(e) => setEditingTaskData(prev => prev ? {...prev, description: e.target.value} : null)}
+                                      className="h-8 text-sm"
+                                      placeholder="Description"
+                                      data-testid={`input-edit-task-description-${task.id}`}
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="font-medium">{task.title}</div>
+                                    <div className="text-sm text-muted-foreground truncate max-w-xs">
+                                      {task.description}
+                                    </div>
+                                    <div className="flex space-x-2 mt-1">
+                                      {task.batchNumber && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {task.batchNumber}
+                                        </Badge>
+                                      )}
+                                      {task.equipment && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {task.equipment}
+                                        </Badge>
+                                      )}
+                                      <Badge variant="outline" className="text-xs">
+                                        {task.department}
+                                      </Badge>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -1036,26 +1417,93 @@ export default function QAAssignmentTracker() {
                             </TableCell>
                             <TableCell>
                               <div>
-                                <div className="font-medium text-sm">{task.assignedTo}</div>
-                                <div className="text-xs text-muted-foreground">{task.location}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  Est: {task.estimatedHours}h
-                                  {task.actualHours && ` | Actual: ${task.actualHours}h`}
-                                </div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <Select 
+                                      value={editData?.assignedTo || ''}
+                                      onValueChange={(value) => setEditingTaskData(prev => prev ? {...prev, assignedTo: value} : null)}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue placeholder="Assign to..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {employees.map(emp => (
+                                          <SelectItem key={emp.id} value={emp.name}>
+                                            {emp.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={editData?.estimatedHours || 0}
+                                      onChange={(e) => setEditingTaskData(prev => prev ? {...prev, estimatedHours: parseInt(e.target.value)} : null)}
+                                      className="h-8"
+                                      placeholder="Estimated hours"
+                                      data-testid={`input-edit-estimated-hours-${task.id}`}
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="font-medium text-sm">{task.assignedTo}</div>
+                                    <div className="text-xs text-muted-foreground">{task.location}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Est: {task.estimatedHours}h
+                                      {task.actualHours && ` | Actual: ${task.actualHours}h`}
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={getPriorityVariant(task.priority)} className="text-xs">
-                                {task.priority}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                {getStatusIcon(task.status)}
-                                <Badge variant={getStatusVariant(task.status)}>
-                                  {task.status}
+                              {isEditing ? (
+                                <Select 
+                                  value={editData?.priority || ''}
+                                  onValueChange={(value) => setEditingTaskData(prev => prev ? {...prev, priority: value as QATask['priority']} : null)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Low">Low</SelectItem>
+                                    <SelectItem value="Medium">Medium</SelectItem>
+                                    <SelectItem value="High">High</SelectItem>
+                                    <SelectItem value="Critical">Critical</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant={getPriorityVariant(task.priority)} className="text-xs">
+                                  {task.priority}
                                 </Badge>
-                              </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {isEditing ? (
+                                <Select 
+                                  value={editData?.status || ''}
+                                  onValueChange={(value) => setEditingTaskData(prev => prev ? {...prev, status: value as QATask['status']} : null)}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Not Started">Not Started</SelectItem>
+                                    <SelectItem value="In Progress">In Progress</SelectItem>
+                                    <SelectItem value="On Hold">On Hold</SelectItem>
+                                    <SelectItem value="Completed">Completed</SelectItem>
+                                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                    <SelectItem value="Under Review">Under Review</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  {getStatusIcon(task.status)}
+                                  <Badge variant={getStatusVariant(task.status)}>
+                                    {task.status}
+                                  </Badge>
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1 min-w-[120px]">
@@ -1067,28 +1515,69 @@ export default function QAAssignmentTracker() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="text-sm">
-                                <div>{task.dueDate.toLocaleDateString()}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {task.dueDate < new Date() ? (
-                                    <span className="text-red-600">Overdue</span>
-                                  ) : (
-                                    `${Math.ceil((task.dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left`
-                                  )}
+                              {isEditing ? (
+                                <Input
+                                  type="date"
+                                  value={editData?.dueDate ? editData.dueDate.toISOString().split('T')[0] : ''}
+                                  onChange={(e) => setEditingTaskData(prev => prev ? {...prev, dueDate: new Date(e.target.value)} : null)}
+                                  className="h-8"
+                                  data-testid={`input-edit-due-date-${task.id}`}
+                                />
+                              ) : (
+                                <div className="text-sm">
+                                  <div>{task.dueDate.toLocaleDateString()}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {task.dueDate < new Date() ? (
+                                      <span className="text-red-600">Overdue</span>
+                                    ) : (
+                                      `${Math.ceil((task.dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left`
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="flex space-x-1">
-                                <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                  <MessageSquare className="h-3 w-3" />
-                                </Button>
+                                {isEditing ? (
+                                  <>
+                                    <Button 
+                                      size="sm" 
+                                      variant="default" 
+                                      className="h-8 w-8 p-0"
+                                      onClick={saveTaskEdit}
+                                      data-testid={`button-save-task-${task.id}`}
+                                    >
+                                      <Save className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-8 w-8 p-0"
+                                      onClick={cancelTaskEdit}
+                                      data-testid={`button-cancel-task-${task.id}`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => startEditingTask(task)}
+                                      data-testid={`button-edit-task-${task.id}`}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                      <MessageSquare className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
