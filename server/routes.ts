@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertBomChangeRequestSchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -616,6 +616,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch BOM statistics" });
+    }
+  });
+
+  // BOM Change Request Routes
+  app.get("/api/bom-change-requests", async (req, res) => {
+    try {
+      const changeRequests = await storage.getBomChangeRequests();
+      res.json(changeRequests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOM change requests" });
+    }
+  });
+
+  app.get("/api/bom-change-requests/:bomId", async (req, res) => {
+    try {
+      const { bomId } = req.params;
+      const changeRequests = await storage.getBomChangeRequestsByBom(bomId);
+      res.json(changeRequests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch BOM change requests" });
+    }
+  });
+
+  app.post("/api/bom-change-requests", async (req, res) => {
+    try {
+      const validatedData = insertBomChangeRequestSchema.parse(req.body);
+      const changeRequest = await storage.createBomChangeRequest(validatedData);
+      res.status(201).json(changeRequest);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid change request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create change request" });
+    }
+  });
+
+  app.post("/api/bom-change-requests/:id/approve", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { approvedBy, reviewComments } = req.body;
+      
+      if (!approvedBy) {
+        return res.status(400).json({ message: "approvedBy is required" });
+      }
+
+      const changeRequest = await storage.approveBomChangeRequest(id, { approvedBy, reviewComments });
+      
+      if (!changeRequest) {
+        return res.status(404).json({ message: "Change request not found or cannot be approved" });
+      }
+      
+      res.json(changeRequest);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve change request" });
+    }
+  });
+
+  app.post("/api/bom-change-requests/:id/reject", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rejectedBy, rejectionReason } = req.body;
+      
+      if (!rejectedBy || !rejectionReason) {
+        return res.status(400).json({ message: "rejectedBy and rejectionReason are required" });
+      }
+
+      const changeRequest = await storage.rejectBomChangeRequest(id, { rejectedBy, rejectionReason });
+      
+      if (!changeRequest) {
+        return res.status(404).json({ message: "Change request not found or cannot be rejected" });
+      }
+      
+      res.json(changeRequest);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject change request" });
     }
   });
 

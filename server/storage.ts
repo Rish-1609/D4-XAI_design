@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type BomChangeRequest, type InsertBomChangeRequest, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -74,6 +74,15 @@ export interface IStorage {
     liveStockItems: number;
     totalBomValue: number;
   }>;
+
+  // BOM Change Request operations
+  getBomChangeRequests(): Promise<BomChangeRequest[]>;
+  getBomChangeRequestsByBom(bomId: string): Promise<BomChangeRequest[]>;
+  getBomChangeRequest(id: string): Promise<BomChangeRequest | undefined>;
+  createBomChangeRequest(changeRequest: InsertBomChangeRequest): Promise<BomChangeRequest>;
+  updateBomChangeRequest(id: string, changeRequest: Partial<InsertBomChangeRequest>): Promise<BomChangeRequest | undefined>;
+  approveBomChangeRequest(id: string, approvalData: { approvedBy: string; reviewComments?: string; }): Promise<BomChangeRequest | undefined>;
+  rejectBomChangeRequest(id: string, rejectionData: { rejectedBy: string; rejectionReason: string; }): Promise<BomChangeRequest | undefined>;
 
   // CAPA operations
   getCapas(): Promise<Capa[]>;
@@ -184,6 +193,7 @@ export class MemStorage implements IStorage {
   private boms: Map<string, Bom>;
   private bomMaterials: Map<string, BomMaterial[]>;
   private bomSubAssemblies: Map<string, BomSubAssembly[]>;
+  private bomChangeRequests: Map<string, BomChangeRequest>;
   private capas: Map<string, Capa>;
   private capaActions: Map<string, CapaAction[]>;
   private inventoryItems: Map<string, InventoryItem>;
@@ -219,6 +229,7 @@ export class MemStorage implements IStorage {
     this.boms = new Map();
     this.bomMaterials = new Map();
     this.bomSubAssemblies = new Map();
+    this.bomChangeRequests = new Map();
     this.capas = new Map();
     this.capaActions = new Map();
     this.inventoryItems = new Map();
@@ -2124,6 +2135,103 @@ export class MemStorage implements IStorage {
       liveStockItems,
       totalBomValue,
     };
+  }
+
+  // BOM Change Request operations
+  async getBomChangeRequests(): Promise<BomChangeRequest[]> {
+    return Array.from(this.bomChangeRequests.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getBomChangeRequestsByBom(bomId: string): Promise<BomChangeRequest[]> {
+    return Array.from(this.bomChangeRequests.values())
+      .filter(cr => cr.bomId === bomId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async getBomChangeRequest(id: string): Promise<BomChangeRequest | undefined> {
+    return this.bomChangeRequests.get(id);
+  }
+
+  async createBomChangeRequest(insertChangeRequest: InsertBomChangeRequest): Promise<BomChangeRequest> {
+    const id = randomUUID();
+    const now = new Date();
+    const changeRequest: BomChangeRequest = {
+      ...insertChangeRequest,
+      id,
+      status: 'pending',
+      requestedAt: now,
+      approvedBy: null,
+      approvedAt: null,
+      rejectedBy: null,
+      rejectionReason: null,
+      rejectedAt: null,
+      reviewComments: null,
+      implementedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.bomChangeRequests.set(id, changeRequest);
+    return changeRequest;
+  }
+
+  async updateBomChangeRequest(id: string, updateData: Partial<InsertBomChangeRequest>): Promise<BomChangeRequest | undefined> {
+    const existing = this.bomChangeRequests.get(id);
+    if (!existing) return undefined;
+
+    const updated: BomChangeRequest = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.bomChangeRequests.set(id, updated);
+    return updated;
+  }
+
+  async approveBomChangeRequest(id: string, approvalData: { approvedBy: string; reviewComments?: string; }): Promise<BomChangeRequest | undefined> {
+    const existing = this.bomChangeRequests.get(id);
+    if (!existing || existing.status !== 'pending') return undefined;
+
+    const now = new Date();
+    
+    // Create new version of the BOM when change request is approved
+    const bom = await this.getBom(existing.bomId);
+    if (bom && existing.proposedVersion) {
+      const updatedBom = await this.updateBom(existing.bomId, {
+        version: existing.proposedVersion,
+        updatedAt: now,
+      });
+    }
+
+    const approved: BomChangeRequest = {
+      ...existing,
+      status: 'approved',
+      approvedBy: approvalData.approvedBy,
+      approvedAt: now,
+      reviewComments: approvalData.reviewComments || null,
+      implementedAt: now,
+      updatedAt: now,
+    };
+    this.bomChangeRequests.set(id, approved);
+    return approved;
+  }
+
+  async rejectBomChangeRequest(id: string, rejectionData: { rejectedBy: string; rejectionReason: string; }): Promise<BomChangeRequest | undefined> {
+    const existing = this.bomChangeRequests.get(id);
+    if (!existing || existing.status !== 'pending') return undefined;
+
+    const now = new Date();
+    const rejected: BomChangeRequest = {
+      ...existing,
+      status: 'rejected',
+      rejectedBy: rejectionData.rejectedBy,
+      rejectionReason: rejectionData.rejectionReason,
+      rejectedAt: now,
+      updatedAt: now,
+    };
+    this.bomChangeRequests.set(id, rejected);
+    return rejected;
   }
 
   // CAPA operations

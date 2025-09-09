@@ -289,6 +289,7 @@ export const bomMaterials = pgTable("bom_materials", {
   materialId: text("material_id").references(() => materials.id),
   materialCode: text("material_code").notNull(),
   materialName: text("material_name").notNull(),
+  materialType: text("material_type").notNull().default("raw_material"), // 'raw_material', 'packaging_material', 'artwork'
   quantity: integer("quantity").notNull(), // in base units * 1000 for precision
   uom: text("uom").notNull(), // Unit of Measure
   unitCost: integer("unit_cost").notNull().default(0), // in paise (1/100th of rupee)
@@ -323,12 +324,48 @@ export const insertBomSubAssemblySchema = createInsertSchema(bomSubAssemblies).o
   createdAt: true,
 });
 
+// BOM Change Requests Schema
+export const bomChangeRequests = pgTable("bom_change_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bomId: text("bom_id").notNull().references(() => boms.id, { onDelete: "cascade" }),
+  requestType: text("request_type").notNull().default("update"), // 'update', 'revision', 'archive'
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  justification: text("justification").notNull(),
+  priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'urgent'
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  proposedVersion: text("proposed_version"),
+  requestedBy: text("requested_by").notNull(),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: text("rejected_by"),
+  rejectionReason: text("rejection_reason"),
+  rejectedAt: timestamp("rejected_at"),
+  reviewComments: text("review_comments"),
+  implementedAt: timestamp("implemented_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBomChangeRequestSchema = createInsertSchema(bomChangeRequests).omit({
+  id: true,
+  requestedAt: true,
+  approvedAt: true,
+  rejectedAt: true,
+  implementedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertBom = z.infer<typeof insertBomSchema>;
 export type Bom = typeof boms.$inferSelect;
 export type InsertBomMaterial = z.infer<typeof insertBomMaterialSchema>;
 export type BomMaterial = typeof bomMaterials.$inferSelect;
 export type InsertBomSubAssembly = z.infer<typeof insertBomSubAssemblySchema>;
 export type BomSubAssembly = typeof bomSubAssemblies.$inferSelect;
+export type InsertBomChangeRequest = z.infer<typeof insertBomChangeRequestSchema>;
+export type BomChangeRequest = typeof bomChangeRequests.$inferSelect;
 
 export type InsertCapa = z.infer<typeof insertCapaSchema>;
 export type Capa = typeof capas.$inferSelect;
