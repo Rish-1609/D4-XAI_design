@@ -1036,11 +1036,10 @@ export default function QACAPAManagement() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="capa-list">CAPA List</TabsTrigger>
               <TabsTrigger value="deviations">Deviations</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -1203,6 +1202,125 @@ export default function QACAPAManagement() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Analytics Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>CAPA Status Distribution</CardTitle>
+                    <CardDescription>Breakdown of CAPAs by current status</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[
+                        { status: "Investigation", count: 1, color: "bg-red-500" },
+                        { status: "Root Cause Analysis", count: 1, color: "bg-red-400" },
+                        { status: "Corrective Actions", count: 1, color: "bg-yellow-500" },
+                        { status: "Preventive Actions", count: 0, color: "bg-yellow-400" },
+                        { status: "Effectiveness Verification", count: 0, color: "bg-blue-500" },
+                        { status: "Closed", count: 0, color: "bg-green-500" }
+                      ].map(item => (
+                        <div key={item.status} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 rounded ${item.color}`}></div>
+                            <span className="text-sm">{item.status}</span>
+                          </div>
+                          <span className="font-medium">{item.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Category Analysis</CardTitle>
+                    <CardDescription>Most common deviation categories</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[
+                        { category: "Equipment", count: 2, percentage: 67 },
+                        { category: "Human Error", count: 1, percentage: 33 },
+                        { category: "Process", count: 0, percentage: 0 },
+                        { category: "Material", count: 0, percentage: 0 }
+                      ].map(item => (
+                        <div key={item.category} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">{item.category}</span>
+                            <span className="text-sm font-medium">{item.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full" 
+                              style={{ width: `${item.percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Metrics</CardTitle>
+                    <CardDescription>Key performance indicators for CAPA management</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">92%</div>
+                        <div className="text-sm text-gray-500">On-time Closure Rate</div>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">14</div>
+                        <div className="text-sm text-gray-500">Avg. Days to Close</div>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">8%</div>
+                        <div className="text-sm text-gray-500">Repeat Deviations</div>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">95%</div>
+                        <div className="text-sm text-gray-500">Effectiveness Rate</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Trend</CardTitle>
+                    <CardDescription>CAPA and deviation trends over time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>January 2024</span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-blue-600">3 CAPAs</span>
+                          <span className="text-orange-600">5 Deviations</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>December 2023</span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-blue-600">2 CAPAs</span>
+                          <span className="text-orange-600">3 Deviations</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>November 2023</span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-blue-600">1 CAPA</span>
+                          <span className="text-orange-600">2 Deviations</span>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1466,125 +1584,6 @@ export default function QACAPAManagement() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>CAPA Status Distribution</CardTitle>
-                    <CardDescription>Breakdown of CAPAs by current status</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { status: "Investigation", count: 1, color: "bg-red-500" },
-                        { status: "Root Cause Analysis", count: 1, color: "bg-red-400" },
-                        { status: "Corrective Actions", count: 1, color: "bg-yellow-500" },
-                        { status: "Preventive Actions", count: 0, color: "bg-yellow-400" },
-                        { status: "Effectiveness Verification", count: 0, color: "bg-blue-500" },
-                        { status: "Closed", count: 0, color: "bg-green-500" }
-                      ].map(item => (
-                        <div key={item.status} className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-3 h-3 rounded ${item.color}`}></div>
-                            <span className="text-sm">{item.status}</span>
-                          </div>
-                          <span className="font-medium">{item.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Category Analysis</CardTitle>
-                    <CardDescription>Most common deviation categories</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { category: "Equipment", count: 2, percentage: 67 },
-                        { category: "Human Error", count: 1, percentage: 33 },
-                        { category: "Process", count: 0, percentage: 0 },
-                        { category: "Material", count: 0, percentage: 0 }
-                      ].map(item => (
-                        <div key={item.category} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">{item.category}</span>
-                            <span className="text-sm font-medium">{item.count}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${item.percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance Metrics</CardTitle>
-                    <CardDescription>Key performance indicators for CAPA management</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">92%</div>
-                        <div className="text-sm text-gray-500">On-time Closure Rate</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">14</div>
-                        <div className="text-sm text-gray-500">Avg. Days to Close</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">8%</div>
-                        <div className="text-sm text-gray-500">Repeat Deviations</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">95%</div>
-                        <div className="text-sm text-gray-500">Effectiveness Rate</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Monthly Trend</CardTitle>
-                    <CardDescription>CAPA and deviation trends over time</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>January 2024</span>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-blue-600">3 CAPAs</span>
-                          <span className="text-orange-600">5 Deviations</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>December 2023</span>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-blue-600">2 CAPAs</span>
-                          <span className="text-orange-600">3 Deviations</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>November 2023</span>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-blue-600">1 CAPA</span>
-                          <span className="text-orange-600">2 Deviations</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
           </Tabs>
         </main>
       </div>

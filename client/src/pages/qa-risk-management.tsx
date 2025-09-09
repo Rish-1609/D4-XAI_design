@@ -734,12 +734,11 @@ export default function QARiskManagement() {
 
         <main className="flex-1 overflow-y-auto p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="risk-register">Risk Register</TabsTrigger>
               <TabsTrigger value="risk-matrix">Risk Matrix</TabsTrigger>
               <TabsTrigger value="controls">Controls</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -906,6 +905,139 @@ export default function QARiskManagement() {
                           <p className="text-xs text-gray-500">Supply chain risk review - 5 days ago</p>
                         </div>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Analytics Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Risk Trend Analysis</CardTitle>
+                    <CardDescription>Risk levels over time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>January 2024</span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-red-600">2 Critical</span>
+                          <span className="text-orange-600">2 High</span>
+                          <span className="text-yellow-600">0 Medium</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>December 2023</span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-red-600">1 Critical</span>
+                          <span className="text-orange-600">2 High</span>
+                          <span className="text-yellow-600">1 Medium</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>November 2023</span>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-red-600">0 Critical</span>
+                          <span className="text-orange-600">1 High</span>
+                          <span className="text-yellow-600">2 Medium</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Control Effectiveness</CardTitle>
+                    <CardDescription>Performance of risk controls</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">85%</div>
+                        <div className="text-sm text-gray-500">Overall Effectiveness</div>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">{riskStats.activeControls}</div>
+                        <div className="text-sm text-gray-500">Active Controls</div>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">3</div>
+                        <div className="text-sm text-gray-500">Overdue Reviews</div>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">12</div>
+                        <div className="text-sm text-gray-500">Planned Updates</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Risk Heat Map</CardTitle>
+                    <CardDescription>Risk distribution by category and level</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { category: "Product Quality", critical: 0, high: 1, medium: 0, low: 0 },
+                        { category: "Data Integrity", critical: 0, high: 0, medium: 1, low: 0 },
+                        { category: "Supply Chain", critical: 0, high: 1, medium: 0, low: 0 },
+                        { category: "Equipment", critical: 0, high: 0, medium: 1, low: 0 }
+                      ].map(item => (
+                        <div key={item.category} className="flex items-center justify-between">
+                          <span className="text-sm font-medium w-24">{item.category}</span>
+                          <div className="flex space-x-1">
+                            <div className={`w-4 h-4 rounded ${
+                              item.critical > 0 ? 'bg-red-600' : 'bg-gray-200'
+                            }`} title={`${item.critical} Critical`}></div>
+                            <div className={`w-4 h-4 rounded ${
+                              item.high > 0 ? 'bg-orange-500' : 'bg-gray-200'
+                            }`} title={`${item.high} High`}></div>
+                            <div className={`w-4 h-4 rounded ${
+                              item.medium > 0 ? 'bg-yellow-500' : 'bg-gray-200'
+                            }`} title={`${item.medium} Medium`}></div>
+                            <div className={`w-4 h-4 rounded ${
+                              item.low > 0 ? 'bg-green-500' : 'bg-gray-200'
+                            }`} title={`${item.low} Low`}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Mitigation Status</CardTitle>
+                    <CardDescription>Progress of risk mitigation efforts</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {[
+                        { status: "Completed", count: 2, color: "bg-green-500", percentage: 25 },
+                        { status: "In Progress", count: 4, color: "bg-blue-500", percentage: 50 },
+                        { status: "Planned", count: 2, color: "bg-yellow-500", percentage: 25 },
+                        { status: "Overdue", count: 0, color: "bg-red-500", percentage: 0 }
+                      ].map(item => (
+                        <div key={item.status} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-3 h-3 rounded ${item.color}`}></div>
+                              <span className="text-sm">{item.status}</span>
+                            </div>
+                            <span className="text-sm font-medium">{item.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${item.color}`}
+                              style={{ width: `${item.percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -1213,131 +1345,6 @@ export default function QARiskManagement() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Risk Trend Analysis</CardTitle>
-                    <CardDescription>Risk levels over time</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>January 2024</span>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-red-600">0 Critical</span>
-                          <span className="text-orange-600">2 High</span>
-                          <span className="text-yellow-600">1 Medium</span>
-                          <span className="text-green-600">1 Low</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>December 2023</span>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-red-600">0 Critical</span>
-                          <span className="text-orange-600">1 High</span>
-                          <span className="text-yellow-600">2 Medium</span>
-                          <span className="text-green-600">0 Low</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span>November 2023</span>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-red-600">1 Critical</span>
-                          <span className="text-orange-600">1 High</span>
-                          <span className="text-yellow-600">1 Medium</span>
-                          <span className="text-green-600">0 Low</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Control Effectiveness</CardTitle>
-                    <CardDescription>Average effectiveness by control type</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { type: "Detective", effectiveness: 3.5, count: 6 },
-                        { type: "Preventive", effectiveness: 4.0, count: 2 },
-                        { type: "Corrective", effectiveness: 3.0, count: 1 }
-                      ].map(item => (
-                        <div key={item.type} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">{item.type} ({item.count} controls)</span>
-                            <span className="text-sm font-medium">{item.effectiveness}/5</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${(item.effectiveness / 5) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Mitigation Cost Analysis</CardTitle>
-                    <CardDescription>Investment in risk mitigation by category</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { category: "Product Quality", cost: 175000 },
-                        { category: "Data Integrity", cost: 60000 },
-                        { category: "Supply Chain", cost: 275000 },
-                        { category: "Equipment", cost: 80000 }
-                      ].map(item => (
-                        <div key={item.category} className="flex items-center justify-between">
-                          <span className="text-sm">{item.category}</span>
-                          <span className="font-medium">${item.cost.toLocaleString()}</span>
-                        </div>
-                      ))}
-                      <div className="border-t pt-2">
-                        <div className="flex items-center justify-between font-semibold">
-                          <span>Total Investment</span>
-                          <span>$590,000</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Risk Assessment Maturity</CardTitle>
-                    <CardDescription>Quality metrics for risk management</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">100%</div>
-                        <div className="text-sm text-gray-500">Risks with Controls</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">88%</div>
-                        <div className="text-sm text-gray-500">Controls Effectiveness</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">75%</div>
-                        <div className="text-sm text-gray-500">Mitigations On Track</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">92%</div>
-                        <div className="text-sm text-gray-500">Review Compliance</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
           </Tabs>
         </main>
       </div>
