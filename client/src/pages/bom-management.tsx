@@ -106,28 +106,6 @@ export default function BomManagement() {
     queryFn: () => fetch("/api/bom-change-requests").then(res => res.json()),
   });
 
-  // Query for BOM materials when BOM is expanded
-  const expandedBomsArray = Array.from(expandedBoms);
-  const bomMaterialsQueries = useQuery({
-    queryKey: ["/api/bom-materials", expandedBomsArray],
-    queryFn: async () => {
-      if (expandedBomsArray.length === 0) return {};
-      
-      const results = await Promise.all(
-        expandedBomsArray.map(async (bomId) => {
-          const response = await fetch(`/api/boms/${bomId}/materials`);
-          const materials = await response.json();
-          return { bomId, materials };
-        })
-      );
-      
-      return results.reduce((acc, { bomId, materials }) => {
-        acc[bomId] = materials;
-        return acc;
-      }, {} as Record<string, BomMaterial[]>);
-    },
-    enabled: expandedBomsArray.length > 0,
-  });
 
   const form = useForm<InsertBom>({
     resolver: zodResolver(insertBomSchema),
@@ -145,13 +123,14 @@ export default function BomManagement() {
   const changeRequestForm = useForm<InsertBomChangeRequest>({
     resolver: zodResolver(insertBomChangeRequestSchema),
     defaultValues: {
+      title: "BOM Change Request",
       bomId: "",
       requestedBy: "system",
-      changeType: "version_update",
-      changeDescription: "",
-      businessJustification: "",
+      requestType: "version_update",
+      description: "",
+      justification: "",
       proposedVersion: "",
-      impactAssessment: "",
+      priority: "medium",
     },
   });
 
@@ -265,21 +244,28 @@ export default function BomManagement() {
     });
   };
 
-  // Group materials by type
-  const materialsByType = materials.reduce((acc: Record<string, any[]>, material: any) => {
-    const type = material.type || 'other';
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(material);
-    return acc;
-  }, {});
-
-  // Group BOMs by material types they contain
-  const bomsWithMaterials = boms.map(bom => ({
-    ...bom,
-    materialTypes: ['raw-materials', 'packaging-materials', 'artwork'], // For demo, in real app get from BOM materials
-  }));
-
-  const materialTypes = ['raw-materials', 'packaging-materials', 'artwork'];
+  // Enhanced BOM materials query
+  const expandedBomsArray = Array.from(expandedBoms);
+  const bomMaterialsQueries = useQuery({
+    queryKey: ["/api/bom-materials", expandedBomsArray],
+    queryFn: async () => {
+      if (expandedBomsArray.length === 0) return {};
+      
+      const results = await Promise.all(
+        expandedBomsArray.map(async (bomId) => {
+          const response = await fetch(`/api/boms/${bomId}/materials`);
+          const materials = await response.json();
+          return { bomId, materials };
+        })
+      );
+      
+      return results.reduce((acc, { bomId, materials }) => {
+        acc[bomId] = materials;
+        return acc;
+      }, {} as Record<string, BomMaterial[]>);
+    },
+    enabled: expandedBomsArray.length > 0,
+  });
 
   if (isLoading) {
     return (
@@ -345,13 +331,13 @@ export default function BomManagement() {
 
                       <FormField
                         control={changeRequestForm.control}
-                        name="changeType"
+                        name="requestType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Change Type *</FormLabel>
+                            <FormLabel>Request Type *</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger data-testid="select-change-type">
+                                <SelectTrigger data-testid="select-request-type">
                                   <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
@@ -367,6 +353,43 @@ export default function BomManagement() {
                         )}
                       />
 
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description *</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Describe the proposed changes..."
+                                {...field} 
+                                data-testid="textarea-description"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={changeRequestForm.control}
+                        name="justification"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Justification *</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Explain the business reason for this change..."
+                                {...field} 
+                                data-testid="textarea-justification"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
                       <FormField
                         control={changeRequestForm.control}
                         name="proposedVersion"
@@ -374,61 +397,11 @@ export default function BomManagement() {
                           <FormItem>
                             <FormLabel>Proposed Version</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g. 2.0" {...field} value={field.value || ""} data-testid="input-proposed-version" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={changeRequestForm.control}
-                        name="changeDescription"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Change Description *</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Describe the proposed changes..."
-                                {...field} 
-                                data-testid="textarea-change-description"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={changeRequestForm.control}
-                        name="businessJustification"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Business Justification *</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Explain the business reason for this change..."
-                                {...field} 
-                                data-testid="textarea-business-justification"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={changeRequestForm.control}
-                        name="impactAssessment"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Impact Assessment</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Assess the impact of this change..."
+                              <Input
+                                placeholder="e.g. 2.0"
                                 {...field} 
                                 value={field.value || ""}
-                                data-testid="textarea-impact-assessment"
+                                data-testid="input-proposed-version"
                               />
                             </FormControl>
                             <FormMessage />
@@ -609,35 +582,57 @@ export default function BomManagement() {
               </TabsList>
 
               <TabsContent value="boms" className="space-y-4">
-                {/* Hierarchical BOM Display */}
-                {materialTypes.map((type) => {
-                  const relevantBoms = bomsWithMaterials.filter(bom => bom.materialTypes.includes(type));
-                  if (relevantBoms.length === 0) return null;
-                  
-                  return (
-                    <Card key={type}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center text-lg">
-                          {getMaterialTypeIcon(type)}
-                          <span className="ml-2">{getMaterialTypeName(type)}</span>
-                          <Badge variant="secondary" className="ml-2">
-                            {relevantBoms.length} BOMs
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-2">
-                          {relevantBoms.map((bom) => (
-                            <div key={bom.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                {/* SKU-based Hierarchical BOM Display */}
+                <div className="space-y-4">
+                  {boms.map((bom) => {
+                    const isExpanded = expandedBoms.has(bom.id);
+                    const materials = bomMaterialsQueries.data?.[bom.id] || [];
+                    
+                    // Group materials by type
+                    const materialsByType = materials.reduce((acc, material) => {
+                      // For demo purposes, categorize based on material name/code patterns
+                      let type = 'raw-materials';
+                      if (material.materialName?.toLowerCase().includes('pack') || 
+                          material.materialName?.toLowerCase().includes('bottle') ||
+                          material.materialName?.toLowerCase().includes('label')) {
+                        type = 'packaging-materials';
+                      } else if (material.materialName?.toLowerCase().includes('artwork') ||
+                                material.materialName?.toLowerCase().includes('insert')) {
+                        type = 'artwork';
+                      }
+                      
+                      if (!acc[type]) acc[type] = [];
+                      acc[type].push(material);
+                      return acc;
+                    }, {} as Record<string, typeof materials>);
+                    
+                    return (
+                      <Card key={bom.id} className="border-l-4 border-l-blue-500">
+                        <Collapsible>
+                          <CollapsibleTrigger asChild>
+                            <CardHeader 
+                              className="cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => toggleBomExpansion(bom.id)}
+                            >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
-                                  <div>
-                                    <h4 className="font-semibold text-gray-900">
-                                      {bom.bomNumber} - {bom.productName}
-                                    </h4>
-                                    <p className="text-sm text-gray-500">
-                                      Version {bom.version} • Created by {bom.createdBy}
-                                    </p>
+                                  <div className="flex items-center">
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                                    ) : (
+                                      <ChevronRight className="w-5 h-5 text-gray-500" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-3">
+                                    <Package2 className="w-8 h-8 text-blue-600" />
+                                    <div>
+                                      <CardTitle className="text-xl text-gray-900">
+                                        SKU: {bom.bomNumber} - {bom.productName}
+                                      </CardTitle>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        Version {bom.version} • Status: {bom.status} • {materials.length} materials
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                                 
@@ -649,7 +644,10 @@ export default function BomManagement() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleRequestChange(bom.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRequestChange(bom.id);
+                                    }}
                                     data-testid={`button-request-change-${bom.id}`}
                                   >
                                     <GitBranch className="w-4 h-4 mr-1" />
@@ -657,13 +655,180 @@ export default function BomManagement() {
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                            </CardHeader>
+                          </CollapsibleTrigger>
+                          
+                          {isExpanded && (
+                            <CollapsibleContent>
+                              <CardContent className="pt-0 bg-gray-50">
+                                <div className="space-y-6">
+                                  {/* Raw Materials Section */}
+                                  {materialsByType['raw-materials'] && materialsByType['raw-materials'].length > 0 && (
+                                    <div>
+                                      <div className="flex items-center mb-4">
+                                        {getMaterialTypeIcon('raw-materials')}
+                                        <h3 className="ml-2 text-lg font-semibold text-gray-800">
+                                          {getMaterialTypeName('raw-materials')}
+                                        </h3>
+                                        <Badge variant="secondary" className="ml-2">
+                                          {materialsByType['raw-materials'].length} items
+                                        </Badge>
+                                      </div>
+                                      <div className="bg-white rounded-lg border">
+                                        <table className="w-full text-sm">
+                                          <thead className="bg-gray-50">
+                                            <tr>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Material Code</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Material Name</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Quantity</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">UOM</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Weight/Unit</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {materialsByType['raw-materials'].map((material) => (
+                                              <tr key={material.id} className="border-t border-gray-100 hover:bg-blue-50">
+                                                <td className="py-3 px-4 font-medium text-gray-900">
+                                                  {material.materialCode}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.materialName}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {(material.quantity / 1000).toFixed(3)}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.uom}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.unitCost ? `₹${(material.unitCost / 100).toFixed(2)}` : 'N/A'}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Packaging Materials Section */}
+                                  {materialsByType['packaging-materials'] && materialsByType['packaging-materials'].length > 0 && (
+                                    <div>
+                                      <div className="flex items-center mb-4">
+                                        {getMaterialTypeIcon('packaging-materials')}
+                                        <h3 className="ml-2 text-lg font-semibold text-gray-800">
+                                          {getMaterialTypeName('packaging-materials')}
+                                        </h3>
+                                        <Badge variant="secondary" className="ml-2">
+                                          {materialsByType['packaging-materials'].length} items
+                                        </Badge>
+                                      </div>
+                                      <div className="bg-white rounded-lg border">
+                                        <table className="w-full text-sm">
+                                          <thead className="bg-gray-50">
+                                            <tr>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Material Code</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Material Name</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Quantity</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">UOM</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Cost/Unit</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {materialsByType['packaging-materials'].map((material) => (
+                                              <tr key={material.id} className="border-t border-gray-100 hover:bg-green-50">
+                                                <td className="py-3 px-4 font-medium text-gray-900">
+                                                  {material.materialCode}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.materialName}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {(material.quantity / 1000).toFixed(3)}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.uom}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.unitCost ? `₹${(material.unitCost / 100).toFixed(2)}` : 'N/A'}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Artwork Section */}
+                                  {materialsByType['artwork'] && materialsByType['artwork'].length > 0 && (
+                                    <div>
+                                      <div className="flex items-center mb-4">
+                                        {getMaterialTypeIcon('artwork')}
+                                        <h3 className="ml-2 text-lg font-semibold text-gray-800">
+                                          {getMaterialTypeName('artwork')}
+                                        </h3>
+                                        <Badge variant="secondary" className="ml-2">
+                                          {materialsByType['artwork'].length} items
+                                        </Badge>
+                                      </div>
+                                      <div className="bg-white rounded-lg border">
+                                        <table className="w-full text-sm">
+                                          <thead className="bg-gray-50">
+                                            <tr>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Material Code</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Material Name</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">Quantity</th>
+                                              <th className="text-left py-3 px-4 font-medium text-gray-700">UOM</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {materialsByType['artwork'].map((material) => (
+                                              <tr key={material.id} className="border-t border-gray-100 hover:bg-purple-50">
+                                                <td className="py-3 px-4 font-medium text-gray-900">
+                                                  {material.materialCode}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.materialName}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {(material.quantity / 1000).toFixed(3)}
+                                                </td>
+                                                <td className="py-3 px-4 text-gray-700">
+                                                  {material.uom}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* BOM Summary */}
+                                  <div className="border-t pt-4 mt-6">
+                                    <div className="flex justify-between items-center text-sm text-gray-600">
+                                      <div className="space-x-4">
+                                        <span>Created by: {bom.createdBy}</span>
+                                        <span>•</span>
+                                        <span>Approved by: {bom.approvedBy || 'Pending'}</span>
+                                        <span>•</span>
+                                        <span>Created: {bom.createdAt ? new Date(bom.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                      </div>
+                                      <div className="font-semibold text-gray-800">
+                                        Total Materials: {materials.length}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </CollapsibleContent>
+                          )}
+                        </Collapsible>
+                      </Card>
+                    );
+                  })}
+                </div>
                 
                 {boms.length === 0 && (
                   <Card>
@@ -708,14 +873,14 @@ export default function BomManagement() {
                                       </Badge>
                                     </div>
                                     <p className="text-sm text-gray-600 mb-3">
-                                      {request.changeDescription}
+                                      {request.description}
                                     </p>
                                     <div className="text-xs text-gray-500 space-x-4">
-                                      <span>Type: {request.changeType.replace('_', ' ').toUpperCase()}</span>
+                                      <span>Type: {request.requestType.replace('_', ' ').toUpperCase()}</span>
                                       <span>•</span>
                                       <span>Requested by: {request.requestedBy}</span>
                                       <span>•</span>
-                                      <span>Requested: {new Date(request.requestedAt).toLocaleDateString()}</span>
+                                      <span>Requested: {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : 'N/A'}</span>
                                       {request.proposedVersion && (
                                         <>
                                           <span>•</span>
