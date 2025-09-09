@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertInventoryItemSchema, insertStockMovementSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -978,11 +978,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: 'QcApproval',
         entityId: approval.id,
         action: 'APPROVAL_CREATED',
-        performedBy: validatedData.approverEmail,
-        details: { 
+        performedBy: validatedData.approverName,
+        extraData: JSON.stringify({ 
           decision: validatedData.decision,
-          stageId: validatedData.stageId 
-        }
+          checkpointId: validatedData.checkpointId 
+        })
       });
       
       res.status(201).json(approval);
@@ -1073,11 +1073,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: 'BatchRelease',
         entityId: batchRelease.id,
         action: 'BATCH_RELEASE_CREATED',
-        performedBy: validatedData.qaReviewer,
-        details: { 
+        performedBy: 'QA Reviewer',
+        extraData: JSON.stringify({ 
           productionOrderId: validatedData.productionOrderId,
           batchNumber: validatedData.batchNumber 
-        }
+        })
       });
       
       res.status(201).json(batchRelease);
@@ -1100,16 +1100,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit trail for status changes
-      if (validatedData.qaDecision) {
+      if (validatedData.status) {
         await storage.createQaAuditTrail({
           entityType: 'BatchRelease',
           entityId: id,
           action: 'QA_DECISION_MADE',
-          performedBy: batchRelease.qaReviewer,
-          details: { 
-            decision: validatedData.qaDecision,
-            comments: validatedData.qaComments 
-          }
+          performedBy: 'QA Manager',
+          extraData: JSON.stringify({ 
+            status: validatedData.status,
+            qaComments: validatedData.qaComments 
+          })
         });
       }
       
@@ -1134,6 +1134,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete batch release" });
+    }
+  });
+
+  // Batch Workflow Steps
+  app.get("/api/batch-workflow-steps/batch/:batchReleaseId", async (req, res) => {
+    try {
+      const { batchReleaseId } = req.params;
+      const workflowSteps = await storage.getBatchWorkflowStepsByBatch(batchReleaseId);
+      res.json(workflowSteps);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch workflow steps" });
+    }
+  });
+
+  app.get("/api/batch-workflow-steps/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const workflowStep = await storage.getBatchWorkflowStep(id);
+      if (!workflowStep) {
+        return res.status(404).json({ message: "Batch workflow step not found" });
+      }
+      res.json(workflowStep);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch workflow step" });
+    }
+  });
+
+  app.patch("/api/batch-workflow-steps/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertBatchWorkflowStepSchema.partial().parse(req.body);
+      const updatedStep = await storage.updateBatchWorkflowStep(id, validatedData);
+      if (!updatedStep) {
+        return res.status(404).json({ message: "Batch workflow step not found" });
+      }
+      res.json(updatedStep);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid batch workflow step data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update batch workflow step" });
+    }
+  });
+
+  app.post("/api/batch-workflow-steps/:id/approve", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { approvedBy } = req.body;
+      const updatedStep = await storage.updateBatchWorkflowStep(id, {
+        status: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+      });
+      if (!updatedStep) {
+        return res.status(404).json({ message: "Batch workflow step not found" });
+      }
+      res.json(updatedStep);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve batch workflow step" });
+    }
+  });
+
+  app.post("/api/batch-workflow-steps/:id/reject", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rejectedBy, rejectionReason } = req.body;
+      const updatedStep = await storage.updateBatchWorkflowStep(id, {
+        status: 'rejected',
+        rejectedBy,
+        rejectedAt: new Date(),
+        rejectionReason,
+      });
+      if (!updatedStep) {
+        return res.status(404).json({ message: "Batch workflow step not found" });
+      }
+      res.json(updatedStep);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject batch workflow step" });
+    }
+  });
+
+  app.post("/api/batch-workflow-steps/:id/complete", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { findings, evidence, completedActions, actualHours, comments } = req.body;
+      const updatedStep = await storage.updateBatchWorkflowStep(id, {
+        status: 'completed',
+        findings,
+        evidence,
+        completedActions,
+        actualHours,
+        comments,
+        completedAt: new Date(),
+      });
+      if (!updatedStep) {
+        return res.status(404).json({ message: "Batch workflow step not found" });
+      }
+      res.json(updatedStep);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to complete batch workflow step" });
     }
   });
 
