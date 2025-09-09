@@ -1002,8 +1002,8 @@ export default function QARiskManagement() {
                       
                       {/* Matrix */}
                       {getProbabilityImpactMatrix().map((row, rowIndex) => (
-                        <>
-                          <div key={`impact-${5-rowIndex}`} className="p-3 text-center text-sm font-medium">
+                        <React.Fragment key={`matrix-row-${rowIndex}`}>
+                          <div className="p-3 text-center text-sm font-medium">
                             {5-rowIndex === 5 ? "Catastrophic (5)" : 
                              5-rowIndex === 4 ? "Major (4)" :
                              5-rowIndex === 3 ? "Moderate (3)" :
@@ -1021,7 +1021,7 @@ export default function QARiskManagement() {
                               </div>
                             );
                           })}
-                        </>
+                        </React.Fragment>
                       ))}
                     </div>
                     <div className="mt-4 flex items-center space-x-6 text-sm">
