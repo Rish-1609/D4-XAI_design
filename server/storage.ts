@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -133,6 +133,14 @@ export interface IStorage {
   updateBatchRelease(id: string, updateData: Partial<InsertBatchRelease>): Promise<BatchRelease | undefined>;
   deleteBatchRelease(id: string): Promise<boolean>;
 
+  // Batch Workflow Step operations
+  getBatchWorkflowSteps(): Promise<BatchWorkflowStep[]>;
+  getBatchWorkflowStepsByBatch(batchReleaseId: string): Promise<BatchWorkflowStep[]>;
+  getBatchWorkflowStep(id: string): Promise<BatchWorkflowStep | undefined>;
+  createBatchWorkflowStep(insertBatchWorkflowStep: InsertBatchWorkflowStep): Promise<BatchWorkflowStep>;
+  updateBatchWorkflowStep(id: string, updateData: Partial<InsertBatchWorkflowStep>): Promise<BatchWorkflowStep | undefined>;
+  deleteBatchWorkflowStep(id: string): Promise<boolean>;
+
   // Batch Certificate operations
   getBatchCertificates(): Promise<BatchCertificate[]>;
   getBatchCertificateByBatchRelease(batchReleaseId: string): Promise<BatchCertificate | undefined>;
@@ -181,6 +189,8 @@ export class MemStorage implements IStorage {
   private qcApprovalsByStage: Map<string, QcApproval[]>;
   private batchReleases: Map<string, BatchRelease>;
   private batchReleasesByOrder: Map<string, BatchRelease[]>;
+  private batchWorkflowSteps: Map<string, BatchWorkflowStep>;
+  private batchWorkflowStepsByBatch: Map<string, BatchWorkflowStep[]>;
   private batchCertificates: Map<string, BatchCertificate>;
   private batchCertificatesByBatchRelease: Map<string, BatchCertificate>;
   private qaAuditTrails: Map<string, QaAuditTrail>;
@@ -213,6 +223,8 @@ export class MemStorage implements IStorage {
     this.qcApprovalsByStage = new Map();
     this.batchReleases = new Map();
     this.batchReleasesByOrder = new Map();
+    this.batchWorkflowSteps = new Map();
+    this.batchWorkflowStepsByBatch = new Map();
     this.batchCertificates = new Map();
     this.batchCertificatesByBatchRelease = new Map();
     this.qaAuditTrails = new Map();
@@ -1654,7 +1666,189 @@ export class MemStorage implements IStorage {
       updatedAt: now,
     };
     this.productionOrders.set(id, productionOrder);
+    
+    // Automatically create batch release and workflow steps
+    await this.createBatchReleaseWithWorkflow(productionOrder);
+    
     return productionOrder;
+  }
+
+  // Helper method to create batch release with default workflow steps
+  private async createBatchReleaseWithWorkflow(productionOrder: ProductionOrder): Promise<void> {
+    const year = new Date(productionOrder.createdAt || new Date()).getFullYear();
+    const existingReleases = await this.getBatchReleases();
+    const batchNumber = `BT-${year}-${String(existingReleases.length + 1).padStart(4, '0')}`;
+    
+    // Create batch release
+    const batchRelease = await this.createBatchRelease({
+      productionOrderId: productionOrder.id,
+      batchNumber,
+      productCode: productionOrder.skuProduct || 'UNKNOWN',
+      productName: productionOrder.skuProduct || 'Unknown Product',
+      batchSize: productionOrder.quantity || 0,
+      manufacturedDate: new Date(),
+      expiryDate: new Date(Date.now() + (2 * 365 * 24 * 60 * 60 * 1000)), // 2 years from now
+      releaseStatus: 'under-testing',
+      storageConditions: 'Store in a cool, dry place at 15-25°C',
+      shelfLife: 24, // 24 months
+      packagingDetails: 'Standard pharmaceutical packaging',
+    });
+
+    // Create default workflow steps
+    const workflowSteps = [
+      {
+        stepNumber: 1,
+        stepName: 'Verification of Raw Materials (RM) & Packing Materials (PM)',
+        stepCategory: 'Materials Verification',
+        assignedTo: 'QC Analyst - Materials',
+        assignedTeam: 'Quality Control',
+        dueDate: new Date(Date.now() + (3 * 24 * 60 * 60 * 1000)), // 3 days from now
+        requiredActions: JSON.stringify([
+          'Verify lot numbers and expiry dates',
+          'Check AR traceability',
+          'Confirm no expired materials used',
+          'Complete material verification report'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 4,
+      },
+      {
+        stepNumber: 2,
+        stepName: 'In-process Quality Checks',
+        stepCategory: 'Process Controls',
+        assignedTo: 'QC Analyst - Process',
+        assignedTeam: 'Quality Control',
+        dueDate: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)), // 5 days from now
+        requiredActions: JSON.stringify([
+          'Monitor granulation parameters',
+          'Check compression data',
+          'Verify coating parameters',
+          'Complete filling/FG checks'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 6,
+      },
+      {
+        stepNumber: 3,
+        stepName: 'Finished Goods Testing',
+        stepCategory: 'Final Testing',
+        assignedTo: 'Senior QC Analyst',
+        assignedTeam: 'Quality Control',
+        dueDate: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 days from now
+        requiredActions: JSON.stringify([
+          'Perform assay testing',
+          'Complete dissolution testing',
+          'Verify stability parameters',
+          'Check packaging integrity'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 8,
+      },
+      {
+        stepNumber: 4,
+        stepName: 'Compliance of BMR/BPR',
+        stepCategory: 'Documentation Review',
+        assignedTo: 'Documentation Specialist',
+        assignedTeam: 'Quality Assurance',
+        dueDate: new Date(Date.now() + (8 * 24 * 60 * 60 * 1000)), // 8 days from now
+        requiredActions: JSON.stringify([
+          'Review BMR completeness',
+          'Verify BPR accuracy',
+          'Check deviation records',
+          'Validate all signatures'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 4,
+      },
+      {
+        stepNumber: 5,
+        stepName: 'Deviations / OOS / CAPA Review',
+        stepCategory: 'Quality Review',
+        assignedTo: 'QA Specialist - CAPA',
+        assignedTeam: 'Quality Assurance',
+        dueDate: new Date(Date.now() + (9 * 24 * 60 * 60 * 1000)), // 9 days from now
+        requiredActions: JSON.stringify([
+          'Review all deviations',
+          'Check OOS results',
+          'Verify CAPA closure',
+          'Complete investigation reports'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 6,
+      },
+      {
+        stepNumber: 6,
+        stepName: 'Yield & Reconciliation',
+        stepCategory: 'Material Balance',
+        assignedTo: 'Production Analyst',
+        assignedTeam: 'Production',
+        dueDate: new Date(Date.now() + (10 * 24 * 60 * 60 * 1000)), // 10 days from now
+        requiredActions: JSON.stringify([
+          'Calculate yield percentage',
+          'Complete material balance',
+          'Verify waste reconciliation',
+          'Check packaging reconciliation'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 4,
+      },
+      {
+        stepNumber: 7,
+        stepName: 'Document Review',
+        stepCategory: 'Compliance Check',
+        assignedTo: 'Compliance Officer',
+        assignedTeam: 'Regulatory Affairs',
+        dueDate: new Date(Date.now() + (11 * 24 * 60 * 60 * 1000)), // 11 days from now
+        requiredActions: JSON.stringify([
+          'Verify SOP adherence',
+          'Check logbook completeness',
+          'Confirm instrument calibrations',
+          'Review regulatory compliance'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 3,
+      },
+      {
+        stepNumber: 8,
+        stepName: 'Approval Sign-offs',
+        stepCategory: 'Final Approval',
+        assignedTo: 'QA Manager',
+        assignedTeam: 'Quality Assurance',
+        dueDate: new Date(Date.now() + (12 * 24 * 60 * 60 * 1000)), // 12 days from now
+        requiredActions: JSON.stringify([
+          'Complete QA reviews',
+          'Obtain digital signatures',
+          'Verify all approvals',
+          'Authorize release'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 2,
+      },
+      {
+        stepNumber: 9,
+        stepName: 'Certificate of Analysis (CoA) / Batch Release Note',
+        stepCategory: 'Certificate Generation',
+        assignedTo: 'QA Documentation',
+        assignedTeam: 'Quality Assurance',
+        dueDate: new Date(Date.now() + (13 * 24 * 60 * 60 * 1000)), // 13 days from now
+        requiredActions: JSON.stringify([
+          'Generate CoA',
+          'Prepare batch release note',
+          'Issue distribution authorization',
+          'Complete final documentation'
+        ]),
+        completedActions: JSON.stringify([]),
+        estimatedHours: 3,
+      },
+    ];
+
+    // Create all workflow steps
+    for (const stepData of workflowSteps) {
+      await this.createBatchWorkflowStep({
+        batchReleaseId: batchRelease.id,
+        ...stepData,
+      });
+    }
   }
 
   async updateProductionOrder(id: string, updateData: Partial<InsertProductionOrder>): Promise<ProductionOrder | undefined> {
@@ -2425,6 +2619,96 @@ export class MemStorage implements IStorage {
       
       // Also delete related certificate
       this.batchCertificatesByBatchRelease.delete(id);
+    }
+    return deleted;
+  }
+
+  // Batch Workflow Step operations
+  async getBatchWorkflowSteps(): Promise<BatchWorkflowStep[]> {
+    return Array.from(this.batchWorkflowSteps.values()).sort((a, b) => 
+      a.stepNumber - b.stepNumber
+    );
+  }
+
+  async getBatchWorkflowStepsByBatch(batchReleaseId: string): Promise<BatchWorkflowStep[]> {
+    return this.batchWorkflowStepsByBatch.get(batchReleaseId) || [];
+  }
+
+  async getBatchWorkflowStep(id: string): Promise<BatchWorkflowStep | undefined> {
+    return this.batchWorkflowSteps.get(id);
+  }
+
+  async createBatchWorkflowStep(insertBatchWorkflowStep: InsertBatchWorkflowStep): Promise<BatchWorkflowStep> {
+    const id = randomUUID();
+    const now = new Date();
+    const batchWorkflowStep: BatchWorkflowStep = {
+      ...insertBatchWorkflowStep,
+      id,
+      status: insertBatchWorkflowStep.status || 'pending',
+      approvalRequired: insertBatchWorkflowStep.approvalRequired ?? true,
+      startedAt: insertBatchWorkflowStep.startedAt || null,
+      completedAt: insertBatchWorkflowStep.completedAt || null,
+      dueDate: insertBatchWorkflowStep.dueDate || null,
+      approvedBy: insertBatchWorkflowStep.approvedBy || null,
+      approvedAt: insertBatchWorkflowStep.approvedAt || null,
+      rejectedBy: insertBatchWorkflowStep.rejectedBy || null,
+      rejectedAt: insertBatchWorkflowStep.rejectedAt || null,
+      rejectionReason: insertBatchWorkflowStep.rejectionReason || null,
+      findings: insertBatchWorkflowStep.findings || null,
+      evidence: insertBatchWorkflowStep.evidence || null,
+      deviations: insertBatchWorkflowStep.deviations || null,
+      correctiveActions: insertBatchWorkflowStep.correctiveActions || null,
+      requiredActions: insertBatchWorkflowStep.requiredActions || null,
+      completedActions: insertBatchWorkflowStep.completedActions || null,
+      comments: insertBatchWorkflowStep.comments || null,
+      estimatedHours: insertBatchWorkflowStep.estimatedHours || null,
+      actualHours: insertBatchWorkflowStep.actualHours || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.batchWorkflowSteps.set(id, batchWorkflowStep);
+    
+    // Group by batch release
+    const existingSteps = this.batchWorkflowStepsByBatch.get(insertBatchWorkflowStep.batchReleaseId) || [];
+    existingSteps.push(batchWorkflowStep);
+    existingSteps.sort((a, b) => a.stepNumber - b.stepNumber);
+    this.batchWorkflowStepsByBatch.set(insertBatchWorkflowStep.batchReleaseId, existingSteps);
+    
+    return batchWorkflowStep;
+  }
+
+  async updateBatchWorkflowStep(id: string, updateData: Partial<InsertBatchWorkflowStep>): Promise<BatchWorkflowStep | undefined> {
+    const existing = this.batchWorkflowSteps.get(id);
+    if (!existing) return undefined;
+
+    const updated: BatchWorkflowStep = {
+      ...existing,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.batchWorkflowSteps.set(id, updated);
+
+    // Update in grouped map too
+    const stepsByBatch = this.batchWorkflowStepsByBatch.get(existing.batchReleaseId) || [];
+    const index = stepsByBatch.findIndex(s => s.id === id);
+    if (index >= 0) {
+      stepsByBatch[index] = updated;
+      stepsByBatch.sort((a, b) => a.stepNumber - b.stepNumber);
+    }
+    
+    return updated;
+  }
+
+  async deleteBatchWorkflowStep(id: string): Promise<boolean> {
+    const existing = this.batchWorkflowSteps.get(id);
+    if (!existing) return false;
+
+    const deleted = this.batchWorkflowSteps.delete(id);
+    if (deleted) {
+      // Remove from grouped map
+      const stepsByBatch = this.batchWorkflowStepsByBatch.get(existing.batchReleaseId) || [];
+      const filtered = stepsByBatch.filter(s => s.id !== id);
+      this.batchWorkflowStepsByBatch.set(existing.batchReleaseId, filtered);
     }
     return deleted;
   }
