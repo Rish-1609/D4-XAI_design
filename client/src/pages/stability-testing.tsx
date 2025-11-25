@@ -251,8 +251,8 @@ export default function StabilityTesting() {
 
                       {/* Test Form */}
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                          <h3 className="font-semibold text-gray-900">Storage Conditions</h3>
+                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                          <h3 className="font-semibold text-gray-900 text-sm">Storage Conditions</h3>
                           
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
@@ -314,16 +314,16 @@ export default function StabilityTesting() {
                             />
                           </div>
 
-                          <h3 className="font-semibold text-gray-900 mt-6">Test Results</h3>
+                          <h3 className="font-semibold text-gray-900 text-sm mt-4">Test Results</h3>
 
                           <FormField
                             control={form.control}
                             name="physicalAppearance"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Physical Appearance</FormLabel>
+                                <FormLabel className="text-xs">Physical Appearance</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="Describe physical appearance..." {...field} data-testid="input-appearance" />
+                                  <Textarea placeholder="Describe physical appearance..." rows={2} {...field} data-testid="input-appearance" className="text-sm" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -395,9 +395,9 @@ export default function StabilityTesting() {
                             name="observations"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Observations & Notes</FormLabel>
+                                <FormLabel className="text-xs">Observations & Notes</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="Any additional observations or deviations..." {...field} data-testid="input-observations" />
+                                  <Textarea placeholder="Any additional observations or deviations..." rows={2} {...field} data-testid="input-observations" className="text-sm" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -406,7 +406,7 @@ export default function StabilityTesting() {
 
                           <Button 
                             type="submit" 
-                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            className="w-full bg-blue-600 hover:bg-blue-700 sticky bottom-0"
                             disabled={submitTestMutation.isPending}
                             data-testid="button-submit-stability"
                           >

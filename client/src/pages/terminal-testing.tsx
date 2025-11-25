@@ -254,8 +254,8 @@ export default function TerminalTesting() {
 
                       {/* Terminal Test Form */}
                       <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                          <h3 className="font-semibold text-gray-900">Final Quality Checks</h3>
+                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                          <h3 className="font-semibold text-gray-900 text-sm">Final Quality Checks</h3>
                           
                           <div className="space-y-3 p-3 bg-gray-50 rounded">
                             <FormField
@@ -311,7 +311,7 @@ export default function TerminalTesting() {
                             />
                           </div>
 
-                          <h3 className="font-semibold text-gray-900 mt-6">Shipping Documentation</h3>
+                          <h3 className="font-semibold text-gray-900 text-sm mt-4">Shipping Documentation</h3>
 
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
@@ -348,9 +348,9 @@ export default function TerminalTesting() {
                             name="shippingConditions"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Shipping Conditions</FormLabel>
+                                <FormLabel className="text-xs">Shipping Conditions</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="e.g., Room temperature (15-25°C), protected from moisture..." {...field} data-testid="input-shipping-conditions" />
+                                  <Textarea placeholder="e.g., Room temperature (15-25°C), protected from moisture..." rows={2} {...field} data-testid="input-shipping-conditions" className="text-sm" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -362,9 +362,9 @@ export default function TerminalTesting() {
                             name="storageInstructions"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Storage Instructions (for recipient)</FormLabel>
+                                <FormLabel className="text-xs">Storage Instructions (for recipient)</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="e.g., Store in cool, dry place..." {...field} data-testid="input-storage" />
+                                  <Textarea placeholder="e.g., Store in cool, dry place..." rows={2} {...field} data-testid="input-storage" className="text-sm" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -406,9 +406,9 @@ export default function TerminalTesting() {
                             name="finalApprovalNotes"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Final Approval Notes</FormLabel>
+                                <FormLabel className="text-xs">Final Approval Notes</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="Any special handling instructions or final notes..." {...field} data-testid="input-final-notes" />
+                                  <Textarea placeholder="Any special handling instructions or final notes..." rows={2} {...field} data-testid="input-final-notes" className="text-sm" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -417,7 +417,7 @@ export default function TerminalTesting() {
 
                           <Button 
                             type="submit" 
-                            className="w-full bg-green-600 hover:bg-green-700"
+                            className="w-full bg-green-600 hover:bg-green-700 sticky bottom-0"
                             disabled={submitTestMutation.isPending}
                             data-testid="button-submit-terminal"
                           >
