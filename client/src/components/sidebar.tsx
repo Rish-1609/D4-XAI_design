@@ -79,7 +79,31 @@ export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  const toggleSubmenu = (menuId: string) => {
+  // Auto-expand menu if current location matches a submenu item
+  const getDefaultExpandedMenus = () => {
+    const expanded: string[] = [];
+    menuItems.forEach(item => {
+      if (item.submenu) {
+        const hasActiveSubmenu = item.submenu.some(subItem => subItem.href === location);
+        if (hasActiveSubmenu) {
+          expanded.push(item.id);
+        }
+      }
+    });
+    return expanded;
+  };
+
+  // Set expanded menus based on current location on mount
+  const defaultExpanded = getDefaultExpandedMenus();
+  if (defaultExpanded.length > 0 && expandedMenus.length === 0) {
+    setExpandedMenus(defaultExpanded);
+  }
+
+  const toggleSubmenu = (menuId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setExpandedMenus(prev =>
       prev.includes(menuId)
         ? prev.filter(id => id !== menuId)
