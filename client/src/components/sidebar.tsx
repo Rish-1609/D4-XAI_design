@@ -62,6 +62,15 @@ const menuItems = [
   },
   { id: "sop-management", label: "SOP Management", icon: FileText, href: "/sop-management" },
   { id: "bom-management", label: "BOM Management", icon: Layers, href: "/bom-management" },
+  {
+    id: "testing-management",
+    label: "Testing & Release",
+    icon: CheckCircle,
+    submenu: [
+      { label: "Stability Testing", href: "/stability-testing" },
+      { label: "Terminal Testing", href: "/terminal-testing" },
+    ],
+  },
   { id: "audit-trail", label: "Audit Trail", icon: FileCheck, href: "/qa-audit-trail" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
 ];

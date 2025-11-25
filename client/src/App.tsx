@@ -14,7 +14,8 @@ import StockMovements from "@/pages/stock-movements";
 import QACheckpoints from "@/pages/qa-checkpoints";
 import QAAssignmentTracker from "@/pages/qa-assignment-tracker";
 import QABatchRelease from "@/pages/qa-batch-release";
-
+import StabilityTesting from "@/pages/stability-testing";
+import TerminalTesting from "@/pages/terminal-testing";
 import QAAuditTrail from "@/pages/qa-audit-trail";
 import QACAPAManagement from "@/pages/qa-capa";
 import QARiskManagement from "@/pages/qa-risk-management";
@@ -30,6 +31,8 @@ function Router() {
       <Route path="/qa-checkpoints" component={QACheckpoints} />
       <Route path="/qa-assignment-tracker" component={QAAssignmentTracker} />
       <Route path="/qa-batch-release" component={QABatchRelease} />
+      <Route path="/stability-testing" component={StabilityTesting} />
+      <Route path="/terminal-testing" component={TerminalTesting} />
       <Route path="/qa-audit-trail" component={QAAuditTrail} />
       <Route path="/qa-capa" component={QACAPAManagement} />
       <Route path="/qa-risk-management" component={QARiskManagement} />
