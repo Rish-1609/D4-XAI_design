@@ -1179,6 +1179,111 @@ export class MemStorage implements IStorage {
     for (const order of productionOrderData) {
       await this.createBatchReleaseWithWorkflow(order);
     }
+
+    // Create sample RELEASED batches for Terminal Testing
+    const releasedBatchData = [
+      {
+        batchNumber: "BT-2024-REL-001",
+        productCode: "TAB-500MG-100",
+        productName: "Acetaminophen 500mg Tablets",
+        batchSize: 50000,
+        manufacturedDate: new Date('2024-11-01'),
+        expiryDate: new Date('2026-11-01'),
+        releasedBy: "Dr. Rajesh Kumar, QA Manager",
+      },
+      {
+        batchNumber: "BT-2024-REL-002",
+        productCode: "CAP-250MG-60",
+        productName: "Ibuprofen 250mg Capsules",
+        batchSize: 25000,
+        manufacturedDate: new Date('2024-11-05'),
+        expiryDate: new Date('2026-11-05'),
+        releasedBy: "Dr. Priya Sharma, Authorized Person",
+      },
+      {
+        batchNumber: "BT-2024-REL-003",
+        productCode: "SYR-125ML",
+        productName: "Cough Syrup 125ml",
+        batchSize: 15000,
+        manufacturedDate: new Date('2024-11-10'),
+        expiryDate: new Date('2026-11-10'),
+        releasedBy: "Dr. Anil Verma, QA Head",
+      }
+    ];
+
+    for (const batchData of releasedBatchData) {
+      const releasedBatch = await this.createBatchRelease({
+        productionOrderId: productionOrderData[0].id, // Link to first production order
+        ...batchData,
+        releaseStatus: 'released',
+        releaseDate: new Date(),
+        storageConditions: 'Store in a cool, dry place at 15-25°C',
+        shelfLife: 24,
+        packagingDetails: 'Standard pharmaceutical packaging',
+      });
+
+      // Create sample terminal testing workflow steps
+      const terminalSteps = [
+        {
+          stepNumber: 1,
+          stepName: 'Final Quality Check',
+          stepCategory: 'Quality Verification',
+          assignedTo: 'QC Analyst - Final',
+          assignedTeam: 'Quality Control',
+          status: 'completed' as const,
+          completedAt: new Date(),
+          requiredActions: JSON.stringify(['Perform final visual inspection', 'Verify batch identity']),
+          completedActions: JSON.stringify(['Final inspection passed', 'Batch identity confirmed']),
+          estimatedHours: 2,
+        },
+        {
+          stepNumber: 2,
+          stepName: 'Labeling Review',
+          stepCategory: 'Documentation',
+          assignedTo: 'Documentation Specialist',
+          assignedTeam: 'Quality Assurance',
+          status: 'completed' as const,
+          completedAt: new Date(),
+          findings: 'All labels correct and intact',
+          requiredActions: JSON.stringify(['Review label accuracy', 'Check expiry dates']),
+          completedActions: JSON.stringify(['Labels verified', 'Dates confirmed']),
+          estimatedHours: 1,
+        },
+        {
+          stepNumber: 3,
+          stepName: 'Packaging Integrity',
+          stepCategory: 'Packaging Verification',
+          assignedTo: 'Packaging Inspector',
+          assignedTeam: 'Quality Control',
+          status: 'completed' as const,
+          completedAt: new Date(),
+          findings: 'Packaging integrity verified - no defects found',
+          requiredActions: JSON.stringify(['Check container seals', 'Verify packaging condition']),
+          completedActions: JSON.stringify(['Seals intact', 'No damage observed']),
+          estimatedHours: 3,
+        },
+        {
+          stepNumber: 4,
+          stepName: 'Shipping Preparation',
+          stepCategory: 'Preparation',
+          assignedTo: 'Logistics Coordinator',
+          assignedTeam: 'Shipping',
+          status: 'completed' as const,
+          completedAt: new Date(),
+          findings: 'Batch ready for shipment',
+          requiredActions: JSON.stringify(['Prepare shipping documentation', 'Arrange transport']),
+          completedActions: JSON.stringify(['Shipping docs prepared', 'Courier arranged']),
+          estimatedHours: 2,
+        }
+      ];
+
+      for (const stepData of terminalSteps) {
+        await this.createBatchWorkflowStep({
+          batchReleaseId: releasedBatch.id,
+          ...stepData,
+        });
+      }
+    }
     
     // Add sample BOM data
     const bomData = [
