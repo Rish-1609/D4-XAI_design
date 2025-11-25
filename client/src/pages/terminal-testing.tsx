@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Sidebar } from "@/components/sidebar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,20 +23,25 @@ import {
   AlertCircle,
   CheckCircle,
   Save,
+  Upload,
+  FileText,
 } from "lucide-react";
 import type { BatchRelease } from "@shared/schema";
 
 const terminalTestSchema = z.object({
-  finalQualityCheck: z.boolean().default(true),
-  labelingReview: z.boolean().default(true),
-  packagingIntegrity: z.boolean().default(true),
-  temperatureMonitoring: z.boolean().default(true),
   shippingConditions: z.string().min(1, "Shipping conditions are required"),
   storageInstructions: z.string().optional(),
   labelNumber: z.string().min(1, "Label number is required"),
   certificateOfAnalysis: z.string().min(1, "Certificate of Analysis number is required"),
   shippingTemperature: z.string().optional(),
   transportContainer: z.string().optional(),
+  invoiceNumber: z.string().min(1, "Invoice number is required"),
+  coaFileName: z.string().optional(),
+  invoiceFileName: z.string().optional(),
+  batchReleaseCertFileName: z.string().optional(),
+  packingListFileName: z.string().optional(),
+  shippingLabel: z.string().optional(),
+  qualityReportFileName: z.string().optional(),
   finalApprovalNotes: z.string().optional(),
 });
 
@@ -57,6 +61,7 @@ export default function TerminalTesting() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [submittedBatches, setSubmittedBatches] = useState<Set<string>>(new Set());
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const { data: batchReleases = [] } = useQuery<BatchRelease[]>({
@@ -66,16 +71,19 @@ export default function TerminalTesting() {
   const form = useForm<TerminalTestForm>({
     resolver: zodResolver(terminalTestSchema),
     defaultValues: {
-      finalQualityCheck: true,
-      labelingReview: true,
-      packagingIntegrity: true,
-      temperatureMonitoring: true,
       shippingConditions: "",
       storageInstructions: "",
       labelNumber: "",
       certificateOfAnalysis: "",
       shippingTemperature: "",
       transportContainer: "",
+      invoiceNumber: "",
+      coaFileName: "",
+      invoiceFileName: "",
+      batchReleaseCertFileName: "",
+      packingListFileName: "",
+      shippingLabel: "",
+      qualityReportFileName: "",
       finalApprovalNotes: "",
     },
   });
@@ -100,6 +108,23 @@ export default function TerminalTesting() {
     return batchReleases.find(b => b.id === selectedBatchId);
   }, [selectedBatchId, batchReleases]);
 
+  // Handle file uploads
+  const handleFileUpload = (fieldName: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const fileName = file.name;
+      setUploadedFiles(prev => ({
+        ...prev,
+        [fieldName]: fileName
+      }));
+      form.setValue(fieldName as any, fileName);
+      toast({
+        title: "File Uploaded",
+        description: `${fileName} uploaded successfully`,
+      });
+    }
+  };
+
   // Mutation for submitting terminal test
   const submitTestMutation = useMutation({
     mutationFn: async (data: TerminalTestForm) => {
@@ -112,9 +137,10 @@ export default function TerminalTesting() {
       setSubmittedBatches(prev => new Set([...prev, selectedBatchId]));
       toast({
         title: "Success",
-        description: "Terminal testing completed and batch cleared for shipping",
+        description: "Batch approved for shipping with all documents uploaded",
       });
       form.reset();
+      setUploadedFiles({});
       setSelectedBatchId("");
     },
     onError: () => {
@@ -147,7 +173,7 @@ export default function TerminalTesting() {
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="px-6 py-4">
             <h1 className="text-3xl font-bold text-gray-900">Terminal Testing</h1>
-            <p className="text-gray-600 mt-1">Final batch validation before shipping</p>
+            <p className="text-gray-600 mt-1">Final documentation and dispatch clearance</p>
           </div>
         </div>
 
@@ -162,18 +188,18 @@ export default function TerminalTesting() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{releasedBatches.length}</div>
-                  <p className="text-xs text-muted-foreground">Ready for terminal testing</p>
+                  <p className="text-xs text-muted-foreground">Awaiting dispatch clearance</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Approved for Shipping</CardTitle>
+                  <CardTitle className="text-sm font-medium">Approved for Dispatch</CardTitle>
                   <Package className="h-4 w-4 text-blue-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{submittedBatches.size}</div>
-                  <p className="text-xs text-muted-foreground">Terminal tests completed</p>
+                  <p className="text-xs text-muted-foreground">Ready to ship</p>
                 </CardContent>
               </Card>
             </div>
@@ -224,12 +250,12 @@ export default function TerminalTesting() {
                 </Card>
               </div>
 
-              {/* Batch Details & Terminal Test Form */}
+              {/* Batch Details & Documentation Form */}
               <div className="lg:col-span-2">
                 {selectedBatch ? (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Terminal Testing & Shipping Release</CardTitle>
+                      <CardTitle>Pre-Dispatch Documentation & Shipping</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {/* Batch Details */}
@@ -247,81 +273,180 @@ export default function TerminalTesting() {
                           <p className="font-semibold">{selectedBatch.batchSize.toLocaleString()} units</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">Release Date</p>
+                          <p className="text-xs text-gray-600">Released Date</p>
                           <p className="font-semibold">{formatDate(selectedBatch.releaseDate)}</p>
                         </div>
                       </div>
 
-                      {/* Terminal Test Form */}
+                      {/* Document Upload Form */}
                       <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                          <h3 className="font-semibold text-gray-900 text-sm">Final Quality Checks</h3>
-                          
-                          <div className="space-y-3 p-3 bg-gray-50 rounded">
+                          <h3 className="font-semibold text-gray-900 text-sm">Documents Upload</h3>
+
+                          {/* Certificate of Analysis */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3">
                             <FormField
                               control={form.control}
-                              name="finalQualityCheck"
+                              name="coaFileName"
                               render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2">
+                                <FormItem>
+                                  <FormLabel className="text-xs flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-blue-600" />
+                                    Certificate of Analysis (COA)
+                                  </FormLabel>
                                   <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="check-quality" />
+                                    <Input
+                                      type="file"
+                                      onChange={(e) => handleFileUpload("coaFileName", e)}
+                                      className="text-sm cursor-pointer"
+                                      data-testid="upload-coa"
+                                    />
                                   </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">Final Quality Check Passed</FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name="labelingReview"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2">
-                                  <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="check-labeling" />
-                                  </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">Labeling Review Completed</FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name="packagingIntegrity"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2">
-                                  <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="check-packaging" />
-                                  </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">Packaging Integrity Verified</FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={form.control}
-                              name="temperatureMonitoring"
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2">
-                                  <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} data-testid="check-temperature" />
-                                  </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">Temperature Monitoring Equipment Installed</FormLabel>
+                                  {uploadedFiles.coaFileName && (
+                                    <p className="text-xs text-green-600 mt-1">✓ {uploadedFiles.coaFileName}</p>
+                                  )}
+                                  <FormMessage />
                                 </FormItem>
                               )}
                             />
                           </div>
 
-                          <h3 className="font-semibold text-gray-900 text-sm mt-4">Shipping Documentation</h3>
+                          {/* Invoice */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3">
+                            <FormField
+                              control={form.control}
+                              name="invoiceNumber"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-green-600" />
+                                    Invoice Number
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="e.g., INV-2024-12345" {...field} data-testid="input-invoice-number" className="text-sm" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="invoiceFileName"
+                              render={({ field }) => (
+                                <FormItem className="mt-2">
+                                  <FormLabel className="text-xs">Invoice File</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="file"
+                                      onChange={(e) => handleFileUpload("invoiceFileName", e)}
+                                      className="text-sm cursor-pointer"
+                                      data-testid="upload-invoice"
+                                    />
+                                  </FormControl>
+                                  {uploadedFiles.invoiceFileName && (
+                                    <p className="text-xs text-green-600 mt-1">✓ {uploadedFiles.invoiceFileName}</p>
+                                  )}
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                          {/* Batch Release Certificate */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3">
+                            <FormField
+                              control={form.control}
+                              name="batchReleaseCertFileName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-purple-600" />
+                                    Batch Release Certificate
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="file"
+                                      onChange={(e) => handleFileUpload("batchReleaseCertFileName", e)}
+                                      className="text-sm cursor-pointer"
+                                      data-testid="upload-batch-cert"
+                                    />
+                                  </FormControl>
+                                  {uploadedFiles.batchReleaseCertFileName && (
+                                    <p className="text-xs text-green-600 mt-1">✓ {uploadedFiles.batchReleaseCertFileName}</p>
+                                  )}
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Packing List */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3">
+                            <FormField
+                              control={form.control}
+                              name="packingListFileName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-orange-600" />
+                                    Packing List
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="file"
+                                      onChange={(e) => handleFileUpload("packingListFileName", e)}
+                                      className="text-sm cursor-pointer"
+                                      data-testid="upload-packing-list"
+                                    />
+                                  </FormControl>
+                                  {uploadedFiles.packingListFileName && (
+                                    <p className="text-xs text-green-600 mt-1">✓ {uploadedFiles.packingListFileName}</p>
+                                  )}
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {/* Quality Report */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3">
+                            <FormField
+                              control={form.control}
+                              name="qualityReportFileName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-red-600" />
+                                    Quality Report
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="file"
+                                      onChange={(e) => handleFileUpload("qualityReportFileName", e)}
+                                      className="text-sm cursor-pointer"
+                                      data-testid="upload-quality-report"
+                                    />
+                                  </FormControl>
+                                  {uploadedFiles.qualityReportFileName && (
+                                    <p className="text-xs text-green-600 mt-1">✓ {uploadedFiles.qualityReportFileName}</p>
+                                  )}
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <h3 className="font-semibold text-gray-900 text-sm mt-4">Shipping Details</h3>
+
+                          <div className="grid grid-cols-2 gap-3">
                             <FormField
                               control={form.control}
                               name="labelNumber"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Label Number</FormLabel>
+                                  <FormLabel className="text-xs">Label Number</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="e.g., LABEL-2024-0001" {...field} data-testid="input-label" />
+                                    <Input placeholder="e.g., LABEL-2024-0001" {...field} className="text-sm" data-testid="input-label" />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -333,9 +458,9 @@ export default function TerminalTesting() {
                               name="certificateOfAnalysis"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Certificate of Analysis #</FormLabel>
+                                  <FormLabel className="text-xs">COA Reference #</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="e.g., COA-2024-0001" {...field} data-testid="input-coa" />
+                                    <Input placeholder="e.g., COA-2024-0001" {...field} className="text-sm" data-testid="input-coa-ref" />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -350,7 +475,7 @@ export default function TerminalTesting() {
                               <FormItem>
                                 <FormLabel className="text-xs">Shipping Conditions</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="e.g., Room temperature (15-25°C), protected from moisture..." rows={2} {...field} data-testid="input-shipping-conditions" className="text-sm" />
+                                  <Textarea placeholder="e.g., Room temperature (15-25°C), protected from moisture..." rows={2} {...field} className="text-sm" data-testid="input-shipping-conditions" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -364,22 +489,22 @@ export default function TerminalTesting() {
                               <FormItem>
                                 <FormLabel className="text-xs">Storage Instructions (for recipient)</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="e.g., Store in cool, dry place..." rows={2} {...field} data-testid="input-storage" className="text-sm" />
+                                  <Textarea placeholder="e.g., Store in cool, dry place..." rows={2} {...field} className="text-sm" data-testid="input-storage" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
 
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-3">
                             <FormField
                               control={form.control}
                               name="shippingTemperature"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Shipping Temperature (°C)</FormLabel>
+                                  <FormLabel className="text-xs">Shipping Temperature (°C)</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="e.g., 20 ± 5" {...field} data-testid="input-shipping-temp" />
+                                    <Input placeholder="e.g., 20 ± 5" {...field} className="text-sm" data-testid="input-shipping-temp" />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -391,9 +516,9 @@ export default function TerminalTesting() {
                               name="transportContainer"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Transport Container Type</FormLabel>
+                                  <FormLabel className="text-xs">Transport Container Type</FormLabel>
                                   <FormControl>
-                                    <Input placeholder="e.g., Insulated box with gel packs" {...field} data-testid="input-container" />
+                                    <Input placeholder="e.g., Insulated box with gel packs" {...field} className="text-sm" data-testid="input-container" />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -408,7 +533,7 @@ export default function TerminalTesting() {
                               <FormItem>
                                 <FormLabel className="text-xs">Final Approval Notes</FormLabel>
                                 <FormControl>
-                                  <Textarea placeholder="Any special handling instructions or final notes..." rows={2} {...field} data-testid="input-final-notes" className="text-sm" />
+                                  <Textarea placeholder="Any special handling instructions or final notes..." rows={2} {...field} className="text-sm" data-testid="input-final-notes" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -422,7 +547,7 @@ export default function TerminalTesting() {
                             data-testid="button-submit-terminal"
                           >
                             <Save className="h-4 w-4 mr-2" />
-                            {submitTestMutation.isPending ? "Submitting..." : "Approve for Shipping"}
+                            {submitTestMutation.isPending ? "Submitting..." : "Approve & Release for Dispatch"}
                           </Button>
                         </form>
                       </Form>
@@ -432,7 +557,7 @@ export default function TerminalTesting() {
                   <Card>
                     <CardContent className="pt-6 text-center">
                       <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-600">Select a batch to perform terminal testing</p>
+                      <p className="text-gray-600">Select a batch to prepare pre-dispatch documentation</p>
                     </CardContent>
                   </Card>
                 )}
