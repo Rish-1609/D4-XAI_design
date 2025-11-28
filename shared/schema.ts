@@ -687,3 +687,40 @@ export type QaAuditTrail = typeof qaAuditTrail.$inferSelect;
 
 export type InsertQcStageTemplate = z.infer<typeof insertQcStageTemplateSchema>;
 export type QcStageTemplate = typeof qcStageTemplates.$inferSelect;
+
+// AI Chat Assistant Schema
+export const chatSessions = pgTable("chat_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  model: text("model").notNull().default('gpt-4o'),
+  mode: text("mode").notNull().default('ask'), // 'ask', 'agent', 'edit'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => chatSessions.id),
+  role: text("role").notNull(), // 'user', 'assistant'
+  content: text("content").notNull(),
+  mode: text("mode").notNull().default('ask'), // 'ask', 'agent', 'edit'
+  feedback: text("feedback"), // 'like', 'dislike', null
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChatSessionSchema = createInsertSchema(chatSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertChatSession = z.infer<typeof insertChatSessionSchema>;
+export type ChatSession = typeof chatSessions.$inferSelect;
+
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
