@@ -1,0 +1,25 @@
+// Add these routes to server/routes.ts after the existing routes:
+
+// Chat endpoint
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { message, mode, model } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    // Simple mock response for now - can be replaced with real OpenAI
+    const mockResponses = {
+      ask: `Based on your question about "${message}", here are some insights for pharmaceutical QC management...`,
+      agent: `As an agent, I'll help you with "${message}". Let me analyze the manufacturing data and provide recommendations...`,
+      edit: `I can help you edit and improve this: "${message}". Here's a refined version...`
+    };
+
+    const response = mockResponses[mode as keyof typeof mockResponses] || mockResponses.ask;
+
+    res.json({ message: response });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to process chat" });
+  }
+});
