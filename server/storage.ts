@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type BomChangeRequest, type InsertBomChangeRequest, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type BomChangeRequest, type InsertBomChangeRequest, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -207,6 +207,32 @@ export interface IStorage {
   getBatchReviewByBatchId(batchId: string): Promise<BatchReview | undefined>;
   createBatchReview(review: InsertBatchReview): Promise<BatchReview>;
   updateBatchReview(id: string, data: Partial<InsertBatchReview>): Promise<BatchReview | undefined>;
+
+  // Equipment operations
+  getEquipment(): Promise<Equipment[]>;
+  getEquipmentById(id: string): Promise<Equipment | undefined>;
+  getEquipmentByStatus(status: string): Promise<Equipment[]>;
+  createEquipment(equipment: InsertEquipment): Promise<Equipment>;
+  updateEquipment(id: string, data: Partial<InsertEquipment>): Promise<Equipment | undefined>;
+  deleteEquipment(id: string): Promise<boolean>;
+
+  // Production Job operations
+  getProductionJobs(): Promise<ProductionJob[]>;
+  getProductionJob(id: string): Promise<ProductionJob | undefined>;
+  getProductionJobsByDateRange(startDate: Date, endDate: Date): Promise<ProductionJob[]>;
+  getProductionJobsByEquipment(equipmentId: string): Promise<ProductionJob[]>;
+  createProductionJob(job: InsertProductionJob): Promise<ProductionJob>;
+  updateProductionJob(id: string, data: Partial<InsertProductionJob>): Promise<ProductionJob | undefined>;
+  deleteProductionJob(id: string): Promise<boolean>;
+
+  // Job Card operations
+  getJobCards(): Promise<JobCard[]>;
+  getJobCard(id: string): Promise<JobCard | undefined>;
+  getJobCardsByJob(jobId: string): Promise<JobCard[]>;
+  getJobCardsByBatch(batchId: string): Promise<JobCard[]>;
+  createJobCard(card: InsertJobCard): Promise<JobCard>;
+  updateJobCard(id: string, data: Partial<InsertJobCard>): Promise<JobCard | undefined>;
+  deleteJobCard(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -253,6 +279,10 @@ export class MemStorage implements IStorage {
   private jobWorksMap: Map<string, JobWork>;
   private batchReviewsMap: Map<string, BatchReview>;
   private batchReviewsByBatch: Map<string, BatchReview>;
+  // Equipment and Job Scheduling data stores
+  private equipmentMap: Map<string, Equipment>;
+  private productionJobsMap: Map<string, ProductionJob>;
+  private jobCardsMap: Map<string, JobCard>;
 
   constructor() {
     this.materials = new Map();
@@ -298,6 +328,10 @@ export class MemStorage implements IStorage {
     this.jobWorksMap = new Map();
     this.batchReviewsMap = new Map();
     this.batchReviewsByBatch = new Map();
+    // Initialize Equipment and Job Scheduling data stores
+    this.equipmentMap = new Map();
+    this.productionJobsMap = new Map();
+    this.jobCardsMap = new Map();
     this.initializeDummyData().catch(console.error);
   }
 
@@ -2045,6 +2079,43 @@ export class MemStorage implements IStorage {
       this.batchReviewsMap.set(review.id, review);
       this.batchReviewsByBatch.set(review.batchId, review);
     });
+
+    // Initialize Equipment
+    const equipmentData: Equipment[] = [
+      { id: "eq1", name: "High-Shear Granulator HSG-100", code: "HSG-100", type: "granulator", capacity: 100, capacityUom: "kg/batch", location: "Block A - Granulation", status: "available", lastMaintenanceDate: new Date('2024-11-15'), nextMaintenanceDate: new Date('2025-02-15'), manufacturer: "GEA Pharma Systems", model: "PMA 300", serialNumber: "GEA-PMA-2019-001", notes: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "eq2", name: "Tablet Press TP-500", code: "TP-500", type: "tablet-press", capacity: 50000, capacityUom: "tablets/hr", location: "Block B - Compression", status: "in-use", lastMaintenanceDate: new Date('2024-10-01'), nextMaintenanceDate: new Date('2025-01-01'), manufacturer: "Fette Compacting", model: "P 3020", serialNumber: "FC-P3020-2020-003", notes: "Currently running Paracetamol batch", createdAt: new Date(), updatedAt: new Date() },
+      { id: "eq3", name: "Coating Machine CM-200", code: "CM-200", type: "coating-machine", capacity: 200, capacityUom: "kg/batch", location: "Block C - Coating", status: "available", lastMaintenanceDate: new Date('2024-09-20'), nextMaintenanceDate: new Date('2024-12-20'), manufacturer: "Glatt", model: "GCGA 150", serialNumber: "GLT-GCGA-2018-002", notes: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "eq4", name: "Blister Packaging Line BPL-01", code: "BPL-01", type: "packaging-line", capacity: 300, capacityUom: "blisters/min", location: "Block D - Packaging", status: "available", lastMaintenanceDate: new Date('2024-11-01'), nextMaintenanceDate: new Date('2025-02-01'), manufacturer: "IMA", model: "C80", serialNumber: "IMA-C80-2021-001", notes: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "eq5", name: "Fluid Bed Dryer FBD-50", code: "FBD-50", type: "granulator", capacity: 50, capacityUom: "kg/batch", location: "Block A - Granulation", status: "maintenance", lastMaintenanceDate: new Date('2024-08-15'), nextMaintenanceDate: new Date('2024-12-15'), manufacturer: "Glatt", model: "WSG 60", serialNumber: "GLT-WSG-2017-001", notes: "Under preventive maintenance", createdAt: new Date(), updatedAt: new Date() },
+      { id: "eq6", name: "V-Blender VB-300", code: "VB-300", type: "mixer", capacity: 300, capacityUom: "liters", location: "Block A - Mixing", status: "available", lastMaintenanceDate: new Date('2024-11-10'), nextMaintenanceDate: new Date('2025-02-10'), manufacturer: "Patterson-Kelley", model: "V-300", serialNumber: "PK-V300-2019-002", notes: null, createdAt: new Date(), updatedAt: new Date() },
+    ];
+    equipmentData.forEach(eq => this.equipmentMap.set(eq.id, eq));
+
+    // Initialize Production Jobs (for current week scheduling)
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+    weekStart.setHours(8, 0, 0, 0);
+    
+    const productionJobData: ProductionJob[] = [
+      { id: "pj1", jobNumber: "JOB-2024-001", orderNumber: "PO-2024-156", productionOrderId: null, batchId: "pb1", productName: "Paracetamol 500mg Tablets", productCode: "PARA-500", equipmentId: "eq2", scheduledStart: new Date(weekStart.getTime()), scheduledEnd: new Date(weekStart.getTime() + 8 * 60 * 60 * 1000), actualStart: new Date(weekStart.getTime()), actualEnd: null, durationMinutes: 480, quantity: 50000, uom: "tablets", status: "in-progress", priority: "high", assignedTo: "David Chen", notes: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "pj2", jobNumber: "JOB-2024-002", orderNumber: "PO-2024-157", productionOrderId: null, batchId: null, productName: "Amoxicillin 250mg Capsules", productCode: "AMOX-250", equipmentId: "eq1", scheduledStart: new Date(weekStart.getTime() + 24 * 60 * 60 * 1000), scheduledEnd: new Date(weekStart.getTime() + 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), actualStart: null, actualEnd: null, durationMinutes: 360, quantity: 25000, uom: "capsules", status: "scheduled", priority: "medium", assignedTo: "Sarah Johnson", notes: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "pj3", jobNumber: "JOB-2024-003", orderNumber: "PO-2024-158", productionOrderId: null, batchId: null, productName: "Ibuprofen 400mg Tablets", productCode: "IBU-400", equipmentId: "eq2", scheduledStart: new Date(weekStart.getTime() + 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000), scheduledEnd: new Date(weekStart.getTime() + 24 * 60 * 60 * 1000 + 17 * 60 * 60 * 1000), actualStart: null, actualEnd: null, durationMinutes: 480, quantity: 40000, uom: "tablets", status: "scheduled", priority: "medium", assignedTo: "Michael Brown", notes: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: "pj4", jobNumber: "JOB-2024-004", orderNumber: "PO-2024-159", productionOrderId: null, batchId: null, productName: "Aspirin 100mg Tablets", productCode: "ASP-100", equipmentId: "eq3", scheduledStart: new Date(weekStart.getTime() + 2 * 24 * 60 * 60 * 1000), scheduledEnd: new Date(weekStart.getTime() + 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000), actualStart: null, actualEnd: null, durationMinutes: 240, quantity: 30000, uom: "tablets", status: "scheduled", priority: "low", assignedTo: "Emily Wang", notes: "Coating operation", createdAt: new Date(), updatedAt: new Date() },
+      { id: "pj5", jobNumber: "JOB-2024-005", orderNumber: "PO-2024-160", productionOrderId: null, batchId: null, productName: "Omeprazole 20mg Capsules", productCode: "OME-20", equipmentId: "eq4", scheduledStart: new Date(weekStart.getTime() + 3 * 24 * 60 * 60 * 1000), scheduledEnd: new Date(weekStart.getTime() + 3 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000), actualStart: null, actualEnd: null, durationMinutes: 360, quantity: 20000, uom: "capsules", status: "scheduled", priority: "high", assignedTo: "James Wilson", notes: "Packaging operation", createdAt: new Date(), updatedAt: new Date() },
+      { id: "pj6", jobNumber: "JOB-2024-006", orderNumber: "PO-2024-161", productionOrderId: null, batchId: "pb3", productName: "Metformin 500mg Tablets", productCode: "MET-500", equipmentId: "eq2", scheduledStart: new Date(weekStart.getTime() - 3 * 24 * 60 * 60 * 1000), scheduledEnd: new Date(weekStart.getTime() - 3 * 24 * 60 * 60 * 1000 + 8 * 60 * 60 * 1000), actualStart: new Date(weekStart.getTime() - 3 * 24 * 60 * 60 * 1000), actualEnd: new Date(weekStart.getTime() - 3 * 24 * 60 * 60 * 1000 + 7.5 * 60 * 60 * 1000), durationMinutes: 480, quantity: 60000, uom: "tablets", status: "completed", priority: "medium", assignedTo: "David Chen", notes: "Completed ahead of schedule", createdAt: new Date(), updatedAt: new Date() },
+    ];
+    productionJobData.forEach(job => this.productionJobsMap.set(job.id, job));
+
+    // Initialize Job Cards
+    const jobCardData: JobCard[] = [
+      { id: "jc1", jobId: "pj1", batchId: "pb1", title: "Verify Raw Material Release", description: "Check QC approval status for all batch materials", cardType: "checklist", status: "completed", priority: "high", assignedTo: "QC Analyst", dueDate: new Date(weekStart.getTime()), completedAt: new Date(weekStart.getTime() + 1 * 60 * 60 * 1000), checklist: JSON.stringify([{item: "Paracetamol API released", checked: true}, {item: "Excipients released", checked: true}, {item: "Packaging materials checked", checked: true}]), notes: null, attachments: null, createdBy: "Production Manager", createdAt: new Date(), updatedAt: new Date() },
+      { id: "jc2", jobId: "pj1", batchId: "pb1", title: "Equipment Line Clearance", description: "Complete line clearance before batch start", cardType: "inspection", status: "completed", priority: "high", assignedTo: "Production Operator", dueDate: new Date(weekStart.getTime()), completedAt: new Date(weekStart.getTime() + 0.5 * 60 * 60 * 1000), checklist: null, notes: "Line clearance verified by shift supervisor", attachments: null, createdBy: "Production Manager", createdAt: new Date(), updatedAt: new Date() },
+      { id: "jc3", jobId: "pj1", batchId: "pb1", title: "In-Process QC Sampling", description: "Collect samples at compression stage for IPC testing", cardType: "task", status: "in-progress", priority: "medium", assignedTo: "QC Technician", dueDate: new Date(weekStart.getTime() + 4 * 60 * 60 * 1000), completedAt: null, checklist: null, notes: null, attachments: null, createdBy: "QC Manager", createdAt: new Date(), updatedAt: new Date() },
+      { id: "jc4", jobId: "pj2", batchId: null, title: "Pre-production Setup", description: "Prepare granulator for Amoxicillin batch", cardType: "task", status: "pending", priority: "medium", assignedTo: "Production Operator", dueDate: new Date(weekStart.getTime() + 24 * 60 * 60 * 1000), completedAt: null, checklist: null, notes: null, attachments: null, createdBy: "Production Manager", createdAt: new Date(), updatedAt: new Date() },
+      { id: "jc5", jobId: "pj1", batchId: "pb1", title: "Batch Documentation Review", description: "Review and sign batch manufacturing record", cardType: "documentation", status: "pending", priority: "high", assignedTo: "Production Manager", dueDate: new Date(weekStart.getTime() + 8 * 60 * 60 * 1000), completedAt: null, checklist: null, notes: null, attachments: null, createdBy: "QA Manager", createdAt: new Date(), updatedAt: new Date() },
+    ];
+    jobCardData.forEach(card => this.jobCardsMap.set(card.id, card));
   }
 
   // SOP operations
@@ -3803,6 +3874,183 @@ export class MemStorage implements IStorage {
     this.batchReviewsMap.set(id, updated);
     this.batchReviewsByBatch.set(existing.batchId, updated);
     return updated;
+  }
+
+  // Equipment implementations
+  async getEquipment(): Promise<Equipment[]> {
+    return Array.from(this.equipmentMap.values()).sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
+  }
+
+  async getEquipmentById(id: string): Promise<Equipment | undefined> {
+    return this.equipmentMap.get(id);
+  }
+
+  async getEquipmentByStatus(status: string): Promise<Equipment[]> {
+    return Array.from(this.equipmentMap.values())
+      .filter(e => e.status === status)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createEquipment(insertEquip: InsertEquipment): Promise<Equipment> {
+    const id = randomUUID();
+    const now = new Date();
+    const equip: Equipment = {
+      ...insertEquip,
+      id,
+      capacity: insertEquip.capacity || null,
+      capacityUom: insertEquip.capacityUom || 'units/hr',
+      location: insertEquip.location || 'Main Plant',
+      status: insertEquip.status || 'available',
+      lastMaintenanceDate: insertEquip.lastMaintenanceDate || null,
+      nextMaintenanceDate: insertEquip.nextMaintenanceDate || null,
+      manufacturer: insertEquip.manufacturer || null,
+      model: insertEquip.model || null,
+      serialNumber: insertEquip.serialNumber || null,
+      notes: insertEquip.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.equipmentMap.set(id, equip);
+    return equip;
+  }
+
+  async updateEquipment(id: string, data: Partial<InsertEquipment>): Promise<Equipment | undefined> {
+    const existing = this.equipmentMap.get(id);
+    if (!existing) return undefined;
+    const updated: Equipment = { ...existing, ...data, updatedAt: new Date() };
+    this.equipmentMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteEquipment(id: string): Promise<boolean> {
+    return this.equipmentMap.delete(id);
+  }
+
+  // Production Job implementations
+  async getProductionJobs(): Promise<ProductionJob[]> {
+    return Array.from(this.productionJobsMap.values()).sort((a, b) => 
+      new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+    );
+  }
+
+  async getProductionJob(id: string): Promise<ProductionJob | undefined> {
+    return this.productionJobsMap.get(id);
+  }
+
+  async getProductionJobsByDateRange(startDate: Date, endDate: Date): Promise<ProductionJob[]> {
+    return Array.from(this.productionJobsMap.values())
+      .filter(job => {
+        const jobStart = new Date(job.scheduledStart).getTime();
+        const jobEnd = new Date(job.scheduledEnd).getTime();
+        return jobStart <= endDate.getTime() && jobEnd >= startDate.getTime();
+      })
+      .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime());
+  }
+
+  async getProductionJobsByEquipment(equipmentId: string): Promise<ProductionJob[]> {
+    return Array.from(this.productionJobsMap.values())
+      .filter(job => job.equipmentId === equipmentId)
+      .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime());
+  }
+
+  async createProductionJob(insertJob: InsertProductionJob): Promise<ProductionJob> {
+    const id = randomUUID();
+    const now = new Date();
+    const job: ProductionJob = {
+      ...insertJob,
+      id,
+      orderNumber: insertJob.orderNumber || null,
+      productionOrderId: insertJob.productionOrderId || null,
+      batchId: insertJob.batchId || null,
+      productCode: insertJob.productCode || null,
+      equipmentId: insertJob.equipmentId || null,
+      actualStart: insertJob.actualStart || null,
+      actualEnd: insertJob.actualEnd || null,
+      uom: insertJob.uom || 'units',
+      status: insertJob.status || 'scheduled',
+      priority: insertJob.priority || 'medium',
+      assignedTo: insertJob.assignedTo || null,
+      notes: insertJob.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.productionJobsMap.set(id, job);
+    return job;
+  }
+
+  async updateProductionJob(id: string, data: Partial<InsertProductionJob>): Promise<ProductionJob | undefined> {
+    const existing = this.productionJobsMap.get(id);
+    if (!existing) return undefined;
+    const updated: ProductionJob = { ...existing, ...data, updatedAt: new Date() };
+    this.productionJobsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteProductionJob(id: string): Promise<boolean> {
+    return this.productionJobsMap.delete(id);
+  }
+
+  // Job Card implementations
+  async getJobCards(): Promise<JobCard[]> {
+    return Array.from(this.jobCardsMap.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getJobCard(id: string): Promise<JobCard | undefined> {
+    return this.jobCardsMap.get(id);
+  }
+
+  async getJobCardsByJob(jobId: string): Promise<JobCard[]> {
+    return Array.from(this.jobCardsMap.values())
+      .filter(card => card.jobId === jobId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async getJobCardsByBatch(batchId: string): Promise<JobCard[]> {
+    return Array.from(this.jobCardsMap.values())
+      .filter(card => card.batchId === batchId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async createJobCard(insertCard: InsertJobCard): Promise<JobCard> {
+    const id = randomUUID();
+    const now = new Date();
+    const card: JobCard = {
+      ...insertCard,
+      id,
+      jobId: insertCard.jobId || null,
+      batchId: insertCard.batchId || null,
+      description: insertCard.description || null,
+      cardType: insertCard.cardType || 'task',
+      status: insertCard.status || 'pending',
+      priority: insertCard.priority || 'medium',
+      assignedTo: insertCard.assignedTo || null,
+      dueDate: insertCard.dueDate || null,
+      completedAt: insertCard.completedAt || null,
+      checklist: insertCard.checklist || null,
+      notes: insertCard.notes || null,
+      attachments: insertCard.attachments || null,
+      createdBy: insertCard.createdBy || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.jobCardsMap.set(id, card);
+    return card;
+  }
+
+  async updateJobCard(id: string, data: Partial<InsertJobCard>): Promise<JobCard | undefined> {
+    const existing = this.jobCardsMap.get(id);
+    if (!existing) return undefined;
+    const updated: JobCard = { ...existing, ...data, updatedAt: new Date() };
+    this.jobCardsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteJobCard(id: string): Promise<boolean> {
+    return this.jobCardsMap.delete(id);
   }
 }
 
