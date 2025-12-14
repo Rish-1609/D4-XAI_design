@@ -1,0 +1,278 @@
+1. Production Overview (NEW – Should be added)
+
+📍 Production Management → Production Overview
+
+Purpose
+
+This is the command center for supervisors and managers.
+
+What to show
+
+All active batches / jobs
+
+Status by stage (Planned / In Progress / QC Hold / Completed)
+
+Today’s priorities
+
+Delayed / at-risk batches (AI-flagged)
+
+Quick filters: Site, Product, Stage, Job-Work
+
+Why this is needed
+
+Every modern system (Plex, Oracle) has a production cockpit.
+Without this, users jump between screens blindly.
+
+2. Job Scheduling (Already Exists – Keep & Improve)
+
+📍 Production Management → Job Scheduling
+
+What this should be (keep it simple)
+
+This is planning + readiness, not hardcore APS.
+
+Core features
+
+Create production orders / batches
+
+Assign:
+
+Site
+
+Product
+
+BOM / Recipe
+
+Target quantity
+
+Planned start / end
+
+Sequence jobs (basic drag-drop is enough for now)
+
+Add this (very important)
+
+Production Readiness Check (AI-assisted):
+Before release, system checks:
+
+Material availability (Inventory)
+
+BOM & recipe approval
+
+QC method readiness
+
+Obvious capacity conflicts
+
+Show this as a “Ready / Not Ready” indicator, not a blocking wall.
+
+What NOT to add (for now)
+
+Complex Gantt optimization
+
+Constraint solvers
+
+Auto-rescheduling without human control
+
+3. Production Workspace (NEW – This is the Heart)
+
+📍 Production Management → Production Workspace
+
+👉 This is the most important screen you should build.
+
+Concept
+
+One screen per batch / job
+Everything needed to execute, monitor, and close a batch lives here.
+
+What this screen contains
+
+A. Batch Header
+
+Batch ID
+
+Product
+
+Quantity
+
+Current stage
+
+Status
+
+Priority / risk indicator (AI)
+
+B. Stage Flow (Center Panel)
+
+Dispensing → Manufacturing → Packing (example)
+
+Each stage shows:
+
+Not Started / In Progress / Completed
+
+Operator
+
+Start / End time
+
+QC checkpoint
+
+C. Execution Panel
+
+Record material consumption
+
+Capture yield / scrap / rework
+
+Trigger in-process QC
+
+Add comments / deviations
+
+D. AI Panel (Right Side)
+
+AI Ask Agent
+
+Alerts (delay risk, yield risk)
+
+“What should I do next?”
+
+Why this matters
+
+This replaces:
+
+Job cards
+
+Execution sheets
+
+Status calls
+
+Multiple tabs
+
+This is how Plex + MES-lite systems win adoption.
+
+4. Job-Work Management (Rename “Logistics” → Job Work)
+
+📍 Production Management → Job Work
+
+“Logistics” is too generic and confusing here.
+
+What belongs here
+
+Jobs executed at external vendors
+
+Material issued to job-work
+
+WIP at vendor
+
+Expected vs actual receipts
+
+Loss / scrap reconciliation
+
+How it works
+
+Job-work batches also open in Production Workspace
+
+Stages show “External Vendor” instead of machine
+
+Inventory and QC still linked
+
+Why separate menu
+
+Ops teams need a vendor-centric view
+
+But execution logic remains the same
+
+5. Production Review & Closure (NEW but Lightweight)
+
+📍 Production Management → Batch Review & Closure
+
+Purpose
+
+Ensure clean handoff to QA, no surprises.
+
+What happens here
+
+System auto-checks:
+
+All stages completed
+
+Yield recorded
+
+Deviations logged
+
+Material balances OK
+
+Shows a Production Summary
+
+Allows formal batch closure
+
+QA release should not live here — it moves to Quality.
+
+6. Production Analytics (Optional but Recommended)
+
+📍 Production Management → Production Analytics
+
+Audience
+
+Plant heads
+
+Ops leadership
+
+What to include
+
+Plan vs actual
+
+Cycle time trends
+
+Yield & scrap trends
+
+Resource utilization
+
+Site comparisons
+
+Important rule
+
+Analytics should not replace the Production Workspace.
+They are for review, not execution.
+
+Where AI Lives (Do NOT make a separate AI menu)
+AI Ask Agent
+
+Always visible inside:
+
+Production Workspace
+
+Job Scheduling
+
+Batch Review
+
+AI Screen Takeover Agent
+
+Triggered when:
+
+User misses a mandatory step
+
+Batch closure
+
+Deviation creation
+
+Complex job-work reconciliation
+
+Silent AI (Background)
+
+Delay prediction
+
+Yield anomaly detection
+
+Risk flags on batches
+
+Final Recommended Menu Structure (Clean & Minimal)
+
+Production Management
+
+Production Overview
+
+Job Scheduling
+
+Production Workspace
+
+Job Work
+
+Batch Review & Closure
+
+Production Analytics (optional)

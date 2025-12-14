@@ -724,3 +724,174 @@ export type ChatSession = typeof chatSessions.$inferSelect;
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// ==================== PRODUCTION MANAGEMENT SCHEMAS ====================
+
+// Production Batches - Core production tracking
+export const productionBatches = pgTable("production_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchNumber: text("batch_number").notNull().unique(),
+  productionOrderId: varchar("production_order_id").references(() => productionOrders.id),
+  productName: text("product_name").notNull(),
+  productCode: text("product_code").notNull(),
+  bomId: varchar("bom_id").references(() => boms.id),
+  site: text("site").notNull().default('Main Plant'),
+  targetQuantity: integer("target_quantity").notNull(),
+  actualQuantity: integer("actual_quantity"),
+  uom: text("uom").notNull().default('units'),
+  status: text("status").notNull().default('planned'), // 'planned', 'in-progress', 'qc-hold', 'completed', 'cancelled'
+  priority: text("priority").notNull().default('medium'), // 'low', 'medium', 'high', 'critical'
+  currentStage: text("current_stage"),
+  plannedStartDate: timestamp("planned_start_date"),
+  plannedEndDate: timestamp("planned_end_date"),
+  actualStartDate: timestamp("actual_start_date"),
+  actualEndDate: timestamp("actual_end_date"),
+  assignedTo: text("assigned_to"),
+  supervisorId: text("supervisor_id"),
+  yieldPercentage: decimal("yield_percentage"),
+  scrapQuantity: integer("scrap_quantity"),
+  reworkQuantity: integer("rework_quantity"),
+  isDelayed: boolean("is_delayed").default(false),
+  delayReason: text("delay_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Batch Stages - Stages within a production batch
+export const batchStages = pgTable("batch_stages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => productionBatches.id),
+  stageName: text("stage_name").notNull(), // 'Dispensing', 'Manufacturing', 'Packing', etc.
+  stageOrder: integer("stage_order").notNull(),
+  status: text("status").notNull().default('not-started'), // 'not-started', 'in-progress', 'completed', 'on-hold'
+  operatorName: text("operator_name"),
+  equipmentUsed: text("equipment_used"),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  estimatedDuration: integer("estimated_duration"), // in minutes
+  actualDuration: integer("actual_duration"), // in minutes
+  qcCheckpointRequired: boolean("qc_checkpoint_required").default(true),
+  qcCheckpointCompleted: boolean("qc_checkpoint_completed").default(false),
+  qcCheckpointResult: text("qc_checkpoint_result"), // 'passed', 'failed', 'pending'
+  inputQuantity: integer("input_quantity"),
+  outputQuantity: integer("output_quantity"),
+  scrapQuantity: integer("scrap_quantity"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Batch Executions - Record of activities during production
+export const batchExecutions = pgTable("batch_executions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => productionBatches.id),
+  stageId: varchar("stage_id").references(() => batchStages.id),
+  executionType: text("execution_type").notNull(), // 'material-consumption', 'yield-record', 'qc-trigger', 'deviation', 'comment'
+  materialId: varchar("material_id").references(() => materials.id),
+  materialName: text("material_name"),
+  quantityUsed: decimal("quantity_used"),
+  quantityExpected: decimal("quantity_expected"),
+  uom: text("uom"),
+  yieldRecorded: decimal("yield_recorded"),
+  scrapRecorded: decimal("scrap_recorded"),
+  reworkRecorded: decimal("rework_recorded"),
+  deviationDescription: text("deviation_description"),
+  deviationSeverity: text("deviation_severity"), // 'minor', 'major', 'critical'
+  comment: text("comment"),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Job Work - External vendor job management
+export const jobWorks = pgTable("job_works", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobWorkNumber: text("job_work_number").notNull().unique(),
+  batchId: varchar("batch_id").references(() => productionBatches.id),
+  vendorName: text("vendor_name").notNull(),
+  vendorCode: text("vendor_code"),
+  vendorContact: text("vendor_contact"),
+  processDescription: text("process_description").notNull(),
+  status: text("status").notNull().default('pending'), // 'pending', 'issued', 'in-progress', 'received', 'completed', 'cancelled'
+  materialIssuedDate: timestamp("material_issued_date"),
+  expectedReceiptDate: timestamp("expected_receipt_date"),
+  actualReceiptDate: timestamp("actual_receipt_date"),
+  materialIssuedQty: integer("material_issued_qty"),
+  expectedReceiptQty: integer("expected_receipt_qty"),
+  actualReceiptQty: integer("actual_receipt_qty"),
+  processLoss: decimal("process_loss"),
+  scrapQuantity: integer("scrap_quantity"),
+  qualityStatus: text("quality_status"), // 'pending', 'approved', 'rejected'
+  invoiceNumber: text("invoice_number"),
+  invoiceAmount: decimal("invoice_amount"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Batch Review - For batch closure and QA handoff
+export const batchReviews = pgTable("batch_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => productionBatches.id).unique(),
+  reviewStatus: text("review_status").notNull().default('pending'), // 'pending', 'in-review', 'approved', 'rejected'
+  allStagesCompleted: boolean("all_stages_completed").default(false),
+  yieldRecorded: boolean("yield_recorded").default(false),
+  deviationsLogged: boolean("deviations_logged").default(false),
+  materialBalanceOk: boolean("material_balance_ok").default(false),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  productionSummary: text("production_summary"),
+  closureNotes: text("closure_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for production management
+export const insertProductionBatchSchema = createInsertSchema(productionBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBatchStageSchema = createInsertSchema(batchStages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBatchExecutionSchema = createInsertSchema(batchExecutions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertJobWorkSchema = createInsertSchema(jobWorks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBatchReviewSchema = createInsertSchema(batchReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Type definitions for production management
+export type InsertProductionBatch = z.infer<typeof insertProductionBatchSchema>;
+export type ProductionBatch = typeof productionBatches.$inferSelect;
+
+export type InsertBatchStage = z.infer<typeof insertBatchStageSchema>;
+export type BatchStage = typeof batchStages.$inferSelect;
+
+export type InsertBatchExecution = z.infer<typeof insertBatchExecutionSchema>;
+export type BatchExecution = typeof batchExecutions.$inferSelect;
+
+export type InsertJobWork = z.infer<typeof insertJobWorkSchema>;
+export type JobWork = typeof jobWorks.$inferSelect;
+
+export type InsertBatchReview = z.infer<typeof insertBatchReviewSchema>;
+export type BatchReview = typeof batchReviews.$inferSelect;

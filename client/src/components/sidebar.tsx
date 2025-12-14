@@ -20,7 +20,8 @@ import {
   FileCheck,
   ClipboardList,
   AlertCircle,
-  ShieldAlert
+  ShieldAlert,
+  Factory
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,19 @@ interface SidebarProps {
 }
 
 const menuItems = [
+  {
+    id: "production-management",
+    label: "Production Management",
+    icon: Factory,
+    submenu: [
+      { label: "Production Overview", href: "/production-overview" },
+      { label: "Job Scheduling", href: "/job-scheduling" },
+      { label: "Production Workspace", href: "/production-workspace" },
+      { label: "Job Work", href: "/job-work" },
+      { label: "Batch Review & Closure", href: "/batch-review" },
+      { label: "Production Analytics", href: "/production-analytics" },
+    ],
+  },
   { id: "production-orders", label: "Production Orders", icon: Package, href: "/production-orders" },
   {
     id: "inventory-management",
