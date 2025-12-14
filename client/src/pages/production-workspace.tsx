@@ -32,7 +32,7 @@ import {
   FileText,
   MessageSquare,
 } from "lucide-react";
-import type { ProductionBatch, BatchStage, BatchExecution } from "@shared/schema";
+import type { ProductionBatch, BatchStage, BatchExecution, JobCard } from "@shared/schema";
 
 const formatDate = (date: Date | string | null) => {
   if (!date) return "N/A";
@@ -79,6 +79,11 @@ export default function ProductionWorkspace() {
 
   const { data: executions = [] } = useQuery<BatchExecution[]>({
     queryKey: ["/api/batch-executions/batch", batchId],
+    enabled: !!batchId,
+  });
+
+  const { data: jobCards = [] } = useQuery<JobCard[]>({
+    queryKey: ["/api/job-cards/batch", batchId],
     enabled: !!batchId,
   });
 
@@ -183,16 +188,25 @@ export default function ProductionWorkspace() {
         </div>
 
         <div className="flex-1 overflow-auto p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Stage Flow - Center Panel */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Factory className="h-5 w-5" />
-                    Stage Flow
-                  </CardTitle>
-                </CardHeader>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="stages" data-testid="tab-stages">Stage Progress</TabsTrigger>
+              <TabsTrigger value="job-cards" data-testid="tab-job-cards">Job Cards</TabsTrigger>
+              <TabsTrigger value="execution" data-testid="tab-execution">Execution Log</TabsTrigger>
+              <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="stages">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Stage Flow - Center Panel */}
+                <div className="lg:col-span-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Factory className="h-5 w-5" />
+                        Stage Flow
+                      </CardTitle>
+                    </CardHeader>
                 <CardContent>
                   {sortedStages.length === 0 ? (
                     <div className="text-center py-8">
@@ -397,6 +411,103 @@ export default function ProductionWorkspace() {
               </Card>
             </div>
           </div>
+            </TabsContent>
+
+            <TabsContent value="job-cards">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Job Cards
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {jobCards.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">No job cards for this batch</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {jobCards.map(card => (
+                        <div key={card.id} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`job-card-${card.id}`}>
+                          <div>
+                            <p className="font-medium">{card.title}</p>
+                            <p className="text-sm text-gray-600">{card.cardType} - {card.assignedTo || "Unassigned"}</p>
+                          </div>
+                          <Badge className={
+                            card.status === "completed" ? "bg-green-100 text-green-800" :
+                            card.status === "in-progress" ? "bg-blue-100 text-blue-800" :
+                            "bg-gray-100 text-gray-800"
+                          }>
+                            {card.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="execution">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Full Execution Log
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {executions.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No execution records yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {executions.map(exec => (
+                        <div key={exec.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg" data-testid={`execution-log-${exec.id}`}>
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                            exec.executionType === "deviation" ? "bg-red-100" :
+                            exec.executionType === "material-consumption" ? "bg-blue-100" :
+                            "bg-green-100"
+                          }`}>
+                            {exec.executionType === "deviation" ? <AlertTriangle className="h-4 w-4 text-red-600" /> :
+                             exec.executionType === "material-consumption" ? <Package className="h-4 w-4 text-blue-600" /> :
+                             <CheckCircle className="h-4 w-4 text-green-600" />}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium capitalize">{exec.executionType.replace("-", " ")}</p>
+                            <p className="text-xs text-gray-600">
+                              {exec.materialName && `${exec.materialName}: ${exec.quantityUsed} ${exec.uom}`}
+                              {exec.comment && exec.comment}
+                              {exec.deviationDescription && exec.deviationDescription}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">By {exec.recordedBy} at {formatDate(exec.recordedAt)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="documents">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No documents attached to this batch</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

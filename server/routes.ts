@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertBomChangeRequestSchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertBomChangeRequestSchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1919,6 +1919,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(review);
     } catch (error) {
       res.status(500).json({ message: "Failed to update batch review" });
+    }
+  });
+
+  // =============== EQUIPMENT MANAGEMENT ===============
+  app.get("/api/equipment", async (req, res) => {
+    try {
+      const equipment = await storage.getEquipment();
+      res.json(equipment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  app.get("/api/equipment/:id", async (req, res) => {
+    try {
+      const equipment = await storage.getEquipmentById(req.params.id);
+      if (!equipment) return res.status(404).json({ message: "Equipment not found" });
+      res.json(equipment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  app.get("/api/equipment/status/:status", async (req, res) => {
+    try {
+      const equipment = await storage.getEquipmentByStatus(req.params.status);
+      res.json(equipment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch equipment by status" });
+    }
+  });
+
+  app.post("/api/equipment", async (req, res) => {
+    try {
+      const validatedData = insertEquipmentSchema.parse(req.body);
+      const equipment = await storage.createEquipment(validatedData);
+      res.status(201).json(equipment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid equipment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create equipment" });
+    }
+  });
+
+  app.put("/api/equipment/:id", async (req, res) => {
+    try {
+      const validatedData = insertEquipmentSchema.partial().parse(req.body);
+      const equipment = await storage.updateEquipment(req.params.id, validatedData);
+      if (!equipment) return res.status(404).json({ message: "Equipment not found" });
+      res.json(equipment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid equipment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update equipment" });
+    }
+  });
+
+  app.delete("/api/equipment/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteEquipment(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Equipment not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete equipment" });
+    }
+  });
+
+  // =============== PRODUCTION JOBS ===============
+  app.get("/api/production-jobs", async (req, res) => {
+    try {
+      const jobs = await storage.getProductionJobs();
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production jobs" });
+    }
+  });
+
+  app.get("/api/production-jobs/:id", async (req, res) => {
+    try {
+      const job = await storage.getProductionJob(req.params.id);
+      if (!job) return res.status(404).json({ message: "Production job not found" });
+      res.json(job);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production job" });
+    }
+  });
+
+  app.get("/api/production-jobs/date-range/:start/:end", async (req, res) => {
+    try {
+      const startDate = new Date(req.params.start);
+      const endDate = new Date(req.params.end);
+      const jobs = await storage.getProductionJobsByDateRange(startDate, endDate);
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production jobs by date range" });
+    }
+  });
+
+  app.get("/api/production-jobs/equipment/:equipmentId", async (req, res) => {
+    try {
+      const jobs = await storage.getProductionJobsByEquipment(req.params.equipmentId);
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production jobs by equipment" });
+    }
+  });
+
+  app.post("/api/production-jobs", async (req, res) => {
+    try {
+      const validatedData = insertProductionJobSchema.parse(req.body);
+      const job = await storage.createProductionJob(validatedData);
+      res.status(201).json(job);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid production job data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create production job" });
+    }
+  });
+
+  app.put("/api/production-jobs/:id", async (req, res) => {
+    try {
+      const validatedData = insertProductionJobSchema.partial().parse(req.body);
+      const job = await storage.updateProductionJob(req.params.id, validatedData);
+      if (!job) return res.status(404).json({ message: "Production job not found" });
+      res.json(job);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid production job data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update production job" });
+    }
+  });
+
+  app.delete("/api/production-jobs/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteProductionJob(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Production job not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete production job" });
+    }
+  });
+
+  // =============== JOB CARDS ===============
+  app.get("/api/job-cards", async (req, res) => {
+    try {
+      const cards = await storage.getJobCards();
+      res.json(cards);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch job cards" });
+    }
+  });
+
+  app.get("/api/job-cards/:id", async (req, res) => {
+    try {
+      const card = await storage.getJobCard(req.params.id);
+      if (!card) return res.status(404).json({ message: "Job card not found" });
+      res.json(card);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch job card" });
+    }
+  });
+
+  app.get("/api/job-cards/job/:jobId", async (req, res) => {
+    try {
+      const cards = await storage.getJobCardsByJob(req.params.jobId);
+      res.json(cards);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch job cards by job" });
+    }
+  });
+
+  app.get("/api/job-cards/batch/:batchId", async (req, res) => {
+    try {
+      const cards = await storage.getJobCardsByBatch(req.params.batchId);
+      res.json(cards);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch job cards by batch" });
+    }
+  });
+
+  app.post("/api/job-cards", async (req, res) => {
+    try {
+      const validatedData = insertJobCardSchema.parse(req.body);
+      const card = await storage.createJobCard(validatedData);
+      res.status(201).json(card);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid job card data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create job card" });
+    }
+  });
+
+  app.put("/api/job-cards/:id", async (req, res) => {
+    try {
+      const validatedData = insertJobCardSchema.partial().parse(req.body);
+      const card = await storage.updateJobCard(req.params.id, validatedData);
+      if (!card) return res.status(404).json({ message: "Job card not found" });
+      res.json(card);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid job card data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update job card" });
+    }
+  });
+
+  app.delete("/api/job-cards/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteJobCard(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Job card not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete job card" });
     }
   });
 

@@ -38,6 +38,7 @@ const menuItems = [
     submenu: [
       { label: "Production Overview", href: "/production-overview" },
       { label: "Production Workspace", href: "/production-workspace" },
+      { label: "Job Scheduling", href: "/job-scheduling" },
       { label: "Release & Analytics", href: "/release-analytics" },
     ],
   },

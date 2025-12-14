@@ -23,6 +23,7 @@ import QARiskManagement from "@/pages/qa-risk-management";
 import ProductionOverview from "@/pages/production-overview";
 import ProductionWorkspace from "@/pages/production-workspace";
 import ReleaseAnalytics from "@/pages/release-analytics";
+import JobScheduling from "@/pages/job-scheduling";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/production-workspace/:id" component={ProductionWorkspace} />
       <Route path="/production-workspace" component={ProductionWorkspace} />
       <Route path="/release-analytics" component={ReleaseAnalytics} />
+      <Route path="/job-scheduling" component={JobScheduling} />
       <Route component={NotFound} />
     </Switch>
   );
