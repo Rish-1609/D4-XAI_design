@@ -1,12 +1,20 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Sidebar } from "@/components/sidebar";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Factory,
   Clock,
@@ -14,15 +22,30 @@ import {
   AlertTriangle,
   PlayCircle,
   PauseCircle,
-  TrendingUp,
+  Plus,
   Search,
-  Filter,
   ChevronRight,
   Loader2,
   Calendar,
   Target,
 } from "lucide-react";
-import type { ProductionBatch } from "@shared/schema";
+import type { ProductionBatch, Bom } from "@shared/schema";
+
+const batchFormSchema = z.object({
+  productName: z.string().min(1, "Product name is required"),
+  productCode: z.string().min(1, "Product code is required"),
+  bomId: z.string().optional(),
+  site: z.string().min(1, "Site is required"),
+  targetQuantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+  uom: z.string().default("units"),
+  priority: z.enum(["low", "medium", "high", "critical"]),
+  plannedStartDate: z.string().min(1, "Start date is required"),
+  plannedEndDate: z.string().min(1, "End date is required"),
+  assignedTo: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type BatchFormValues = z.infer<typeof batchFormSchema>;
 
 const formatDate = (date: Date | string | null) => {
   if (!date) return "N/A";
@@ -55,9 +78,52 @@ export default function ProductionOverview() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [siteFilter, setSiteFilter] = useState<string>("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const { data: batches = [], isLoading } = useQuery<ProductionBatch[]>({
     queryKey: ["/api/production-batches"],
+  });
+
+  const { data: boms = [] } = useQuery<Bom[]>({
+    queryKey: ["/api/boms"],
+  });
+
+  const form = useForm<BatchFormValues>({
+    resolver: zodResolver(batchFormSchema),
+    defaultValues: {
+      productName: "",
+      productCode: "",
+      site: "Main Plant",
+      targetQuantity: 1000,
+      uom: "units",
+      priority: "medium",
+      plannedStartDate: "",
+      plannedEndDate: "",
+      assignedTo: "",
+      notes: "",
+    },
+  });
+
+  const createBatchMutation = useMutation({
+    mutationFn: async (data: BatchFormValues) => {
+      const batchNumber = `BATCH-${Date.now().toString().slice(-8)}`;
+      return apiRequest("POST", "/api/production-batches", {
+        ...data,
+        batchNumber,
+        plannedStartDate: new Date(data.plannedStartDate),
+        plannedEndDate: new Date(data.plannedEndDate),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/production-batches"] });
+      setDialogOpen(false);
+      form.reset();
+      toast({ title: "Success", description: "Production batch scheduled successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to schedule batch", variant: "destructive" });
+    },
   });
 
   const statusCounts = {
@@ -80,7 +146,7 @@ export default function ProductionOverview() {
     return matchesSearch && matchesStatus && matchesSite;
   });
 
-  const sites = [...new Set(batches.map(b => b.site))];
+  const sites = Array.from(new Set(batches.map(b => b.site)));
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -94,12 +160,206 @@ export default function ProductionOverview() {
                 <h1 className="text-2xl font-bold text-gray-900">Production Overview</h1>
                 <p className="text-gray-600 mt-1">Command center for production monitoring</p>
               </div>
-              <Link href="/job-scheduling">
-                <Button className="bg-blue-600 hover:bg-blue-700" data-testid="button-new-batch">
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                  Schedule New Batch
-                </Button>
-              </Link>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700" data-testid="button-new-batch">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Schedule New Batch
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Schedule New Production Batch</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit((data) => createBatchMutation.mutate(data))} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="productName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Product Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., Paracetamol 500mg" {...field} data-testid="input-product-name" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="productCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Product Code</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., PARA-500" {...field} data-testid="input-product-code" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="bomId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>BOM / Recipe</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-bom">
+                                    <SelectValue placeholder="Select BOM" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {boms.map(bom => (
+                                    <SelectItem key={bom.id} value={bom.id}>{bom.productName} (v{bom.version})</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="site"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Site</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-site">
+                                    <SelectValue placeholder="Select site" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Main Plant">Main Plant</SelectItem>
+                                  <SelectItem value="Plant B">Plant B</SelectItem>
+                                  <SelectItem value="Warehouse A">Warehouse A</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="targetQuantity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Target Quantity</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} data-testid="input-quantity" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="uom"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>UOM</FormLabel>
+                              <FormControl>
+                                <Input placeholder="units" {...field} data-testid="input-uom" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="priority"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Priority</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-priority">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="low">Low</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="high">High</SelectItem>
+                                  <SelectItem value="critical">Critical</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="plannedStartDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Planned Start</FormLabel>
+                              <FormControl>
+                                <Input type="datetime-local" {...field} data-testid="input-start-date" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="plannedEndDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Planned End</FormLabel>
+                              <FormControl>
+                                <Input type="datetime-local" {...field} data-testid="input-end-date" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="assignedTo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Assigned To</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Operator name" {...field} data-testid="input-assigned" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Notes</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Any special instructions..." {...field} data-testid="input-notes" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={createBatchMutation.isPending} data-testid="button-submit-batch">
+                        {createBatchMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Calendar className="h-4 w-4 mr-2" />}
+                        Schedule Batch
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>

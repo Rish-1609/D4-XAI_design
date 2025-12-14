@@ -21,11 +21,8 @@ import QAAuditTrail from "@/pages/qa-audit-trail";
 import QACAPAManagement from "@/pages/qa-capa";
 import QARiskManagement from "@/pages/qa-risk-management";
 import ProductionOverview from "@/pages/production-overview";
-import JobScheduling from "@/pages/job-scheduling";
 import ProductionWorkspace from "@/pages/production-workspace";
-import JobWork from "@/pages/job-work";
-import BatchReview from "@/pages/batch-review";
-import ProductionAnalytics from "@/pages/production-analytics";
+import ReleaseAnalytics from "@/pages/release-analytics";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,12 +45,9 @@ function Router() {
       <Route path="/bom-management" component={BomManagement} />
       <Route path="/quality-metrics" component={QualityMetrics} />
       <Route path="/production-overview" component={ProductionOverview} />
-      <Route path="/job-scheduling" component={JobScheduling} />
       <Route path="/production-workspace/:id" component={ProductionWorkspace} />
       <Route path="/production-workspace" component={ProductionWorkspace} />
-      <Route path="/job-work" component={JobWork} />
-      <Route path="/batch-review" component={BatchReview} />
-      <Route path="/production-analytics" component={ProductionAnalytics} />
+      <Route path="/release-analytics" component={ReleaseAnalytics} />
       <Route component={NotFound} />
     </Switch>
   );

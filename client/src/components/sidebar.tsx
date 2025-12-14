@@ -37,11 +37,8 @@ const menuItems = [
     icon: Factory,
     submenu: [
       { label: "Production Overview", href: "/production-overview" },
-      { label: "Job Scheduling", href: "/job-scheduling" },
       { label: "Production Workspace", href: "/production-workspace" },
-      { label: "Job Work", href: "/job-work" },
-      { label: "Batch Review & Closure", href: "/batch-review" },
-      { label: "Production Analytics", href: "/production-analytics" },
+      { label: "Release & Analytics", href: "/release-analytics" },
     ],
   },
   { id: "production-orders", label: "Production Orders", icon: Package, href: "/production-orders" },
