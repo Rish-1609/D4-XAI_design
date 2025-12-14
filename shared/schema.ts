@@ -753,6 +753,11 @@ export const productionBatches = pgTable("production_batches", {
   reworkQuantity: integer("rework_quantity"),
   isDelayed: boolean("is_delayed").default(false),
   delayReason: text("delay_reason"),
+  isArchived: boolean("is_archived").default(false),
+  archivedAt: timestamp("archived_at"),
+  completedStagesCount: integer("completed_stages_count").default(0),
+  totalStagesCount: integer("total_stages_count").default(0),
+  progressPercentage: integer("progress_percentage").default(0),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -946,19 +951,42 @@ export const productionJobs = pgTable("production_jobs", {
 // Job Cards - Task cards for production workspace
 export const jobCards = pgTable("job_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cardNumber: text("card_number").notNull(),
   jobId: varchar("job_id").references(() => productionJobs.id),
   batchId: varchar("batch_id").references(() => productionBatches.id),
+  stageId: varchar("stage_id").references(() => batchStages.id),
   title: text("title").notNull(),
   description: text("description"),
-  cardType: text("card_type").notNull().default('task'), // 'task', 'checklist', 'inspection', 'documentation'
-  status: text("status").notNull().default('pending'), // 'pending', 'in-progress', 'completed', 'blocked'
+  cardType: text("card_type").notNull().default('task'), // 'task', 'checklist', 'inspection', 'documentation', 'material-check', 'qc-checkpoint'
+  stepNumber: integer("step_number").default(1),
+  status: text("status").notNull().default('pending'), // 'pending', 'in-progress', 'completed', 'blocked', 'skipped'
   priority: text("priority").notNull().default('medium'),
   assignedTo: text("assigned_to"),
+  assignedOperator: text("assigned_operator"),
+  equipmentRequired: text("equipment_required"),
+  materialsRequired: text("materials_required"), // JSON array of material requirements
+  plannedStart: timestamp("planned_start"),
+  plannedEnd: timestamp("planned_end"),
+  actualStart: timestamp("actual_start"),
+  actualEnd: timestamp("actual_end"),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
-  checklist: text("checklist"), // JSON array of checklist items
+  completedBy: text("completed_by"),
+  estimatedDuration: integer("estimated_duration"), // in minutes
+  actualDuration: integer("actual_duration"), // in minutes
+  inputQuantity: integer("input_quantity"),
+  outputQuantity: integer("output_quantity"),
+  yieldPercentage: decimal("yield_percentage"),
+  checklist: text("checklist"), // JSON array of checklist items with status
+  formData: text("form_data"), // JSON object for custom form fields
+  qcRequired: boolean("qc_required").default(false),
+  qcStatus: text("qc_status"), // 'pending', 'passed', 'failed'
+  qcNotes: text("qc_notes"),
+  deviationLogged: boolean("deviation_logged").default(false),
+  deviationDetails: text("deviation_details"),
   notes: text("notes"),
   attachments: text("attachments"), // JSON array of attachment paths
+  uploadedFile: text("uploaded_file"), // Path to uploaded file
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
