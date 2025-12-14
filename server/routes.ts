@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertBomChangeRequestSchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomMaterialSchema, insertBomSubAssemblySchema, insertBomChangeRequestSchema, insertInventoryItemSchema, insertStockMovementSchema, insertCapaSchema, insertCapaActionSchema, insertQcStageSchema, insertQcCheckpointSchema, insertQcTestResultSchema, insertQcApprovalSchema, insertBatchReleaseSchema, insertBatchWorkflowStepSchema, insertBatchCertificateSchema, insertQaAuditTrailSchema, insertQcStageTemplateSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1696,6 +1696,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ message: "Failed to process chat request" });
+    }
+  });
+
+  // ==================== PRODUCTION MANAGEMENT ROUTES ====================
+
+  // Production Batches
+  app.get("/api/production-batches", async (req, res) => {
+    try {
+      const batches = await storage.getProductionBatches();
+      res.json(batches);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch production batches" });
+    }
+  });
+
+  app.get("/api/production-batches/:id", async (req, res) => {
+    try {
+      const batch = await storage.getProductionBatch(req.params.id);
+      if (!batch) return res.status(404).json({ message: "Batch not found" });
+      res.json(batch);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch" });
+    }
+  });
+
+  app.post("/api/production-batches", async (req, res) => {
+    try {
+      const validatedData = insertProductionBatchSchema.parse(req.body);
+      const batch = await storage.createProductionBatch(validatedData);
+      res.status(201).json(batch);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid batch data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create batch" });
+    }
+  });
+
+  app.patch("/api/production-batches/:id", async (req, res) => {
+    try {
+      const batch = await storage.updateProductionBatch(req.params.id, req.body);
+      if (!batch) return res.status(404).json({ message: "Batch not found" });
+      res.json(batch);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update batch" });
+    }
+  });
+
+  // Batch Stages - supports both query param and path param
+  app.get("/api/batch-stages", async (req, res) => {
+    try {
+      const { batchId } = req.query;
+      if (!batchId || typeof batchId !== 'string') {
+        return res.status(400).json({ message: "batchId query parameter is required" });
+      }
+      const stages = await storage.getBatchStages(batchId);
+      res.json(stages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch stages" });
+    }
+  });
+
+  app.get("/api/batch-stages/batch/:batchId", async (req, res) => {
+    try {
+      const stages = await storage.getBatchStages(req.params.batchId);
+      res.json(stages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch stages" });
+    }
+  });
+
+  app.post("/api/batch-stages", async (req, res) => {
+    try {
+      const validatedData = insertBatchStageSchema.parse(req.body);
+      const stage = await storage.createBatchStage(validatedData);
+      res.status(201).json(stage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid stage data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create stage" });
+    }
+  });
+
+  app.patch("/api/batch-stages/:id", async (req, res) => {
+    try {
+      const stage = await storage.updateBatchStage(req.params.id, req.body);
+      if (!stage) return res.status(404).json({ message: "Stage not found" });
+      res.json(stage);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update stage" });
+    }
+  });
+
+  // Batch Executions - supports both query param and path param
+  app.get("/api/batch-executions", async (req, res) => {
+    try {
+      const { batchId } = req.query;
+      if (!batchId || typeof batchId !== 'string') {
+        return res.status(400).json({ message: "batchId query parameter is required" });
+      }
+      const executions = await storage.getBatchExecutions(batchId);
+      res.json(executions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch executions" });
+    }
+  });
+
+  app.get("/api/batch-executions/batch/:batchId", async (req, res) => {
+    try {
+      const executions = await storage.getBatchExecutions(req.params.batchId);
+      res.json(executions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch executions" });
+    }
+  });
+
+  app.post("/api/batch-executions", async (req, res) => {
+    try {
+      const validatedData = insertBatchExecutionSchema.parse(req.body);
+      const execution = await storage.createBatchExecution(validatedData);
+      res.status(201).json(execution);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid execution data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create execution record" });
+    }
+  });
+
+  // Job Works
+  app.get("/api/job-works", async (req, res) => {
+    try {
+      const jobWorks = await storage.getJobWorks();
+      res.json(jobWorks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch job works" });
+    }
+  });
+
+  app.get("/api/job-works/:id", async (req, res) => {
+    try {
+      const jobWork = await storage.getJobWork(req.params.id);
+      if (!jobWork) return res.status(404).json({ message: "Job work not found" });
+      res.json(jobWork);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch job work" });
+    }
+  });
+
+  app.post("/api/job-works", async (req, res) => {
+    try {
+      const validatedData = insertJobWorkSchema.parse(req.body);
+      const jobWork = await storage.createJobWork(validatedData);
+      res.status(201).json(jobWork);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid job work data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create job work" });
+    }
+  });
+
+  app.patch("/api/job-works/:id", async (req, res) => {
+    try {
+      const jobWork = await storage.updateJobWork(req.params.id, req.body);
+      if (!jobWork) return res.status(404).json({ message: "Job work not found" });
+      res.json(jobWork);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update job work" });
+    }
+  });
+
+  // Batch Reviews
+  app.get("/api/batch-reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getBatchReviews();
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch reviews" });
+    }
+  });
+
+  app.get("/api/batch-reviews/:id", async (req, res) => {
+    try {
+      const review = await storage.getBatchReview(req.params.id);
+      if (!review) return res.status(404).json({ message: "Batch review not found" });
+      res.json(review);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch review" });
+    }
+  });
+
+  app.get("/api/batch-reviews/batch/:batchId", async (req, res) => {
+    try {
+      const review = await storage.getBatchReviewByBatchId(req.params.batchId);
+      if (!review) return res.status(404).json({ message: "Batch review not found" });
+      res.json(review);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch batch review" });
+    }
+  });
+
+  app.post("/api/batch-reviews", async (req, res) => {
+    try {
+      const validatedData = insertBatchReviewSchema.parse(req.body);
+      const review = await storage.createBatchReview(validatedData);
+      res.status(201).json(review);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create batch review" });
+    }
+  });
+
+  app.patch("/api/batch-reviews/:id", async (req, res) => {
+    try {
+      const review = await storage.updateBatchReview(req.params.id, req.body);
+      if (!review) return res.status(404).json({ message: "Batch review not found" });
+      res.json(review);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update batch review" });
     }
   });
 

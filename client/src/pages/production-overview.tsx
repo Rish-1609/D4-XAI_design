@@ -107,7 +107,7 @@ export default function ProductionOverview() {
         <div className="flex-1 overflow-auto p-8">
           {/* Status Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
+            <Card data-testid="card-planned">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Planned</CardTitle>
                 <Calendar className="h-5 w-5 text-gray-500" />
@@ -118,7 +118,7 @@ export default function ProductionOverview() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-testid="card-in-progress">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">In Progress</CardTitle>
                 <PlayCircle className="h-5 w-5 text-blue-500" />
@@ -129,7 +129,7 @@ export default function ProductionOverview() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-testid="card-qc-hold">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">QC Hold</CardTitle>
                 <PauseCircle className="h-5 w-5 text-yellow-500" />
@@ -140,7 +140,7 @@ export default function ProductionOverview() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card data-testid="card-completed">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
                 <CheckCircle className="h-5 w-5 text-green-500" />

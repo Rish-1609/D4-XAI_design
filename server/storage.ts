@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type BomChangeRequest, type InsertBomChangeRequest, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type BomChangeRequest, type InsertBomChangeRequest, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -179,6 +179,34 @@ export interface IStorage {
   createQcStageTemplate(insertQcStageTemplate: InsertQcStageTemplate): Promise<QcStageTemplate>;
   updateQcStageTemplate(id: string, updateData: Partial<InsertQcStageTemplate>): Promise<QcStageTemplate | undefined>;
   deleteQcStageTemplate(id: string): Promise<boolean>;
+
+  // Production Management operations
+  getProductionBatches(): Promise<ProductionBatch[]>;
+  getProductionBatch(id: string): Promise<ProductionBatch | undefined>;
+  createProductionBatch(batch: InsertProductionBatch): Promise<ProductionBatch>;
+  updateProductionBatch(id: string, data: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined>;
+
+  // Batch Stage operations
+  getBatchStages(batchId: string): Promise<BatchStage[]>;
+  createBatchStage(stage: InsertBatchStage): Promise<BatchStage>;
+  updateBatchStage(id: string, data: Partial<InsertBatchStage>): Promise<BatchStage | undefined>;
+
+  // Batch Execution operations
+  getBatchExecutions(batchId: string): Promise<BatchExecution[]>;
+  createBatchExecution(execution: InsertBatchExecution): Promise<BatchExecution>;
+
+  // Job Work operations
+  getJobWorks(): Promise<JobWork[]>;
+  getJobWork(id: string): Promise<JobWork | undefined>;
+  createJobWork(jobWork: InsertJobWork): Promise<JobWork>;
+  updateJobWork(id: string, data: Partial<InsertJobWork>): Promise<JobWork | undefined>;
+
+  // Batch Review operations
+  getBatchReviews(): Promise<BatchReview[]>;
+  getBatchReview(id: string): Promise<BatchReview | undefined>;
+  getBatchReviewByBatchId(batchId: string): Promise<BatchReview | undefined>;
+  createBatchReview(review: InsertBatchReview): Promise<BatchReview>;
+  updateBatchReview(id: string, data: Partial<InsertBatchReview>): Promise<BatchReview | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -216,6 +244,15 @@ export class MemStorage implements IStorage {
   private qaAuditTrails: Map<string, QaAuditTrail>;
   private qaAuditTrailsByEntity: Map<string, QaAuditTrail[]>;
   private qcStageTemplates: Map<string, QcStageTemplate>;
+  // Production Management data stores
+  private productionBatches: Map<string, ProductionBatch>;
+  private batchStagesMap: Map<string, BatchStage>;
+  private batchStagesByBatch: Map<string, BatchStage[]>;
+  private batchExecutionsMap: Map<string, BatchExecution>;
+  private batchExecutionsByBatch: Map<string, BatchExecution[]>;
+  private jobWorksMap: Map<string, JobWork>;
+  private batchReviewsMap: Map<string, BatchReview>;
+  private batchReviewsByBatch: Map<string, BatchReview>;
 
   constructor() {
     this.materials = new Map();
@@ -252,6 +289,15 @@ export class MemStorage implements IStorage {
     this.qaAuditTrails = new Map();
     this.qaAuditTrailsByEntity = new Map();
     this.qcStageTemplates = new Map();
+    // Initialize Production Management data stores
+    this.productionBatches = new Map();
+    this.batchStagesMap = new Map();
+    this.batchStagesByBatch = new Map();
+    this.batchExecutionsMap = new Map();
+    this.batchExecutionsByBatch = new Map();
+    this.jobWorksMap = new Map();
+    this.batchReviewsMap = new Map();
+    this.batchReviewsByBatch = new Map();
     this.initializeDummyData().catch(console.error);
   }
 
@@ -3203,6 +3249,231 @@ export class MemStorage implements IStorage {
 
   async deleteQcStageTemplate(id: string): Promise<boolean> {
     return this.qcStageTemplates.delete(id);
+  }
+
+  // Production Management implementations
+  async getProductionBatches(): Promise<ProductionBatch[]> {
+    return Array.from(this.productionBatches.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getProductionBatch(id: string): Promise<ProductionBatch | undefined> {
+    return this.productionBatches.get(id);
+  }
+
+  async createProductionBatch(insertBatch: InsertProductionBatch): Promise<ProductionBatch> {
+    const id = randomUUID();
+    const now = new Date();
+    const batch: ProductionBatch = {
+      ...insertBatch,
+      id,
+      productionOrderId: insertBatch.productionOrderId || null,
+      bomId: insertBatch.bomId || null,
+      actualQuantity: insertBatch.actualQuantity || null,
+      currentStage: insertBatch.currentStage || null,
+      plannedStartDate: insertBatch.plannedStartDate || null,
+      plannedEndDate: insertBatch.plannedEndDate || null,
+      actualStartDate: insertBatch.actualStartDate || null,
+      actualEndDate: insertBatch.actualEndDate || null,
+      assignedTo: insertBatch.assignedTo || null,
+      supervisorId: insertBatch.supervisorId || null,
+      yieldPercentage: insertBatch.yieldPercentage || null,
+      scrapQuantity: insertBatch.scrapQuantity || null,
+      reworkQuantity: insertBatch.reworkQuantity || null,
+      isDelayed: insertBatch.isDelayed || false,
+      delayReason: insertBatch.delayReason || null,
+      notes: insertBatch.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.productionBatches.set(id, batch);
+    return batch;
+  }
+
+  async updateProductionBatch(id: string, data: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined> {
+    const existing = this.productionBatches.get(id);
+    if (!existing) return undefined;
+    const updated: ProductionBatch = { ...existing, ...data, updatedAt: new Date() };
+    this.productionBatches.set(id, updated);
+    return updated;
+  }
+
+  // Batch Stage implementations
+  async getBatchStages(batchId: string): Promise<BatchStage[]> {
+    return (this.batchStagesByBatch.get(batchId) || []).sort((a, b) => a.stageOrder - b.stageOrder);
+  }
+
+  async createBatchStage(insertStage: InsertBatchStage): Promise<BatchStage> {
+    const id = randomUUID();
+    const now = new Date();
+    const stage: BatchStage = {
+      ...insertStage,
+      id,
+      operatorName: insertStage.operatorName || null,
+      equipmentUsed: insertStage.equipmentUsed || null,
+      startTime: insertStage.startTime || null,
+      endTime: insertStage.endTime || null,
+      estimatedDuration: insertStage.estimatedDuration || null,
+      actualDuration: insertStage.actualDuration || null,
+      qcCheckpointRequired: insertStage.qcCheckpointRequired ?? true,
+      qcCheckpointCompleted: insertStage.qcCheckpointCompleted ?? false,
+      qcCheckpointResult: insertStage.qcCheckpointResult || null,
+      inputQuantity: insertStage.inputQuantity || null,
+      outputQuantity: insertStage.outputQuantity || null,
+      scrapQuantity: insertStage.scrapQuantity || null,
+      notes: insertStage.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.batchStagesMap.set(id, stage);
+    const stages = this.batchStagesByBatch.get(insertStage.batchId) || [];
+    stages.push(stage);
+    this.batchStagesByBatch.set(insertStage.batchId, stages);
+    return stage;
+  }
+
+  async updateBatchStage(id: string, data: Partial<InsertBatchStage>): Promise<BatchStage | undefined> {
+    const existing = this.batchStagesMap.get(id);
+    if (!existing) return undefined;
+    const updated: BatchStage = { ...existing, ...data, updatedAt: new Date() };
+    this.batchStagesMap.set(id, updated);
+    const stages = this.batchStagesByBatch.get(existing.batchId) || [];
+    const idx = stages.findIndex(s => s.id === id);
+    if (idx >= 0) stages[idx] = updated;
+    this.batchStagesByBatch.set(existing.batchId, stages);
+    return updated;
+  }
+
+  // Batch Execution implementations
+  async getBatchExecutions(batchId: string): Promise<BatchExecution[]> {
+    return (this.batchExecutionsByBatch.get(batchId) || []).sort((a, b) => 
+      new Date(b.recordedAt!).getTime() - new Date(a.recordedAt!).getTime()
+    );
+  }
+
+  async createBatchExecution(insertExec: InsertBatchExecution): Promise<BatchExecution> {
+    const id = randomUUID();
+    const now = new Date();
+    const exec: BatchExecution = {
+      ...insertExec,
+      id,
+      stageId: insertExec.stageId || null,
+      materialId: insertExec.materialId || null,
+      materialName: insertExec.materialName || null,
+      quantityUsed: insertExec.quantityUsed || null,
+      quantityExpected: insertExec.quantityExpected || null,
+      uom: insertExec.uom || null,
+      yieldRecorded: insertExec.yieldRecorded || null,
+      scrapRecorded: insertExec.scrapRecorded || null,
+      reworkRecorded: insertExec.reworkRecorded || null,
+      deviationDescription: insertExec.deviationDescription || null,
+      deviationSeverity: insertExec.deviationSeverity || null,
+      comment: insertExec.comment || null,
+      recordedAt: insertExec.recordedAt || now,
+      createdAt: now,
+    };
+    this.batchExecutionsMap.set(id, exec);
+    const execs = this.batchExecutionsByBatch.get(insertExec.batchId) || [];
+    execs.push(exec);
+    this.batchExecutionsByBatch.set(insertExec.batchId, execs);
+    return exec;
+  }
+
+  // Job Work implementations
+  async getJobWorks(): Promise<JobWork[]> {
+    return Array.from(this.jobWorksMap.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getJobWork(id: string): Promise<JobWork | undefined> {
+    return this.jobWorksMap.get(id);
+  }
+
+  async createJobWork(insertJobWork: InsertJobWork): Promise<JobWork> {
+    const id = randomUUID();
+    const now = new Date();
+    const jobWork: JobWork = {
+      ...insertJobWork,
+      id,
+      batchId: insertJobWork.batchId || null,
+      vendorCode: insertJobWork.vendorCode || null,
+      vendorContact: insertJobWork.vendorContact || null,
+      materialIssuedDate: insertJobWork.materialIssuedDate || null,
+      expectedReceiptDate: insertJobWork.expectedReceiptDate || null,
+      actualReceiptDate: insertJobWork.actualReceiptDate || null,
+      materialIssuedQty: insertJobWork.materialIssuedQty || null,
+      expectedReceiptQty: insertJobWork.expectedReceiptQty || null,
+      actualReceiptQty: insertJobWork.actualReceiptQty || null,
+      processLoss: insertJobWork.processLoss || null,
+      scrapQuantity: insertJobWork.scrapQuantity || null,
+      qualityStatus: insertJobWork.qualityStatus || null,
+      invoiceNumber: insertJobWork.invoiceNumber || null,
+      invoiceAmount: insertJobWork.invoiceAmount || null,
+      notes: insertJobWork.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.jobWorksMap.set(id, jobWork);
+    return jobWork;
+  }
+
+  async updateJobWork(id: string, data: Partial<InsertJobWork>): Promise<JobWork | undefined> {
+    const existing = this.jobWorksMap.get(id);
+    if (!existing) return undefined;
+    const updated: JobWork = { ...existing, ...data, updatedAt: new Date() };
+    this.jobWorksMap.set(id, updated);
+    return updated;
+  }
+
+  // Batch Review implementations
+  async getBatchReviews(): Promise<BatchReview[]> {
+    return Array.from(this.batchReviewsMap.values()).sort((a, b) => 
+      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+    );
+  }
+
+  async getBatchReview(id: string): Promise<BatchReview | undefined> {
+    return this.batchReviewsMap.get(id);
+  }
+
+  async getBatchReviewByBatchId(batchId: string): Promise<BatchReview | undefined> {
+    return this.batchReviewsByBatch.get(batchId);
+  }
+
+  async createBatchReview(insertReview: InsertBatchReview): Promise<BatchReview> {
+    const id = randomUUID();
+    const now = new Date();
+    const review: BatchReview = {
+      ...insertReview,
+      id,
+      allStagesCompleted: insertReview.allStagesCompleted ?? false,
+      yieldRecorded: insertReview.yieldRecorded ?? false,
+      deviationsLogged: insertReview.deviationsLogged ?? false,
+      materialBalanceOk: insertReview.materialBalanceOk ?? false,
+      reviewedBy: insertReview.reviewedBy || null,
+      reviewedAt: insertReview.reviewedAt || null,
+      approvedBy: insertReview.approvedBy || null,
+      approvedAt: insertReview.approvedAt || null,
+      rejectionReason: insertReview.rejectionReason || null,
+      productionSummary: insertReview.productionSummary || null,
+      closureNotes: insertReview.closureNotes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.batchReviewsMap.set(id, review);
+    this.batchReviewsByBatch.set(insertReview.batchId, review);
+    return review;
+  }
+
+  async updateBatchReview(id: string, data: Partial<InsertBatchReview>): Promise<BatchReview | undefined> {
+    const existing = this.batchReviewsMap.get(id);
+    if (!existing) return undefined;
+    const updated: BatchReview = { ...existing, ...data, updatedAt: new Date() };
+    this.batchReviewsMap.set(id, updated);
+    this.batchReviewsByBatch.set(existing.batchId, updated);
+    return updated;
   }
 }
 

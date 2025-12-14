@@ -267,7 +267,7 @@ export default function BatchReviewClosure() {
         <div className="flex-1 overflow-auto p-8">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
+            <Card data-testid="card-pending-review">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -278,7 +278,7 @@ export default function BatchReviewClosure() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card data-testid="card-in-review">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -289,7 +289,7 @@ export default function BatchReviewClosure() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card data-testid="card-approved">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -300,7 +300,7 @@ export default function BatchReviewClosure() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card data-testid="card-rejected">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>

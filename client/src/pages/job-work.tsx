@@ -307,7 +307,7 @@ export default function JobWork() {
         <div className="flex-1 overflow-auto p-8">
           {/* Status Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("pending")}>
+            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("pending")} data-testid="card-pending">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -318,7 +318,7 @@ export default function JobWork() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("issued")}>
+            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("issued")} data-testid="card-issued">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -329,7 +329,7 @@ export default function JobWork() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("in-progress")}>
+            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("in-progress")} data-testid="card-in-progress">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -340,7 +340,7 @@ export default function JobWork() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("received")}>
+            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("received")} data-testid="card-received">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -351,7 +351,7 @@ export default function JobWork() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("completed")}>
+            <Card className="cursor-pointer hover:shadow-md transition" onClick={() => setStatusFilter("completed")} data-testid="card-completed">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>

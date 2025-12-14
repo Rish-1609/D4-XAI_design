@@ -73,12 +73,12 @@ export default function ProductionWorkspace() {
   });
 
   const { data: stages = [] } = useQuery<BatchStage[]>({
-    queryKey: ["/api/batch-stages", batchId],
+    queryKey: ["/api/batch-stages/batch", batchId],
     enabled: !!batchId,
   });
 
   const { data: executions = [] } = useQuery<BatchExecution[]>({
-    queryKey: ["/api/batch-executions", batchId],
+    queryKey: ["/api/batch-executions/batch", batchId],
     enabled: !!batchId,
   });
 
@@ -91,7 +91,7 @@ export default function ProductionWorkspace() {
       return apiRequest("PATCH", `/api/batch-stages/${stageId}`, { status });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/batch-stages", batchId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/batch-stages/batch", batchId] });
       toast({ title: "Stage updated", description: "Stage status has been updated" });
     },
   });
@@ -106,7 +106,7 @@ export default function ProductionWorkspace() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/batch-executions", batchId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/batch-executions/batch", batchId] });
       setExecutionDialogOpen(false);
       toast({ title: "Record added", description: "Execution record has been saved" });
     },
@@ -422,21 +422,21 @@ export default function ProductionWorkspace() {
           }} className="space-y-4">
             {executionType === "material-consumption" && (
               <>
-                <Input name="materialName" placeholder="Material Name" required />
+                <Input name="materialName" placeholder="Material Name" required data-testid="input-material-name" />
                 <div className="grid grid-cols-2 gap-4">
-                  <Input name="quantityUsed" placeholder="Quantity" type="number" required />
-                  <Input name="uom" placeholder="UOM" defaultValue="units" />
+                  <Input name="quantityUsed" placeholder="Quantity" type="number" required data-testid="input-quantity-used" />
+                  <Input name="uom" placeholder="UOM" defaultValue="units" data-testid="input-uom" />
                 </div>
               </>
             )}
             {executionType === "yield-record" && (
-              <Input name="yieldRecorded" placeholder="Yield %" type="number" step="0.01" required />
+              <Input name="yieldRecorded" placeholder="Yield %" type="number" step="0.01" required data-testid="input-yield" />
             )}
             {executionType === "deviation" && (
               <>
-                <Textarea name="deviationDescription" placeholder="Describe the deviation..." required />
+                <Textarea name="deviationDescription" placeholder="Describe the deviation..." required data-testid="input-deviation-description" />
                 <Select name="deviationSeverity" defaultValue="minor">
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="select-deviation-severity">
                     <SelectValue placeholder="Severity" />
                   </SelectTrigger>
                   <SelectContent>
@@ -448,9 +448,9 @@ export default function ProductionWorkspace() {
               </>
             )}
             {(executionType === "comment" || executionType === "qc-trigger") && (
-              <Textarea name="comment" placeholder="Enter details..." required />
+              <Textarea name="comment" placeholder="Enter details..." required data-testid="input-comment" />
             )}
-            <Button type="submit" className="w-full" disabled={createExecutionMutation.isPending}>
+            <Button type="submit" className="w-full" disabled={createExecutionMutation.isPending} data-testid="button-save-execution">
               <Save className="h-4 w-4 mr-2" /> Save Record
             </Button>
           </form>
