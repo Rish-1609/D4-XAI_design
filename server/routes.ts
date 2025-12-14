@@ -1174,7 +1174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: approval.id,
         action: 'APPROVAL_CREATED',
         performedBy: validatedData.approverName,
-        extraData: JSON.stringify({ 
+        newValues: JSON.stringify({ 
           decision: validatedData.decision,
           checkpointId: validatedData.checkpointId 
         })
@@ -1269,7 +1269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: batchRelease.id,
         action: 'BATCH_RELEASE_CREATED',
         performedBy: 'QA Reviewer',
-        extraData: JSON.stringify({ 
+        newValues: JSON.stringify({ 
           productionOrderId: validatedData.productionOrderId,
           batchNumber: validatedData.batchNumber 
         })
@@ -1295,15 +1295,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create audit trail for status changes
-      if (validatedData.status) {
+      if (validatedData.releaseStatus) {
         await storage.createQaAuditTrail({
           entityType: 'BatchRelease',
           entityId: id,
           action: 'QA_DECISION_MADE',
           performedBy: 'QA Manager',
-          extraData: JSON.stringify({ 
-            status: validatedData.status,
-            qaComments: validatedData.qaComments 
+          newValues: JSON.stringify({ 
+            status: validatedData.releaseStatus,
+            qaReview: validatedData.qaReview 
           })
         });
       }
@@ -1482,11 +1482,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: 'BatchCertificate',
         entityId: certificate.id,
         action: 'CERTIFICATE_GENERATED',
-        performedBy: validatedData.issuedBy,
-        details: { 
+        performedBy: validatedData.generatedBy,
+        newValues: JSON.stringify({ 
           certificateNumber: validatedData.certificateNumber,
           batchReleaseId: validatedData.batchReleaseId 
-        }
+        })
       });
       
       res.status(201).json(certificate);
@@ -1741,6 +1741,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(batch);
     } catch (error) {
       res.status(500).json({ message: "Failed to update batch" });
+    }
+  });
+
+  app.delete("/api/production-batches/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteProductionBatch(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Batch not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete batch" });
     }
   });
 

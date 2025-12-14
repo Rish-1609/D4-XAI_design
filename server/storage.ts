@@ -185,6 +185,7 @@ export interface IStorage {
   getProductionBatch(id: string): Promise<ProductionBatch | undefined>;
   createProductionBatch(batch: InsertProductionBatch): Promise<ProductionBatch>;
   updateProductionBatch(id: string, data: Partial<InsertProductionBatch>): Promise<ProductionBatch | undefined>;
+  deleteProductionBatch(id: string): Promise<boolean>;
 
   // Batch Stage operations
   getBatchStages(batchId: string): Promise<BatchStage[]>;
@@ -3732,6 +3733,10 @@ export class MemStorage implements IStorage {
     const updated: ProductionBatch = { ...existing, ...data, updatedAt: new Date() };
     this.productionBatches.set(id, updated);
     return updated;
+  }
+
+  async deleteProductionBatch(id: string): Promise<boolean> {
+    return this.productionBatches.delete(id);
   }
 
   // Batch Stage implementations
