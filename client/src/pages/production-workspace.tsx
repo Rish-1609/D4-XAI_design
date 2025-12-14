@@ -67,6 +67,11 @@ export default function ProductionWorkspace() {
   const [selectedStageId, setSelectedStageId] = useState<string>("");
   const { toast } = useToast();
 
+  const { data: allBatches = [], isLoading: batchesLoading } = useQuery<ProductionBatch[]>({
+    queryKey: ["/api/production-batches"],
+    enabled: !batchId,
+  });
+
   const { data: batch, isLoading: batchLoading } = useQuery<ProductionBatch>({
     queryKey: ["/api/production-batches", batchId],
     enabled: !!batchId,
@@ -131,6 +136,69 @@ export default function ProductionWorkspace() {
         <Sidebar />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!batchId) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 p-8">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Production Workspace</h1>
+            <p className="text-gray-600">Select a batch to start working</p>
+          </div>
+          {batchesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : allBatches.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Factory className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No batches available</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {allBatches.map(b => (
+                <Card key={b.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = `/production-workspace/${b.id}`} data-testid={`batch-card-${b.id}`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{b.batchNumber}</CardTitle>
+                      <Badge className={
+                        b.status === "in-progress" ? "bg-blue-100 text-blue-800" :
+                        b.status === "completed" ? "bg-green-100 text-green-800" :
+                        "bg-gray-100 text-gray-800"
+                      }>
+                        {b.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-medium text-gray-900">{b.productName}</p>
+                    <p className="text-sm text-gray-600">{b.productCode}</p>
+                    <div className="flex items-center justify-between mt-3 text-sm text-gray-500">
+                      <span>{b.site}</span>
+                      <span>{b.targetQuantity?.toLocaleString()} {b.uom}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className={
+                        b.priority === "critical" ? "border-red-500 text-red-600" :
+                        b.priority === "high" ? "border-orange-500 text-orange-600" :
+                        "border-blue-500 text-blue-600"
+                      }>
+                        {b.priority}
+                      </Badge>
+                      {b.currentStage && <span className="text-xs text-gray-500">Stage: {b.currentStage}</span>}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
