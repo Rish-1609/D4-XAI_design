@@ -59,6 +59,21 @@ const batchFormSchema = z.object({
 
 type BatchFormData = z.infer<typeof batchFormSchema>;
 
+const jobCardFormSchema = z.object({
+  cardNumber: z.string().min(1, "Card number is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  cardType: z.string().default("task"),
+  stepNumber: z.coerce.number().min(1).default(1),
+  status: z.string().default("pending"),
+  priority: z.string().default("medium"),
+  assignedTo: z.string().optional(),
+  notes: z.string().optional(),
+  estimatedDuration: z.coerce.number().optional(),
+});
+
+type JobCardFormData = z.infer<typeof jobCardFormSchema>;
+
 const formatDate = (date: Date | string | null) => {
   if (!date) return "N/A";
   const d = typeof date === "string" ? new Date(date) : date;
@@ -100,6 +115,12 @@ export default function ProductionWorkspace() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<ProductionBatch | null>(null);
   
+  // Job card management state
+  const [createJobCardDialogOpen, setCreateJobCardDialogOpen] = useState(false);
+  const [editJobCardDialogOpen, setEditJobCardDialogOpen] = useState(false);
+  const [deleteJobCardDialogOpen, setDeleteJobCardDialogOpen] = useState(false);
+  const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
+  
   const createForm = useForm<BatchFormData>({
     resolver: zodResolver(batchFormSchema),
     defaultValues: {
@@ -127,6 +148,38 @@ export default function ProductionWorkspace() {
       priority: "normal",
       status: "not-started",
       notes: "",
+    },
+  });
+
+  const createJobCardForm = useForm<JobCardFormData>({
+    resolver: zodResolver(jobCardFormSchema),
+    defaultValues: {
+      cardNumber: "",
+      title: "",
+      description: "",
+      cardType: "task",
+      stepNumber: 1,
+      status: "pending",
+      priority: "medium",
+      assignedTo: "",
+      notes: "",
+      estimatedDuration: undefined,
+    },
+  });
+
+  const editJobCardForm = useForm<JobCardFormData>({
+    resolver: zodResolver(jobCardFormSchema),
+    defaultValues: {
+      cardNumber: "",
+      title: "",
+      description: "",
+      cardType: "task",
+      stepNumber: 1,
+      status: "pending",
+      priority: "medium",
+      assignedTo: "",
+      notes: "",
+      estimatedDuration: undefined,
     },
   });
 
@@ -254,6 +307,85 @@ export default function ProductionWorkspace() {
   const onEditSubmit = (data: BatchFormData) => {
     if (selectedBatch) {
       updateBatchMutation.mutate({ id: selectedBatch.id, data });
+    }
+  };
+
+  // Job Card CRUD Mutations
+  const createJobCardMutation = useMutation({
+    mutationFn: async (data: JobCardFormData) => {
+      return apiRequest("POST", "/api/job-cards", { ...data, batchId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-cards/batch", batchId] });
+      setCreateJobCardDialogOpen(false);
+      createJobCardForm.reset();
+      toast({ title: "Job card created", description: "New job card has been created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create job card", variant: "destructive" });
+    },
+  });
+
+  const updateJobCardMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: JobCardFormData }) => {
+      return apiRequest("PATCH", `/api/job-cards/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-cards/batch", batchId] });
+      setEditJobCardDialogOpen(false);
+      setSelectedJobCard(null);
+      editJobCardForm.reset();
+      toast({ title: "Job card updated", description: "Job card has been updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update job card", variant: "destructive" });
+    },
+  });
+
+  const deleteJobCardMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/job-cards/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-cards/batch", batchId] });
+      setDeleteJobCardDialogOpen(false);
+      setSelectedJobCard(null);
+      toast({ title: "Job card deleted", description: "Job card has been deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete job card", variant: "destructive" });
+    },
+  });
+
+  const openEditJobCardDialog = (card: JobCard) => {
+    setSelectedJobCard(card);
+    editJobCardForm.reset({
+      cardNumber: card.cardNumber,
+      title: card.title,
+      description: card.description || "",
+      cardType: card.cardType,
+      stepNumber: card.stepNumber || 1,
+      status: card.status,
+      priority: card.priority,
+      assignedTo: card.assignedTo || "",
+      notes: card.notes || "",
+      estimatedDuration: card.estimatedDuration || undefined,
+    });
+    setEditJobCardDialogOpen(true);
+  };
+
+  const openDeleteJobCardDialog = (card: JobCard) => {
+    setSelectedJobCard(card);
+    setDeleteJobCardDialogOpen(true);
+  };
+
+  const onCreateJobCardSubmit = (data: JobCardFormData) => {
+    createJobCardMutation.mutate(data);
+  };
+
+  const onEditJobCardSubmit = (data: JobCardFormData) => {
+    if (selectedJobCard) {
+      updateJobCardMutation.mutate({ id: selectedJobCard.id, data });
     }
   };
 
@@ -410,6 +542,135 @@ export default function ProductionWorkspace() {
           <FormLabel>Notes</FormLabel>
           <FormControl>
             <Textarea {...field} placeholder="Additional notes..." data-testid="input-notes" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+    </div>
+  );
+
+  // Job Card Form Component with react-hook-form
+  const JobCardFormFields = ({ form }: { form: ReturnType<typeof useForm<JobCardFormData>> }) => (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        <FormField control={form.control} name="cardNumber" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Card Number *</FormLabel>
+            <FormControl>
+              <Input {...field} placeholder="JC-001" data-testid="input-card-number" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="cardType" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Card Type</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger data-testid="select-card-type"><SelectValue /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="task">Task</SelectItem>
+                <SelectItem value="checklist">Checklist</SelectItem>
+                <SelectItem value="inspection">Inspection</SelectItem>
+                <SelectItem value="documentation">Documentation</SelectItem>
+                <SelectItem value="material-check">Material Check</SelectItem>
+                <SelectItem value="qc-checkpoint">QC Checkpoint</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+      </div>
+      <FormField control={form.control} name="title" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Title *</FormLabel>
+          <FormControl>
+            <Input {...field} placeholder="Job card title" data-testid="input-job-card-title" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <FormField control={form.control} name="description" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Description</FormLabel>
+          <FormControl>
+            <Textarea {...field} placeholder="Describe the task or instructions..." data-testid="input-job-card-description" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+      <div className="grid grid-cols-3 gap-4">
+        <FormField control={form.control} name="stepNumber" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Step Number</FormLabel>
+            <FormControl>
+              <Input {...field} type="number" min={1} data-testid="input-step-number" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="priority" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Priority</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger data-testid="select-job-card-priority"><SelectValue /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="status" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Status</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger data-testid="select-job-card-status"><SelectValue /></SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="blocked">Blocked</SelectItem>
+                <SelectItem value="skipped">Skipped</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField control={form.control} name="assignedTo" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Assigned To</FormLabel>
+            <FormControl>
+              <Input {...field} placeholder="Operator name" data-testid="input-assigned-to" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="estimatedDuration" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Est. Duration (min)</FormLabel>
+            <FormControl>
+              <Input {...field} type="number" placeholder="30" data-testid="input-estimated-duration" />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+      </div>
+      <FormField control={form.control} name="notes" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Notes</FormLabel>
+          <FormControl>
+            <Textarea {...field} placeholder="Additional notes or instructions..." data-testid="input-job-card-notes" />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -868,33 +1129,51 @@ export default function ProductionWorkspace() {
 
             <TabsContent value="job-cards">
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     Job Cards
                   </CardTitle>
+                  <Button size="sm" onClick={() => {
+                    createJobCardForm.reset();
+                    setCreateJobCardDialogOpen(true);
+                  }} data-testid="button-add-job-card">
+                    <Plus className="h-4 w-4 mr-2" /> Add Job Card
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {jobCards.length === 0 ? (
                     <div className="text-center py-8">
                       <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">No job cards for this batch</p>
+                      <p className="text-sm text-gray-400 mt-2">Click "Add Job Card" to create one</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {jobCards.map(card => (
-                        <div key={card.id} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`job-card-${card.id}`}>
-                          <div>
+                        <div key={card.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow group" data-testid={`job-card-${card.id}`}>
+                          <div className="flex-1">
                             <p className="font-medium">{card.title}</p>
                             <p className="text-sm text-gray-600">{card.cardType} - {card.assignedTo || "Unassigned"}</p>
+                            {card.description && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{card.description}</p>}
                           </div>
-                          <Badge className={
-                            card.status === "completed" ? "bg-green-100 text-green-800" :
-                            card.status === "in-progress" ? "bg-blue-100 text-blue-800" :
-                            "bg-gray-100 text-gray-800"
-                          }>
-                            {card.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className={
+                              card.status === "completed" ? "bg-green-100 text-green-800" :
+                              card.status === "in-progress" ? "bg-blue-100 text-blue-800" :
+                              "bg-gray-100 text-gray-800"
+                            }>
+                              {card.status}
+                            </Badge>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditJobCardDialog(card)} data-testid={`button-edit-job-card-${card.id}`}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600" onClick={() => openDeleteJobCardDialog(card)} data-testid={`button-delete-job-card-${card.id}`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1020,6 +1299,73 @@ export default function ProductionWorkspace() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Create Job Card Dialog */}
+      <Dialog open={createJobCardDialogOpen} onOpenChange={(open) => { setCreateJobCardDialogOpen(open); if (!open) createJobCardForm.reset(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Job Card</DialogTitle>
+            <DialogDescription>Add a new job card to this batch.</DialogDescription>
+          </DialogHeader>
+          <Form {...createJobCardForm}>
+            <form onSubmit={createJobCardForm.handleSubmit(onCreateJobCardSubmit)}>
+              <JobCardFormFields form={createJobCardForm} />
+              <DialogFooter className="mt-4">
+                <Button type="button" variant="outline" onClick={() => setCreateJobCardDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={createJobCardMutation.isPending} data-testid="button-submit-create-job-card">
+                  {createJobCardMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Create Job Card
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Job Card Dialog */}
+      <Dialog open={editJobCardDialogOpen} onOpenChange={(open) => { setEditJobCardDialogOpen(open); if (!open) { setSelectedJobCard(null); editJobCardForm.reset(); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Job Card</DialogTitle>
+            <DialogDescription>Update job card details.</DialogDescription>
+          </DialogHeader>
+          <Form {...editJobCardForm}>
+            <form onSubmit={editJobCardForm.handleSubmit(onEditJobCardSubmit)}>
+              <JobCardFormFields form={editJobCardForm} />
+              <DialogFooter className="mt-4">
+                <Button type="button" variant="outline" onClick={() => setEditJobCardDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={updateJobCardMutation.isPending} data-testid="button-submit-edit-job-card">
+                  {updateJobCardMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Job Card Dialog */}
+      <AlertDialog open={deleteJobCardDialogOpen} onOpenChange={setDeleteJobCardDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Job Card</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedJobCard?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setDeleteJobCardDialogOpen(false); setSelectedJobCard(null); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => selectedJobCard && deleteJobCardMutation.mutate(selectedJobCard.id)}
+              data-testid="button-confirm-delete-job-card"
+            >
+              {deleteJobCardMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

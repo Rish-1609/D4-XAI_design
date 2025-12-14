@@ -2140,6 +2140,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/job-cards/:id", async (req, res) => {
+    try {
+      const validatedData = insertJobCardSchema.partial().parse(req.body);
+      const card = await storage.updateJobCard(req.params.id, validatedData);
+      if (!card) return res.status(404).json({ message: "Job card not found" });
+      res.json(card);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid job card data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update job card" });
+    }
+  });
+
   app.delete("/api/job-cards/:id", async (req, res) => {
     try {
       const deleted = await storage.deleteJobCard(req.params.id);
