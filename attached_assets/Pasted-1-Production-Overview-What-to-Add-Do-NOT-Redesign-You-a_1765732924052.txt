@@ -1,0 +1,116 @@
+1. Production Overview – What to Add (Do NOT Redesign)
+
+You already have the right layout. Improve it by making it actionable, not just informative.
+
+1.1 Status Tiles (Planned / In Progress / QC Hold / Completed)
+What to add
+
+Clickable drill-down
+
+Clicking a tile should filter:
+
+Today’s Priorities
+
+All Active Batches
+
+Mini trend indicator
+
+▲ / ▼ vs yesterday or last week
+
+Example: “QC Hold ↑ +1 vs yesterday”
+
+Why
+
+This matches Plex & Oracle behavior — overview tiles are navigation tools, not static KPIs.
+
+1.2 Today’s Priorities (Very Good – Enhance Slightly)
+What to add
+
+For each priority batch, show one reason:
+
+“Waiting for QC clearance”
+
+“Material shortage”
+
+“Delayed at Coating”
+
+This can be:
+
+AI-generated text (short)
+
+Or rule-based initially
+
+Why
+
+Supervisors don’t want to click to find the problem.
+
+1.3 At-Risk Batches (Critical Section – Expand)
+What to add
+
+Risk reason tags:
+
+QC delay
+
+Yield deviation
+
+Schedule slip
+
+ETA impact:
+
+“Expected delay: 1 day”
+
+Optional (Phase 2)
+
+“Resolve” CTA → opens Production Workspace directly at blocking stage
+
+2. Production Workspace – This Is Where You Must Invest Next
+
+Right now this screen is empty (“Batch not found”), but conceptually this should become the core of your product.
+
+2.1 Production Workspace = One Batch Digital Twin
+What this screen must contain (single page)
+A. Header Section (Top)
+
+Add:
+
+Batch ID | Product | Site
+
+Status badge (planned / in-progress / qc-hold)
+
+Due date
+
+AI risk indicator (Low / Medium / High)
+
+👉 This stays visible while scrolling.
+
+B. Stage Flow (Center – Timeline / Stepper)
+
+Each stage block should show:
+
+Stage name (Dispensing / Coating / Packing etc.)
+
+Status (not started / active / completed)
+
+Operator / Vendor (for job-work)
+
+Start–End time
+
+QC checkpoint indicator
+
+Clicking a stage opens Stage Execution Panel (right side or modal).
+
+C. Stage Execution Panel (Most Important)
+
+When a stage is active, allow users to:
+
+Record material consumption (linked to Inventory)
+
+Enter output quantity
+
+Capture scrap / rework (mandatory reason)
+
+Trigger in-process QC
+
+Add comments / observations
+
+🔒 Enforce sequence:

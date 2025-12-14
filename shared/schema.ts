@@ -895,3 +895,100 @@ export type JobWork = typeof jobWorks.$inferSelect;
 
 export type InsertBatchReview = z.infer<typeof insertBatchReviewSchema>;
 export type BatchReview = typeof batchReviews.$inferSelect;
+
+// ==================== EQUIPMENT & JOB SCHEDULING ====================
+
+// Equipment - Production equipment for job scheduling
+export const equipment = pgTable("equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull(), // 'mixer', 'granulator', 'tablet-press', 'coating-machine', 'packaging-line', 'reactor'
+  capacity: integer("capacity"), // Production capacity per hour
+  capacityUom: text("capacity_uom").default('units/hr'),
+  location: text("location").notNull().default('Main Plant'),
+  status: text("status").notNull().default('available'), // 'available', 'in-use', 'maintenance', 'offline'
+  lastMaintenanceDate: timestamp("last_maintenance_date"),
+  nextMaintenanceDate: timestamp("next_maintenance_date"),
+  manufacturer: text("manufacturer"),
+  model: text("model"),
+  serialNumber: text("serial_number"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Production Jobs - Job scheduling for Gantt chart
+export const productionJobs = pgTable("production_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobNumber: text("job_number").notNull().unique(),
+  orderNumber: text("order_number"), // Reference to production order
+  productionOrderId: varchar("production_order_id").references(() => productionOrders.id),
+  batchId: varchar("batch_id").references(() => productionBatches.id),
+  productName: text("product_name").notNull(),
+  productCode: text("product_code"),
+  equipmentId: varchar("equipment_id").references(() => equipment.id),
+  scheduledStart: timestamp("scheduled_start").notNull(),
+  scheduledEnd: timestamp("scheduled_end").notNull(),
+  actualStart: timestamp("actual_start"),
+  actualEnd: timestamp("actual_end"),
+  durationMinutes: integer("duration_minutes").notNull(),
+  quantity: integer("quantity").notNull(),
+  uom: text("uom").default('units'),
+  status: text("status").notNull().default('scheduled'), // 'scheduled', 'in-progress', 'completed', 'on-hold', 'cancelled'
+  priority: text("priority").notNull().default('medium'), // 'low', 'medium', 'high', 'critical'
+  assignedTo: text("assigned_to"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Job Cards - Task cards for production workspace
+export const jobCards = pgTable("job_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").references(() => productionJobs.id),
+  batchId: varchar("batch_id").references(() => productionBatches.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  cardType: text("card_type").notNull().default('task'), // 'task', 'checklist', 'inspection', 'documentation'
+  status: text("status").notNull().default('pending'), // 'pending', 'in-progress', 'completed', 'blocked'
+  priority: text("priority").notNull().default('medium'),
+  assignedTo: text("assigned_to"),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  checklist: text("checklist"), // JSON array of checklist items
+  notes: text("notes"),
+  attachments: text("attachments"), // JSON array of attachment paths
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for equipment and job scheduling
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertProductionJobSchema = createInsertSchema(productionJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertJobCardSchema = createInsertSchema(jobCards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Type definitions for equipment and job scheduling
+export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
+export type Equipment = typeof equipment.$inferSelect;
+
+export type InsertProductionJob = z.infer<typeof insertProductionJobSchema>;
+export type ProductionJob = typeof productionJobs.$inferSelect;
+
+export type InsertJobCard = z.infer<typeof insertJobCardSchema>;
+export type JobCard = typeof jobCards.$inferSelect;
