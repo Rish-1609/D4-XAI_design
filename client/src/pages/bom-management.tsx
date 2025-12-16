@@ -11,7 +11,34 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { insertBomSchema, insertBomChangeRequestSchema, type Bom, type InsertBom, type BomMaterial, type BomChangeRequest, type InsertBomChangeRequest } from "@shared/schema";
+import { insertBomSchema, type Bom, type InsertBom, type BomItem } from "@shared/schema";
+
+// Define local types for change requests until schema is updated
+type BomChangeRequest = {
+  id: string;
+  bomId: string;
+  requestType: string;
+  title: string;
+  description: string;
+  justification: string;
+  status: string;
+  priority: string;
+  requestedBy: string;
+  requestedAt: Date | null;
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
+  reviewComments: string | null;
+  approvedBy: string | null;
+  approvedAt: Date | null;
+  rejectedBy: string | null;
+  rejectedAt: Date | null;
+  rejectionReason: string | null;
+};
+
+type InsertBomChangeRequest = Omit<BomChangeRequest, 'id' | 'requestedAt' | 'reviewedBy' | 'reviewedAt' | 'reviewComments' | 'approvedBy' | 'approvedAt' | 'rejectedBy' | 'rejectedAt' | 'rejectionReason'>;
+
+type BomMaterial = BomItem;
+
 import { Plus, Search, ChevronDown, ChevronRight, FileText, GitBranch, Clock, CheckCircle, XCircle, Package2, Palette, FileBox } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";

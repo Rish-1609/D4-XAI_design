@@ -16,10 +16,20 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Plus, ArrowUp, ArrowDown, RefreshCw, Calendar } from "lucide-react";
-import type { StockMovement, InventoryItem } from "@shared/schema";
-import { insertStockMovementSchema } from "@shared/schema";
+import type { InventoryItem, InventoryTransaction } from "@shared/schema";
 
-type StockMovementFormData = z.infer<typeof insertStockMovementSchema>;
+type StockMovement = InventoryTransaction;
+type StockMovementFormData = {
+  inventoryItemId: string;
+  type: string;
+  quantity: number;
+  fromLocation: string;
+  toLocation: string;
+  referenceNumber: string;
+  user: string;
+  qualityIssue?: string;
+  notes?: string;
+};
 
 export default function StockMovements() {
   const { toast } = useToast();
@@ -35,9 +45,23 @@ export default function StockMovements() {
     queryKey: ["/api/inventory-items"],
   });
 
+  // Form schema for stock movements
+  const stockMovementFormSchema = z.object({
+    inventoryItemId: z.string().min(1, "Item is required"),
+    type: z.string().min(1, "Type is required"),
+    quantity: z.number().min(1, "Quantity must be at least 1"),
+    fromLocation: z.string().optional(),
+    toLocation: z.string().optional(),
+    referenceNumber: z.string().optional(),
+    user: z.string().min(1, "User is required"),
+    qualityIssue: z.string().optional(),
+    notes: z.string().optional(),
+    movementDate: z.any().optional(),
+  });
+
   // Form setup
   const form = useForm<StockMovementFormData>({
-    resolver: zodResolver(insertStockMovementSchema),
+    resolver: zodResolver(stockMovementFormSchema),
     defaultValues: {
       inventoryItemId: "",
       type: "IN",
@@ -48,7 +72,6 @@ export default function StockMovements() {
       user: "user@example.com",
       qualityIssue: "",
       notes: "",
-      movementDate: new Date().toISOString().split('T')[0] as any,
     },
   });
 

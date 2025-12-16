@@ -64,15 +64,74 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import type { ProductionOrder, BatchRelease, BatchWorkflowStep, InsertBatchWorkflowStep } from "@shared/schema";
-import { insertBatchWorkflowStepSchema } from "@shared/schema";
+import type { ProductionOrder } from "@shared/schema";
+
+// Local type definitions for batch release and workflow
+type BatchRelease = {
+  id: string;
+  productionOrderId: string;
+  batchNumber: string;
+  productName: string;
+  productCode: string;
+  status: string;
+  releaseStatus: string;
+  batchSize: number;
+  manufacturedDate: Date | null;
+  releasedBy: string | null;
+  releasedAt: Date | null;
+  qaApprovedBy: string | null;
+  notes: string | null;
+};
+
+type BatchWorkflowStep = {
+  id: string;
+  batchReleaseId: string;
+  stepName: string;
+  stepNumber: number;
+  stepCategory: string;
+  status: string;
+  assignedTo: string;
+  assignedTeam: string;
+  dueDate: Date | null;
+  completedAt: Date | null;
+  completedBy: string | null;
+  approvalRequired: boolean;
+  approvedBy: string | null;
+  approvedAt: Date | null;
+  evidence: string | null;
+  findings: string | null;
+  comments: string | null;
+  deviations: string | null;
+  correctiveActions: string | null;
+  notes: string | null;
+  estimatedHours: number | null;
+  actualHours: number | null;
+  order: number;
+  requiredActions: string | null;
+  completedActions: string | null;
+};
+
+type InsertBatchWorkflowStep = Omit<BatchWorkflowStep, 'id' | 'completedAt' | 'completedBy' | 'approvedBy' | 'approvedAt' | 'evidence' | 'findings' | 'comments' | 'deviations' | 'correctiveActions' | 'notes' | 'actualHours' | 'completedActions'>;
 
 // Form schemas
-const stepEditSchema = insertBatchWorkflowStepSchema.extend({
+const stepEditSchema = z.object({
+  batchReleaseId: z.string().min(1),
+  stepName: z.string().min(1),
+  stepNumber: z.number().default(0),
+  stepCategory: z.string().min(1),
+  status: z.string().default("pending"),
+  assignedTo: z.string().min(1),
+  assignedTeam: z.string().min(1),
+  dueDate: z.any().optional(),
+  approvalRequired: z.boolean().default(true),
+  estimatedHours: z.number().min(1).default(1),
+  order: z.number().default(0),
+  requiredActions: z.string().optional(),
   evidence: z.string().optional(),
+  findings: z.string().optional(),
+  comments: z.string().optional(),
   deviations: z.string().optional(),
   correctiveActions: z.string().optional(),
-  requiredActions: z.string().optional(),
   completedActions: z.string().optional(),
 });
 
