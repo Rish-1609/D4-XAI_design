@@ -24,6 +24,10 @@ import ProductionOverview from "@/pages/production-overview";
 import ProductionWorkspace from "@/pages/production-workspace";
 import ReleaseAnalytics from "@/pages/release-analytics";
 import JobScheduling from "@/pages/job-scheduling";
+import FinanceSetup from "@/pages/finance-setup";
+import FinanceTransactions from "@/pages/finance-transactions";
+import FinanceManufacturing from "@/pages/finance-manufacturing";
+import FinanceLedger from "@/pages/finance-ledger";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -50,6 +54,10 @@ function Router() {
       <Route path="/production-workspace" component={ProductionWorkspace} />
       <Route path="/release-analytics" component={ReleaseAnalytics} />
       <Route path="/job-scheduling" component={JobScheduling} />
+      <Route path="/finance-setup" component={FinanceSetup} />
+      <Route path="/finance-transactions" component={FinanceTransactions} />
+      <Route path="/finance-manufacturing" component={FinanceManufacturing} />
+      <Route path="/finance-ledger" component={FinanceLedger} />
       <Route component={NotFound} />
     </Switch>
   );

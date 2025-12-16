@@ -21,7 +21,11 @@ import {
   ClipboardList,
   AlertCircle,
   ShieldAlert,
-  Factory
+  Factory,
+  DollarSign,
+  Calculator,
+  Wallet,
+  BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -85,6 +89,17 @@ const menuItems = [
   },
   { id: "audit-trail", label: "Audit Trail", icon: FileCheck, href: "/qa-audit-trail" },
   { id: "quality-metrics", label: "Quality Metrics", icon: TrendingUp, href: "/quality-metrics" },
+  {
+    id: "finance-management",
+    label: "Finance Management",
+    icon: DollarSign,
+    submenu: [
+      { label: "Financial Setup", href: "/finance-setup" },
+      { label: "Transactions (AP/AR)", href: "/finance-transactions" },
+      { label: "Manufacturing Finance", href: "/finance-manufacturing" },
+      { label: "Ledger & Insights", href: "/finance-ledger" },
+    ],
+  },
 ];
 
 export function Sidebar({ className }: SidebarProps) {

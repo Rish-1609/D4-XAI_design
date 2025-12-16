@@ -1,4 +1,34 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type CapaAction, type InsertCapaAction, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomMaterial, type InsertBomMaterial, type BomSubAssembly, type InsertBomSubAssembly, type BomChangeRequest, type InsertBomChangeRequest, type InventoryItem, type InsertInventoryItem, type StockMovement, type InsertStockMovement, type QcStage, type InsertQcStage, type QcCheckpoint, type InsertQcCheckpoint, type QcTestResult, type InsertQcTestResult, type QcApproval, type InsertQcApproval, type BatchRelease, type InsertBatchRelease, type BatchWorkflowStep, type InsertBatchWorkflowStep, type BatchCertificate, type InsertBatchCertificate, type QaAuditTrail, type InsertQaAuditTrail, type QcStageTemplate, type InsertQcStageTemplate, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine } from "@shared/schema";
+
+// Legacy type aliases for compatibility
+type CapaAction = any;
+type InsertCapaAction = any;
+type BomMaterial = BomItem;
+type InsertBomMaterial = InsertBomItem;
+type BomSubAssembly = any;
+type InsertBomSubAssembly = any;
+type BomChangeRequest = any;
+type InsertBomChangeRequest = any;
+type StockMovement = InventoryTransaction;
+type InsertStockMovement = InsertInventoryTransaction;
+type QcStage = any;
+type InsertQcStage = any;
+type QcCheckpoint = any;
+type InsertQcCheckpoint = any;
+type QcTestResult = any;
+type InsertQcTestResult = any;
+type QcApproval = any;
+type InsertQcApproval = any;
+type BatchRelease = any;
+type InsertBatchRelease = any;
+type BatchWorkflowStep = any;
+type InsertBatchWorkflowStep = any;
+type BatchCertificate = any;
+type InsertBatchCertificate = any;
+type QaAuditTrail = any;
+type InsertQaAuditTrail = any;
+type QcStageTemplate = any;
+type InsertQcStageTemplate = any;
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -234,6 +264,110 @@ export interface IStorage {
   createJobCard(card: InsertJobCard): Promise<JobCard>;
   updateJobCard(id: string, data: Partial<InsertJobCard>): Promise<JobCard | undefined>;
   deleteJobCard(id: string): Promise<boolean>;
+
+  // ========== FINANCE MODULE ==========
+  
+  // Chart of Accounts operations
+  getChartOfAccounts(): Promise<ChartOfAccounts[]>;
+  getChartOfAccountsByType(accountType: string): Promise<ChartOfAccounts[]>;
+  getChartOfAccount(id: string): Promise<ChartOfAccounts | undefined>;
+  createChartOfAccount(account: InsertChartOfAccounts): Promise<ChartOfAccounts>;
+  updateChartOfAccount(id: string, data: Partial<InsertChartOfAccounts>): Promise<ChartOfAccounts | undefined>;
+  deleteChartOfAccount(id: string): Promise<boolean>;
+
+  // Cost Center operations
+  getCostCenters(): Promise<CostCenter[]>;
+  getCostCenter(id: string): Promise<CostCenter | undefined>;
+  createCostCenter(costCenter: InsertCostCenter): Promise<CostCenter>;
+  updateCostCenter(id: string, data: Partial<InsertCostCenter>): Promise<CostCenter | undefined>;
+  deleteCostCenter(id: string): Promise<boolean>;
+
+  // Profit Center operations
+  getProfitCenters(): Promise<ProfitCenter[]>;
+  getProfitCenter(id: string): Promise<ProfitCenter | undefined>;
+  createProfitCenter(profitCenter: InsertProfitCenter): Promise<ProfitCenter>;
+  updateProfitCenter(id: string, data: Partial<InsertProfitCenter>): Promise<ProfitCenter | undefined>;
+  deleteProfitCenter(id: string): Promise<boolean>;
+
+  // Tax Code operations
+  getTaxCodes(): Promise<TaxCode[]>;
+  getTaxCode(id: string): Promise<TaxCode | undefined>;
+  createTaxCode(taxCode: InsertTaxCode): Promise<TaxCode>;
+  updateTaxCode(id: string, data: Partial<InsertTaxCode>): Promise<TaxCode | undefined>;
+  deleteTaxCode(id: string): Promise<boolean>;
+
+  // Payment Terms operations
+  getPaymentTerms(): Promise<PaymentTerms[]>;
+  getPaymentTerm(id: string): Promise<PaymentTerms | undefined>;
+  createPaymentTerms(terms: InsertPaymentTerms): Promise<PaymentTerms>;
+  updatePaymentTerms(id: string, data: Partial<InsertPaymentTerms>): Promise<PaymentTerms | undefined>;
+  deletePaymentTerms(id: string): Promise<boolean>;
+
+  // Fiscal Year operations
+  getFiscalYears(): Promise<FiscalYear[]>;
+  getFiscalYear(id: string): Promise<FiscalYear | undefined>;
+  getActiveFiscalYear(): Promise<FiscalYear | undefined>;
+  createFiscalYear(year: InsertFiscalYear): Promise<FiscalYear>;
+  updateFiscalYear(id: string, data: Partial<InsertFiscalYear>): Promise<FiscalYear | undefined>;
+  deleteFiscalYear(id: string): Promise<boolean>;
+
+  // Fiscal Period operations
+  getFiscalPeriods(fiscalYearId: string): Promise<FiscalPeriod[]>;
+  getFiscalPeriod(id: string): Promise<FiscalPeriod | undefined>;
+  getOpenFiscalPeriods(): Promise<FiscalPeriod[]>;
+  createFiscalPeriod(period: InsertFiscalPeriod): Promise<FiscalPeriod>;
+  updateFiscalPeriod(id: string, data: Partial<InsertFiscalPeriod>): Promise<FiscalPeriod | undefined>;
+  deleteFiscalPeriod(id: string): Promise<boolean>;
+
+  // Party (Vendors & Customers) operations
+  getParties(): Promise<Party[]>;
+  getPartiesByType(partyType: string): Promise<Party[]>;
+  getParty(id: string): Promise<Party | undefined>;
+  createParty(party: InsertParty): Promise<Party>;
+  updateParty(id: string, data: Partial<InsertParty>): Promise<Party | undefined>;
+  deleteParty(id: string): Promise<boolean>;
+
+  // Financial Document operations (Invoices, Credit Notes, etc.)
+  getFinancialDocuments(): Promise<FinancialDocument[]>;
+  getFinancialDocumentsByType(docType: string): Promise<FinancialDocument[]>;
+  getFinancialDocumentsByParty(partyId: string): Promise<FinancialDocument[]>;
+  getFinancialDocument(id: string): Promise<FinancialDocument | undefined>;
+  createFinancialDocument(doc: InsertFinancialDocument): Promise<FinancialDocument>;
+  updateFinancialDocument(id: string, data: Partial<InsertFinancialDocument>): Promise<FinancialDocument | undefined>;
+  deleteFinancialDocument(id: string): Promise<boolean>;
+
+  // Document Line operations
+  getDocumentLines(documentId: string): Promise<DocumentLine[]>;
+  createDocumentLine(line: InsertDocumentLine): Promise<DocumentLine>;
+  updateDocumentLine(id: string, data: Partial<InsertDocumentLine>): Promise<DocumentLine | undefined>;
+  deleteDocumentLine(id: string): Promise<boolean>;
+
+  // Payment operations
+  getPayments(): Promise<Payment[]>;
+  getPaymentsByParty(partyId: string): Promise<Payment[]>;
+  getPayment(id: string): Promise<Payment | undefined>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
+  deletePayment(id: string): Promise<boolean>;
+
+  // GL Journal operations
+  getGlJournals(): Promise<GlJournal[]>;
+  getGlJournalsByPeriod(fiscalPeriodId: string): Promise<GlJournal[]>;
+  getGlJournal(id: string): Promise<GlJournal | undefined>;
+  createGlJournal(journal: InsertGlJournal): Promise<GlJournal>;
+  updateGlJournal(id: string, data: Partial<InsertGlJournal>): Promise<GlJournal | undefined>;
+  deleteGlJournal(id: string): Promise<boolean>;
+
+  // GL Journal Line operations
+  getGlJournalLines(journalId: string): Promise<GlJournalLine[]>;
+  createGlJournalLine(line: InsertGlJournalLine): Promise<GlJournalLine>;
+  updateGlJournalLine(id: string, data: Partial<InsertGlJournalLine>): Promise<GlJournalLine | undefined>;
+  deleteGlJournalLine(id: string): Promise<boolean>;
+
+  // Finance Analytics
+  getAccountBalance(accountId: string): Promise<{ debit: number; credit: number; balance: number }>;
+  getTrialBalance(fiscalPeriodId: string): Promise<Array<{ accountId: string; accountName: string; accountCode: string; debit: number; credit: number; }>>;
+  getAgingReport(partyType: string): Promise<Array<{ partyId: string; partyName: string; current: number; days30: number; days60: number; days90: number; over90: number; total: number; }>>;
 }
 
 export class MemStorage implements IStorage {
@@ -284,6 +418,21 @@ export class MemStorage implements IStorage {
   private equipmentMap: Map<string, Equipment>;
   private productionJobsMap: Map<string, ProductionJob>;
   private jobCardsMap: Map<string, JobCard>;
+  
+  // Finance Module data stores
+  private chartOfAccountsMap: Map<string, ChartOfAccounts>;
+  private costCentersMap: Map<string, CostCenter>;
+  private profitCentersMap: Map<string, ProfitCenter>;
+  private taxCodesMap: Map<string, TaxCode>;
+  private paymentTermsMap: Map<string, PaymentTerms>;
+  private fiscalYearsMap: Map<string, FiscalYear>;
+  private fiscalPeriodsMap: Map<string, FiscalPeriod>;
+  private partiesMap: Map<string, Party>;
+  private financialDocumentsMap: Map<string, FinancialDocument>;
+  private documentLinesMap: Map<string, DocumentLine>;
+  private paymentsMap: Map<string, Payment>;
+  private glJournalsMap: Map<string, GlJournal>;
+  private glJournalLinesMap: Map<string, GlJournalLine>;
 
   constructor() {
     this.materials = new Map();
@@ -333,7 +482,24 @@ export class MemStorage implements IStorage {
     this.equipmentMap = new Map();
     this.productionJobsMap = new Map();
     this.jobCardsMap = new Map();
+    
+    // Initialize Finance Module data stores
+    this.chartOfAccountsMap = new Map();
+    this.costCentersMap = new Map();
+    this.profitCentersMap = new Map();
+    this.taxCodesMap = new Map();
+    this.paymentTermsMap = new Map();
+    this.fiscalYearsMap = new Map();
+    this.fiscalPeriodsMap = new Map();
+    this.partiesMap = new Map();
+    this.financialDocumentsMap = new Map();
+    this.documentLinesMap = new Map();
+    this.paymentsMap = new Map();
+    this.glJournalsMap = new Map();
+    this.glJournalLinesMap = new Map();
+    
     this.initializeDummyData().catch(console.error);
+    this.initializeFinanceData().catch(console.error);
   }
 
   async getMaterials(): Promise<Material[]> {
@@ -4091,6 +4257,772 @@ export class MemStorage implements IStorage {
 
   async deleteJobCard(id: string): Promise<boolean> {
     return this.jobCardsMap.delete(id);
+  }
+
+  // ========== FINANCE MODULE IMPLEMENTATIONS ==========
+
+  // Initialize finance sample data
+  private async initializeFinanceData(): Promise<void> {
+    // Create sample Chart of Accounts
+    const accounts: InsertChartOfAccounts[] = [
+      { code: "1000", name: "Cash", accountType: "asset", category: "current_asset", normalBalance: "debit", isActive: true },
+      { code: "1100", name: "Accounts Receivable", accountType: "asset", category: "current_asset", normalBalance: "debit", isActive: true },
+      { code: "1200", name: "Raw Materials Inventory", accountType: "asset", category: "current_asset", normalBalance: "debit", isActive: true },
+      { code: "1210", name: "WIP Inventory", accountType: "asset", category: "current_asset", normalBalance: "debit", isActive: true },
+      { code: "1220", name: "Finished Goods Inventory", accountType: "asset", category: "current_asset", normalBalance: "debit", isActive: true },
+      { code: "1500", name: "Equipment", accountType: "asset", category: "fixed_asset", normalBalance: "debit", isActive: true },
+      { code: "2000", name: "Accounts Payable", accountType: "liability", category: "current_liability", normalBalance: "credit", isActive: true },
+      { code: "2100", name: "GST Payable", accountType: "liability", category: "current_liability", normalBalance: "credit", isActive: true },
+      { code: "3000", name: "Owner's Equity", accountType: "equity", category: "equity", normalBalance: "credit", isActive: true },
+      { code: "4000", name: "Sales Revenue", accountType: "revenue", category: "operating_revenue", normalBalance: "credit", isActive: true },
+      { code: "5000", name: "Cost of Goods Sold", accountType: "expense", category: "cogs", normalBalance: "debit", isActive: true },
+      { code: "5100", name: "Direct Materials", accountType: "expense", category: "cogs", normalBalance: "debit", isActive: true },
+      { code: "5200", name: "Direct Labor", accountType: "expense", category: "cogs", normalBalance: "debit", isActive: true },
+      { code: "5300", name: "Manufacturing Overhead", accountType: "expense", category: "cogs", normalBalance: "debit", isActive: true },
+      { code: "6000", name: "Operating Expenses", accountType: "expense", category: "operating_expense", normalBalance: "debit", isActive: true },
+    ];
+    for (const account of accounts) {
+      await this.createChartOfAccount(account);
+    }
+
+    // Create sample Cost Centers
+    const costCenters: InsertCostCenter[] = [
+      { code: "CC001", name: "Plant Operations", type: "production", isActive: true },
+      { code: "CC002", name: "Production Line 1", type: "production", parentId: null, isActive: true },
+      { code: "CC003", name: "Quality Control", type: "quality", isActive: true },
+      { code: "CC004", name: "Warehouse", type: "logistics", isActive: true },
+      { code: "CC005", name: "R&D", type: "support", isActive: true },
+    ];
+    for (const cc of costCenters) {
+      await this.createCostCenter(cc);
+    }
+
+    // Create sample Profit Centers
+    const profitCenters: InsertProfitCenter[] = [
+      { code: "PC001", name: "Pharmaceutical Division", type: "division", isActive: true },
+      { code: "PC002", name: "API Products", type: "product_line", isActive: true },
+      { code: "PC003", name: "Formulations", type: "product_line", isActive: true },
+    ];
+    for (const pc of profitCenters) {
+      await this.createProfitCenter(pc);
+    }
+
+    // Create sample Tax Codes
+    const taxCodes: InsertTaxCode[] = [
+      { code: "GST18", name: "GST 18%", rate: "18", taxType: "gst", isActive: true },
+      { code: "GST12", name: "GST 12%", rate: "12", taxType: "gst", isActive: true },
+      { code: "GST5", name: "GST 5%", rate: "5", taxType: "gst", isActive: true },
+      { code: "EXEMPT", name: "Tax Exempt", rate: "0", taxType: "exempt", isActive: true },
+    ];
+    for (const tax of taxCodes) {
+      await this.createTaxCode(tax);
+    }
+
+    // Create sample Payment Terms
+    const paymentTermsList: InsertPaymentTerms[] = [
+      { code: "NET30", name: "Net 30 Days", dueDays: 30, discountDays: null, discountPercent: null, isActive: true },
+      { code: "NET60", name: "Net 60 Days", dueDays: 60, discountDays: null, discountPercent: null, isActive: true },
+      { code: "2NET10", name: "2% 10 Net 30", dueDays: 30, discountDays: 10, discountPercent: "2", isActive: true },
+      { code: "COD", name: "Cash on Delivery", dueDays: 0, discountDays: null, discountPercent: null, isActive: true },
+    ];
+    for (const pt of paymentTermsList) {
+      await this.createPaymentTerms(pt);
+    }
+
+    // Create Fiscal Year
+    const fiscalYear = await this.createFiscalYear({
+      name: "FY 2024-25",
+      startDate: new Date("2024-04-01"),
+      endDate: new Date("2025-03-31"),
+      status: "active",
+      isClosed: false,
+    });
+
+    // Create Fiscal Periods
+    const months = ["April", "May", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March"];
+    for (let i = 0; i < 12; i++) {
+      const year = i < 9 ? 2024 : 2025;
+      const month = i < 9 ? i + 4 : i - 8;
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      await this.createFiscalPeriod({
+        fiscalYearId: fiscalYear.id,
+        name: `${months[i]} ${year}`,
+        periodNumber: i + 1,
+        startDate,
+        endDate,
+        status: i < 8 ? "closed" : (i === 8 ? "open" : "future"),
+        isClosed: i < 8,
+      });
+    }
+
+    // Create sample Parties (Vendors & Customers)
+    const parties: InsertParty[] = [
+      { code: "V001", name: "Pharma Supplies Ltd", partyType: "vendor", email: "contact@pharmasupplies.com", phone: "+91-9876543210", taxId: "GSTIN12345", creditLimit: "500000", isActive: true },
+      { code: "V002", name: "Chemical Corp", partyType: "vendor", email: "sales@chemcorp.com", phone: "+91-9876543211", taxId: "GSTIN12346", creditLimit: "300000", isActive: true },
+      { code: "C001", name: "Metro Hospital", partyType: "customer", email: "procurement@metrohospital.com", phone: "+91-9876543212", taxId: "GSTIN12347", creditLimit: "1000000", isActive: true },
+      { code: "C002", name: "City Pharmacy Chain", partyType: "customer", email: "orders@citypharmacy.com", phone: "+91-9876543213", taxId: "GSTIN12348", creditLimit: "750000", isActive: true },
+    ];
+    for (const party of parties) {
+      await this.createParty(party);
+    }
+  }
+
+  // Chart of Accounts implementations
+  async getChartOfAccounts(): Promise<ChartOfAccounts[]> {
+    return Array.from(this.chartOfAccountsMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  async getChartOfAccountsByType(accountType: string): Promise<ChartOfAccounts[]> {
+    return Array.from(this.chartOfAccountsMap.values())
+      .filter(account => account.accountType === accountType)
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  async getChartOfAccount(id: string): Promise<ChartOfAccounts | undefined> {
+    return this.chartOfAccountsMap.get(id);
+  }
+
+  async createChartOfAccount(data: InsertChartOfAccounts): Promise<ChartOfAccounts> {
+    const id = randomUUID();
+    const now = new Date();
+    const account: ChartOfAccounts = {
+      ...data,
+      id,
+      description: data.description || null,
+      parentId: data.parentId || null,
+      category: data.category || null,
+      normalBalance: data.normalBalance || "debit",
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.chartOfAccountsMap.set(id, account);
+    return account;
+  }
+
+  async updateChartOfAccount(id: string, data: Partial<InsertChartOfAccounts>): Promise<ChartOfAccounts | undefined> {
+    const existing = this.chartOfAccountsMap.get(id);
+    if (!existing) return undefined;
+    const updated: ChartOfAccounts = { ...existing, ...data, updatedAt: new Date() };
+    this.chartOfAccountsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteChartOfAccount(id: string): Promise<boolean> {
+    return this.chartOfAccountsMap.delete(id);
+  }
+
+  // Cost Center implementations
+  async getCostCenters(): Promise<CostCenter[]> {
+    return Array.from(this.costCentersMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  async getCostCenter(id: string): Promise<CostCenter | undefined> {
+    return this.costCentersMap.get(id);
+  }
+
+  async createCostCenter(data: InsertCostCenter): Promise<CostCenter> {
+    const id = randomUUID();
+    const now = new Date();
+    const costCenter: CostCenter = {
+      ...data,
+      id,
+      description: data.description || null,
+      parentId: data.parentId || null,
+      type: data.type || null,
+      managerId: data.managerId || null,
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.costCentersMap.set(id, costCenter);
+    return costCenter;
+  }
+
+  async updateCostCenter(id: string, data: Partial<InsertCostCenter>): Promise<CostCenter | undefined> {
+    const existing = this.costCentersMap.get(id);
+    if (!existing) return undefined;
+    const updated: CostCenter = { ...existing, ...data, updatedAt: new Date() };
+    this.costCentersMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteCostCenter(id: string): Promise<boolean> {
+    return this.costCentersMap.delete(id);
+  }
+
+  // Profit Center implementations
+  async getProfitCenters(): Promise<ProfitCenter[]> {
+    return Array.from(this.profitCentersMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  async getProfitCenter(id: string): Promise<ProfitCenter | undefined> {
+    return this.profitCentersMap.get(id);
+  }
+
+  async createProfitCenter(data: InsertProfitCenter): Promise<ProfitCenter> {
+    const id = randomUUID();
+    const now = new Date();
+    const profitCenter: ProfitCenter = {
+      ...data,
+      id,
+      description: data.description || null,
+      parentId: data.parentId || null,
+      type: data.type || null,
+      managerId: data.managerId || null,
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.profitCentersMap.set(id, profitCenter);
+    return profitCenter;
+  }
+
+  async updateProfitCenter(id: string, data: Partial<InsertProfitCenter>): Promise<ProfitCenter | undefined> {
+    const existing = this.profitCentersMap.get(id);
+    if (!existing) return undefined;
+    const updated: ProfitCenter = { ...existing, ...data, updatedAt: new Date() };
+    this.profitCentersMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteProfitCenter(id: string): Promise<boolean> {
+    return this.profitCentersMap.delete(id);
+  }
+
+  // Tax Code implementations
+  async getTaxCodes(): Promise<TaxCode[]> {
+    return Array.from(this.taxCodesMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  async getTaxCode(id: string): Promise<TaxCode | undefined> {
+    return this.taxCodesMap.get(id);
+  }
+
+  async createTaxCode(data: InsertTaxCode): Promise<TaxCode> {
+    const id = randomUUID();
+    const now = new Date();
+    const taxCode: TaxCode = {
+      ...data,
+      id,
+      description: data.description || null,
+      taxType: data.taxType || null,
+      accountId: data.accountId || null,
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.taxCodesMap.set(id, taxCode);
+    return taxCode;
+  }
+
+  async updateTaxCode(id: string, data: Partial<InsertTaxCode>): Promise<TaxCode | undefined> {
+    const existing = this.taxCodesMap.get(id);
+    if (!existing) return undefined;
+    const updated: TaxCode = { ...existing, ...data, updatedAt: new Date() };
+    this.taxCodesMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteTaxCode(id: string): Promise<boolean> {
+    return this.taxCodesMap.delete(id);
+  }
+
+  // Payment Terms implementations
+  async getPaymentTerms(): Promise<PaymentTerms[]> {
+    return Array.from(this.paymentTermsMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  async getPaymentTerm(id: string): Promise<PaymentTerms | undefined> {
+    return this.paymentTermsMap.get(id);
+  }
+
+  async createPaymentTerms(data: InsertPaymentTerms): Promise<PaymentTerms> {
+    const id = randomUUID();
+    const now = new Date();
+    const terms: PaymentTerms = {
+      ...data,
+      id,
+      description: data.description || null,
+      discountDays: data.discountDays || null,
+      discountPercent: data.discountPercent || null,
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.paymentTermsMap.set(id, terms);
+    return terms;
+  }
+
+  async updatePaymentTerms(id: string, data: Partial<InsertPaymentTerms>): Promise<PaymentTerms | undefined> {
+    const existing = this.paymentTermsMap.get(id);
+    if (!existing) return undefined;
+    const updated: PaymentTerms = { ...existing, ...data, updatedAt: new Date() };
+    this.paymentTermsMap.set(id, updated);
+    return updated;
+  }
+
+  async deletePaymentTerms(id: string): Promise<boolean> {
+    return this.paymentTermsMap.delete(id);
+  }
+
+  // Fiscal Year implementations
+  async getFiscalYears(): Promise<FiscalYear[]> {
+    return Array.from(this.fiscalYearsMap.values()).sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+  }
+
+  async getFiscalYear(id: string): Promise<FiscalYear | undefined> {
+    return this.fiscalYearsMap.get(id);
+  }
+
+  async getActiveFiscalYear(): Promise<FiscalYear | undefined> {
+    return Array.from(this.fiscalYearsMap.values()).find(fy => fy.status === "active");
+  }
+
+  async createFiscalYear(data: InsertFiscalYear): Promise<FiscalYear> {
+    const id = randomUUID();
+    const now = new Date();
+    const fiscalYear: FiscalYear = {
+      ...data,
+      id,
+      status: data.status || "active",
+      isClosed: data.isClosed ?? false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.fiscalYearsMap.set(id, fiscalYear);
+    return fiscalYear;
+  }
+
+  async updateFiscalYear(id: string, data: Partial<InsertFiscalYear>): Promise<FiscalYear | undefined> {
+    const existing = this.fiscalYearsMap.get(id);
+    if (!existing) return undefined;
+    const updated: FiscalYear = { ...existing, ...data, updatedAt: new Date() };
+    this.fiscalYearsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteFiscalYear(id: string): Promise<boolean> {
+    return this.fiscalYearsMap.delete(id);
+  }
+
+  // Fiscal Period implementations
+  async getFiscalPeriods(fiscalYearId: string): Promise<FiscalPeriod[]> {
+    return Array.from(this.fiscalPeriodsMap.values())
+      .filter(fp => fp.fiscalYearId === fiscalYearId)
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+  }
+
+  async getFiscalPeriod(id: string): Promise<FiscalPeriod | undefined> {
+    return this.fiscalPeriodsMap.get(id);
+  }
+
+  async getOpenFiscalPeriods(): Promise<FiscalPeriod[]> {
+    return Array.from(this.fiscalPeriodsMap.values())
+      .filter(fp => fp.status === "open")
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+  }
+
+  async createFiscalPeriod(data: InsertFiscalPeriod): Promise<FiscalPeriod> {
+    const id = randomUUID();
+    const now = new Date();
+    const period: FiscalPeriod = {
+      ...data,
+      id,
+      status: data.status || "future",
+      isClosed: data.isClosed ?? false,
+      closedBy: data.closedBy || null,
+      closedAt: data.closedAt || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.fiscalPeriodsMap.set(id, period);
+    return period;
+  }
+
+  async updateFiscalPeriod(id: string, data: Partial<InsertFiscalPeriod>): Promise<FiscalPeriod | undefined> {
+    const existing = this.fiscalPeriodsMap.get(id);
+    if (!existing) return undefined;
+    const updated: FiscalPeriod = { ...existing, ...data, updatedAt: new Date() };
+    this.fiscalPeriodsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteFiscalPeriod(id: string): Promise<boolean> {
+    return this.fiscalPeriodsMap.delete(id);
+  }
+
+  // Party implementations
+  async getParties(): Promise<Party[]> {
+    return Array.from(this.partiesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getPartiesByType(partyType: string): Promise<Party[]> {
+    return Array.from(this.partiesMap.values())
+      .filter(party => party.partyType === partyType)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getParty(id: string): Promise<Party | undefined> {
+    return this.partiesMap.get(id);
+  }
+
+  async createParty(data: InsertParty): Promise<Party> {
+    const id = randomUUID();
+    const now = new Date();
+    const party: Party = {
+      ...data,
+      id,
+      email: data.email || null,
+      phone: data.phone || null,
+      address: data.address || null,
+      city: data.city || null,
+      state: data.state || null,
+      country: data.country || null,
+      postalCode: data.postalCode || null,
+      taxId: data.taxId || null,
+      creditLimit: data.creditLimit || null,
+      paymentTermsId: data.paymentTermsId || null,
+      currency: data.currency || "INR",
+      defaultAccountId: data.defaultAccountId || null,
+      notes: data.notes || null,
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.partiesMap.set(id, party);
+    return party;
+  }
+
+  async updateParty(id: string, data: Partial<InsertParty>): Promise<Party | undefined> {
+    const existing = this.partiesMap.get(id);
+    if (!existing) return undefined;
+    const updated: Party = { ...existing, ...data, updatedAt: new Date() };
+    this.partiesMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteParty(id: string): Promise<boolean> {
+    return this.partiesMap.delete(id);
+  }
+
+  // Financial Document implementations
+  async getFinancialDocuments(): Promise<FinancialDocument[]> {
+    return Array.from(this.financialDocumentsMap.values()).sort((a, b) => 
+      new Date(b.documentDate).getTime() - new Date(a.documentDate).getTime()
+    );
+  }
+
+  async getFinancialDocumentsByType(docType: string): Promise<FinancialDocument[]> {
+    return Array.from(this.financialDocumentsMap.values())
+      .filter(doc => doc.documentType === docType)
+      .sort((a, b) => new Date(b.documentDate).getTime() - new Date(a.documentDate).getTime());
+  }
+
+  async getFinancialDocumentsByParty(partyId: string): Promise<FinancialDocument[]> {
+    return Array.from(this.financialDocumentsMap.values())
+      .filter(doc => doc.partyId === partyId)
+      .sort((a, b) => new Date(b.documentDate).getTime() - new Date(a.documentDate).getTime());
+  }
+
+  async getFinancialDocument(id: string): Promise<FinancialDocument | undefined> {
+    return this.financialDocumentsMap.get(id);
+  }
+
+  async createFinancialDocument(data: InsertFinancialDocument): Promise<FinancialDocument> {
+    const id = randomUUID();
+    const now = new Date();
+    const doc: FinancialDocument = {
+      ...data,
+      id,
+      referenceNumber: data.referenceNumber || null,
+      fiscalPeriodId: data.fiscalPeriodId || null,
+      costCenterId: data.costCenterId || null,
+      profitCenterId: data.profitCenterId || null,
+      subtotal: data.subtotal || "0",
+      taxAmount: data.taxAmount || "0",
+      totalAmount: data.totalAmount || "0",
+      paidAmount: data.paidAmount || "0",
+      balanceAmount: data.balanceAmount || data.totalAmount || "0",
+      status: data.status || "draft",
+      paymentStatus: data.paymentStatus || "unpaid",
+      notes: data.notes || null,
+      terms: data.terms || null,
+      postedToGl: data.postedToGl ?? false,
+      glJournalId: data.glJournalId || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.financialDocumentsMap.set(id, doc);
+    return doc;
+  }
+
+  async updateFinancialDocument(id: string, data: Partial<InsertFinancialDocument>): Promise<FinancialDocument | undefined> {
+    const existing = this.financialDocumentsMap.get(id);
+    if (!existing) return undefined;
+    const updated: FinancialDocument = { ...existing, ...data, updatedAt: new Date() };
+    this.financialDocumentsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteFinancialDocument(id: string): Promise<boolean> {
+    return this.financialDocumentsMap.delete(id);
+  }
+
+  // Document Line implementations
+  async getDocumentLines(documentId: string): Promise<DocumentLine[]> {
+    return Array.from(this.documentLinesMap.values())
+      .filter(line => line.documentId === documentId)
+      .sort((a, b) => a.lineNumber - b.lineNumber);
+  }
+
+  async createDocumentLine(data: InsertDocumentLine): Promise<DocumentLine> {
+    const id = randomUUID();
+    const now = new Date();
+    const line: DocumentLine = {
+      ...data,
+      id,
+      costCenterId: data.costCenterId || null,
+      profitCenterId: data.profitCenterId || null,
+      unitPrice: data.unitPrice || "0",
+      taxCodeId: data.taxCodeId || null,
+      taxAmount: data.taxAmount || "0",
+      lineTotal: data.lineTotal || "0",
+      notes: data.notes || null,
+      createdAt: now,
+    };
+    this.documentLinesMap.set(id, line);
+    return line;
+  }
+
+  async updateDocumentLine(id: string, data: Partial<InsertDocumentLine>): Promise<DocumentLine | undefined> {
+    const existing = this.documentLinesMap.get(id);
+    if (!existing) return undefined;
+    const updated: DocumentLine = { ...existing, ...data };
+    this.documentLinesMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteDocumentLine(id: string): Promise<boolean> {
+    return this.documentLinesMap.delete(id);
+  }
+
+  // Payment implementations
+  async getPayments(): Promise<Payment[]> {
+    return Array.from(this.paymentsMap.values()).sort((a, b) => 
+      new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
+    );
+  }
+
+  async getPaymentsByParty(partyId: string): Promise<Payment[]> {
+    return Array.from(this.paymentsMap.values())
+      .filter(payment => payment.partyId === partyId)
+      .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+  }
+
+  async getPayment(id: string): Promise<Payment | undefined> {
+    return this.paymentsMap.get(id);
+  }
+
+  async createPayment(data: InsertPayment): Promise<Payment> {
+    const id = randomUUID();
+    const now = new Date();
+    const payment: Payment = {
+      ...data,
+      id,
+      bankAccountId: data.bankAccountId || null,
+      referenceNumber: data.referenceNumber || null,
+      fiscalPeriodId: data.fiscalPeriodId || null,
+      notes: data.notes || null,
+      status: data.status || "pending",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.paymentsMap.set(id, payment);
+    return payment;
+  }
+
+  async updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const existing = this.paymentsMap.get(id);
+    if (!existing) return undefined;
+    const updated: Payment = { ...existing, ...data, updatedAt: new Date() };
+    this.paymentsMap.set(id, updated);
+    return updated;
+  }
+
+  async deletePayment(id: string): Promise<boolean> {
+    return this.paymentsMap.delete(id);
+  }
+
+  // GL Journal implementations
+  async getGlJournals(): Promise<GlJournal[]> {
+    return Array.from(this.glJournalsMap.values()).sort((a, b) => 
+      new Date(b.journalDate).getTime() - new Date(a.journalDate).getTime()
+    );
+  }
+
+  async getGlJournalsByPeriod(fiscalPeriodId: string): Promise<GlJournal[]> {
+    return Array.from(this.glJournalsMap.values())
+      .filter(journal => journal.fiscalPeriodId === fiscalPeriodId)
+      .sort((a, b) => new Date(b.journalDate).getTime() - new Date(a.journalDate).getTime());
+  }
+
+  async getGlJournal(id: string): Promise<GlJournal | undefined> {
+    return this.glJournalsMap.get(id);
+  }
+
+  async createGlJournal(data: InsertGlJournal): Promise<GlJournal> {
+    const id = randomUUID();
+    const now = new Date();
+    const journal: GlJournal = {
+      ...data,
+      id,
+      description: data.description || null,
+      sourceType: data.sourceType || null,
+      sourceId: data.sourceId || null,
+      totalDebit: data.totalDebit || "0",
+      totalCredit: data.totalCredit || "0",
+      status: data.status || "draft",
+      postedBy: data.postedBy || null,
+      postedAt: data.postedAt || null,
+      reversalOf: data.reversalOf || null,
+      isReversed: data.isReversed ?? false,
+      notes: data.notes || null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.glJournalsMap.set(id, journal);
+    return journal;
+  }
+
+  async updateGlJournal(id: string, data: Partial<InsertGlJournal>): Promise<GlJournal | undefined> {
+    const existing = this.glJournalsMap.get(id);
+    if (!existing) return undefined;
+    const updated: GlJournal = { ...existing, ...data, updatedAt: new Date() };
+    this.glJournalsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteGlJournal(id: string): Promise<boolean> {
+    return this.glJournalsMap.delete(id);
+  }
+
+  // GL Journal Line implementations
+  async getGlJournalLines(journalId: string): Promise<GlJournalLine[]> {
+    return Array.from(this.glJournalLinesMap.values())
+      .filter(line => line.journalId === journalId)
+      .sort((a, b) => a.lineNumber - b.lineNumber);
+  }
+
+  async createGlJournalLine(data: InsertGlJournalLine): Promise<GlJournalLine> {
+    const id = randomUUID();
+    const now = new Date();
+    const line: GlJournalLine = {
+      ...data,
+      id,
+      costCenterId: data.costCenterId || null,
+      profitCenterId: data.profitCenterId || null,
+      description: data.description || null,
+      partyId: data.partyId || null,
+      referenceNumber: data.referenceNumber || null,
+      createdAt: now,
+    };
+    this.glJournalLinesMap.set(id, line);
+    return line;
+  }
+
+  async updateGlJournalLine(id: string, data: Partial<InsertGlJournalLine>): Promise<GlJournalLine | undefined> {
+    const existing = this.glJournalLinesMap.get(id);
+    if (!existing) return undefined;
+    const updated: GlJournalLine = { ...existing, ...data };
+    this.glJournalLinesMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteGlJournalLine(id: string): Promise<boolean> {
+    return this.glJournalLinesMap.delete(id);
+  }
+
+  // Finance Analytics implementations
+  async getAccountBalance(accountId: string): Promise<{ debit: number; credit: number; balance: number }> {
+    const journalLines = Array.from(this.glJournalLinesMap.values())
+      .filter(line => line.accountId === accountId);
+    
+    const debit = journalLines.reduce((sum, line) => sum + parseFloat(line.debitAmount || "0"), 0);
+    const credit = journalLines.reduce((sum, line) => sum + parseFloat(line.creditAmount || "0"), 0);
+    
+    return { debit, credit, balance: debit - credit };
+  }
+
+  async getTrialBalance(fiscalPeriodId: string): Promise<Array<{ accountId: string; accountName: string; accountCode: string; debit: number; credit: number; }>> {
+    const journals = Array.from(this.glJournalsMap.values())
+      .filter(journal => journal.fiscalPeriodId === fiscalPeriodId && journal.status === "posted");
+    
+    const journalIds = new Set(journals.map(j => j.id));
+    const lines = Array.from(this.glJournalLinesMap.values())
+      .filter(line => journalIds.has(line.journalId));
+    
+    const balances = new Map<string, { debit: number; credit: number }>();
+    
+    for (const line of lines) {
+      const existing = balances.get(line.accountId) || { debit: 0, credit: 0 };
+      existing.debit += parseFloat(line.debitAmount || "0");
+      existing.credit += parseFloat(line.creditAmount || "0");
+      balances.set(line.accountId, existing);
+    }
+    
+    const result: Array<{ accountId: string; accountName: string; accountCode: string; debit: number; credit: number; }> = [];
+    
+    for (const [accountId, balance] of balances) {
+      const account = this.chartOfAccountsMap.get(accountId);
+      if (account) {
+        result.push({
+          accountId,
+          accountName: account.name,
+          accountCode: account.code,
+          debit: balance.debit,
+          credit: balance.credit,
+        });
+      }
+    }
+    
+    return result.sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+  }
+
+  async getAgingReport(partyType: string): Promise<Array<{ partyId: string; partyName: string; current: number; days30: number; days60: number; days90: number; over90: number; total: number; }>> {
+    const parties = Array.from(this.partiesMap.values())
+      .filter(party => party.partyType === partyType);
+    
+    const now = new Date();
+    const result: Array<{ partyId: string; partyName: string; current: number; days30: number; days60: number; days90: number; over90: number; total: number; }> = [];
+    
+    for (const party of parties) {
+      const docs = Array.from(this.financialDocumentsMap.values())
+        .filter(doc => doc.partyId === party.id && doc.paymentStatus !== "paid");
+      
+      let current = 0, days30 = 0, days60 = 0, days90 = 0, over90 = 0;
+      
+      for (const doc of docs) {
+        const balance = parseFloat(doc.balanceAmount || "0");
+        const daysDue = Math.floor((now.getTime() - new Date(doc.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysDue <= 0) current += balance;
+        else if (daysDue <= 30) days30 += balance;
+        else if (daysDue <= 60) days60 += balance;
+        else if (daysDue <= 90) days90 += balance;
+        else over90 += balance;
+      }
+      
+      const total = current + days30 + days60 + days90 + over90;
+      if (total > 0) {
+        result.push({ partyId: party.id, partyName: party.name, current, days30, days60, days90, over90, total });
+      }
+    }
+    
+    return result.sort((a, b) => b.total - a.total);
   }
 }
 

@@ -2164,6 +2164,830 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =============== FINANCE MODULE ROUTES ===============
+
+  // Chart of Accounts
+  app.get("/api/finance/chart-of-accounts", async (req, res) => {
+    try {
+      const accounts = await storage.getChartOfAccounts();
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch chart of accounts" });
+    }
+  });
+
+  app.get("/api/finance/chart-of-accounts/type/:type", async (req, res) => {
+    try {
+      const accounts = await storage.getChartOfAccountsByType(req.params.type);
+      res.json(accounts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch accounts by type" });
+    }
+  });
+
+  app.get("/api/finance/chart-of-accounts/:id", async (req, res) => {
+    try {
+      const account = await storage.getChartOfAccount(req.params.id);
+      if (!account) return res.status(404).json({ message: "Account not found" });
+      res.json(account);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch account" });
+    }
+  });
+
+  app.post("/api/finance/chart-of-accounts", async (req, res) => {
+    try {
+      const validatedData = insertChartOfAccountsSchema.parse(req.body);
+      const account = await storage.createChartOfAccount(validatedData);
+      res.status(201).json(account);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid account data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  app.put("/api/finance/chart-of-accounts/:id", async (req, res) => {
+    try {
+      const validatedData = insertChartOfAccountsSchema.partial().parse(req.body);
+      const account = await storage.updateChartOfAccount(req.params.id, validatedData);
+      if (!account) return res.status(404).json({ message: "Account not found" });
+      res.json(account);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid account data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update account" });
+    }
+  });
+
+  app.delete("/api/finance/chart-of-accounts/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteChartOfAccount(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Account not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
+  // Cost Centers
+  app.get("/api/finance/cost-centers", async (req, res) => {
+    try {
+      const centers = await storage.getCostCenters();
+      res.json(centers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch cost centers" });
+    }
+  });
+
+  app.get("/api/finance/cost-centers/:id", async (req, res) => {
+    try {
+      const center = await storage.getCostCenter(req.params.id);
+      if (!center) return res.status(404).json({ message: "Cost center not found" });
+      res.json(center);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch cost center" });
+    }
+  });
+
+  app.post("/api/finance/cost-centers", async (req, res) => {
+    try {
+      const validatedData = insertCostCenterSchema.parse(req.body);
+      const center = await storage.createCostCenter(validatedData);
+      res.status(201).json(center);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid cost center data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create cost center" });
+    }
+  });
+
+  app.put("/api/finance/cost-centers/:id", async (req, res) => {
+    try {
+      const validatedData = insertCostCenterSchema.partial().parse(req.body);
+      const center = await storage.updateCostCenter(req.params.id, validatedData);
+      if (!center) return res.status(404).json({ message: "Cost center not found" });
+      res.json(center);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid cost center data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update cost center" });
+    }
+  });
+
+  app.delete("/api/finance/cost-centers/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteCostCenter(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Cost center not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete cost center" });
+    }
+  });
+
+  // Profit Centers
+  app.get("/api/finance/profit-centers", async (req, res) => {
+    try {
+      const centers = await storage.getProfitCenters();
+      res.json(centers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch profit centers" });
+    }
+  });
+
+  app.get("/api/finance/profit-centers/:id", async (req, res) => {
+    try {
+      const center = await storage.getProfitCenter(req.params.id);
+      if (!center) return res.status(404).json({ message: "Profit center not found" });
+      res.json(center);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch profit center" });
+    }
+  });
+
+  app.post("/api/finance/profit-centers", async (req, res) => {
+    try {
+      const validatedData = insertProfitCenterSchema.parse(req.body);
+      const center = await storage.createProfitCenter(validatedData);
+      res.status(201).json(center);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid profit center data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create profit center" });
+    }
+  });
+
+  app.put("/api/finance/profit-centers/:id", async (req, res) => {
+    try {
+      const validatedData = insertProfitCenterSchema.partial().parse(req.body);
+      const center = await storage.updateProfitCenter(req.params.id, validatedData);
+      if (!center) return res.status(404).json({ message: "Profit center not found" });
+      res.json(center);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid profit center data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update profit center" });
+    }
+  });
+
+  app.delete("/api/finance/profit-centers/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteProfitCenter(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Profit center not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete profit center" });
+    }
+  });
+
+  // Tax Codes
+  app.get("/api/finance/tax-codes", async (req, res) => {
+    try {
+      const codes = await storage.getTaxCodes();
+      res.json(codes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch tax codes" });
+    }
+  });
+
+  app.get("/api/finance/tax-codes/:id", async (req, res) => {
+    try {
+      const code = await storage.getTaxCode(req.params.id);
+      if (!code) return res.status(404).json({ message: "Tax code not found" });
+      res.json(code);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch tax code" });
+    }
+  });
+
+  app.post("/api/finance/tax-codes", async (req, res) => {
+    try {
+      const validatedData = insertTaxCodeSchema.parse(req.body);
+      const code = await storage.createTaxCode(validatedData);
+      res.status(201).json(code);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid tax code data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create tax code" });
+    }
+  });
+
+  app.put("/api/finance/tax-codes/:id", async (req, res) => {
+    try {
+      const validatedData = insertTaxCodeSchema.partial().parse(req.body);
+      const code = await storage.updateTaxCode(req.params.id, validatedData);
+      if (!code) return res.status(404).json({ message: "Tax code not found" });
+      res.json(code);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid tax code data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update tax code" });
+    }
+  });
+
+  app.delete("/api/finance/tax-codes/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteTaxCode(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Tax code not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete tax code" });
+    }
+  });
+
+  // Payment Terms
+  app.get("/api/finance/payment-terms", async (req, res) => {
+    try {
+      const terms = await storage.getPaymentTerms();
+      res.json(terms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payment terms" });
+    }
+  });
+
+  app.get("/api/finance/payment-terms/:id", async (req, res) => {
+    try {
+      const term = await storage.getPaymentTerm(req.params.id);
+      if (!term) return res.status(404).json({ message: "Payment term not found" });
+      res.json(term);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payment term" });
+    }
+  });
+
+  app.post("/api/finance/payment-terms", async (req, res) => {
+    try {
+      const validatedData = insertPaymentTermsSchema.parse(req.body);
+      const term = await storage.createPaymentTerms(validatedData);
+      res.status(201).json(term);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid payment terms data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create payment terms" });
+    }
+  });
+
+  app.put("/api/finance/payment-terms/:id", async (req, res) => {
+    try {
+      const validatedData = insertPaymentTermsSchema.partial().parse(req.body);
+      const term = await storage.updatePaymentTerms(req.params.id, validatedData);
+      if (!term) return res.status(404).json({ message: "Payment term not found" });
+      res.json(term);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid payment terms data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update payment terms" });
+    }
+  });
+
+  app.delete("/api/finance/payment-terms/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deletePaymentTerms(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Payment term not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete payment terms" });
+    }
+  });
+
+  // Fiscal Years
+  app.get("/api/finance/fiscal-years", async (req, res) => {
+    try {
+      const years = await storage.getFiscalYears();
+      res.json(years);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch fiscal years" });
+    }
+  });
+
+  app.get("/api/finance/fiscal-years/active", async (req, res) => {
+    try {
+      const year = await storage.getActiveFiscalYear();
+      if (!year) return res.status(404).json({ message: "No active fiscal year" });
+      res.json(year);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch active fiscal year" });
+    }
+  });
+
+  app.get("/api/finance/fiscal-years/:id", async (req, res) => {
+    try {
+      const year = await storage.getFiscalYear(req.params.id);
+      if (!year) return res.status(404).json({ message: "Fiscal year not found" });
+      res.json(year);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch fiscal year" });
+    }
+  });
+
+  app.post("/api/finance/fiscal-years", async (req, res) => {
+    try {
+      const validatedData = insertFiscalYearSchema.parse(req.body);
+      const year = await storage.createFiscalYear(validatedData);
+      res.status(201).json(year);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid fiscal year data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create fiscal year" });
+    }
+  });
+
+  app.put("/api/finance/fiscal-years/:id", async (req, res) => {
+    try {
+      const validatedData = insertFiscalYearSchema.partial().parse(req.body);
+      const year = await storage.updateFiscalYear(req.params.id, validatedData);
+      if (!year) return res.status(404).json({ message: "Fiscal year not found" });
+      res.json(year);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid fiscal year data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update fiscal year" });
+    }
+  });
+
+  app.delete("/api/finance/fiscal-years/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteFiscalYear(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Fiscal year not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete fiscal year" });
+    }
+  });
+
+  // Fiscal Periods
+  app.get("/api/finance/fiscal-periods/year/:yearId", async (req, res) => {
+    try {
+      const periods = await storage.getFiscalPeriods(req.params.yearId);
+      res.json(periods);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch fiscal periods" });
+    }
+  });
+
+  app.get("/api/finance/fiscal-periods/open", async (req, res) => {
+    try {
+      const periods = await storage.getOpenFiscalPeriods();
+      res.json(periods);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch open fiscal periods" });
+    }
+  });
+
+  app.get("/api/finance/fiscal-periods/:id", async (req, res) => {
+    try {
+      const period = await storage.getFiscalPeriod(req.params.id);
+      if (!period) return res.status(404).json({ message: "Fiscal period not found" });
+      res.json(period);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch fiscal period" });
+    }
+  });
+
+  app.post("/api/finance/fiscal-periods", async (req, res) => {
+    try {
+      const validatedData = insertFiscalPeriodSchema.parse(req.body);
+      const period = await storage.createFiscalPeriod(validatedData);
+      res.status(201).json(period);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid fiscal period data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create fiscal period" });
+    }
+  });
+
+  app.put("/api/finance/fiscal-periods/:id", async (req, res) => {
+    try {
+      const validatedData = insertFiscalPeriodSchema.partial().parse(req.body);
+      const period = await storage.updateFiscalPeriod(req.params.id, validatedData);
+      if (!period) return res.status(404).json({ message: "Fiscal period not found" });
+      res.json(period);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid fiscal period data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update fiscal period" });
+    }
+  });
+
+  app.delete("/api/finance/fiscal-periods/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteFiscalPeriod(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Fiscal period not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete fiscal period" });
+    }
+  });
+
+  // Parties (Vendors & Customers)
+  app.get("/api/finance/parties", async (req, res) => {
+    try {
+      const parties = await storage.getParties();
+      res.json(parties);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch parties" });
+    }
+  });
+
+  app.get("/api/finance/parties/type/:type", async (req, res) => {
+    try {
+      const parties = await storage.getPartiesByType(req.params.type);
+      res.json(parties);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch parties by type" });
+    }
+  });
+
+  app.get("/api/finance/parties/:id", async (req, res) => {
+    try {
+      const party = await storage.getParty(req.params.id);
+      if (!party) return res.status(404).json({ message: "Party not found" });
+      res.json(party);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch party" });
+    }
+  });
+
+  app.post("/api/finance/parties", async (req, res) => {
+    try {
+      const validatedData = insertPartySchema.parse(req.body);
+      const party = await storage.createParty(validatedData);
+      res.status(201).json(party);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid party data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create party" });
+    }
+  });
+
+  app.put("/api/finance/parties/:id", async (req, res) => {
+    try {
+      const validatedData = insertPartySchema.partial().parse(req.body);
+      const party = await storage.updateParty(req.params.id, validatedData);
+      if (!party) return res.status(404).json({ message: "Party not found" });
+      res.json(party);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid party data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update party" });
+    }
+  });
+
+  app.delete("/api/finance/parties/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteParty(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Party not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete party" });
+    }
+  });
+
+  // Financial Documents (Invoices, Credit Notes, etc.)
+  app.get("/api/finance/documents", async (req, res) => {
+    try {
+      const docs = await storage.getFinancialDocuments();
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch financial documents" });
+    }
+  });
+
+  app.get("/api/finance/documents/type/:type", async (req, res) => {
+    try {
+      const docs = await storage.getFinancialDocumentsByType(req.params.type);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch documents by type" });
+    }
+  });
+
+  app.get("/api/finance/documents/party/:partyId", async (req, res) => {
+    try {
+      const docs = await storage.getFinancialDocumentsByParty(req.params.partyId);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch documents by party" });
+    }
+  });
+
+  app.get("/api/finance/documents/:id", async (req, res) => {
+    try {
+      const doc = await storage.getFinancialDocument(req.params.id);
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch document" });
+    }
+  });
+
+  app.post("/api/finance/documents", async (req, res) => {
+    try {
+      const validatedData = insertFinancialDocumentSchema.parse(req.body);
+      const doc = await storage.createFinancialDocument(validatedData);
+      res.status(201).json(doc);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid document data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create document" });
+    }
+  });
+
+  app.put("/api/finance/documents/:id", async (req, res) => {
+    try {
+      const validatedData = insertFinancialDocumentSchema.partial().parse(req.body);
+      const doc = await storage.updateFinancialDocument(req.params.id, validatedData);
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      res.json(doc);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid document data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update document" });
+    }
+  });
+
+  app.delete("/api/finance/documents/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteFinancialDocument(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Document not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // Document Lines
+  app.get("/api/finance/documents/:docId/lines", async (req, res) => {
+    try {
+      const lines = await storage.getDocumentLines(req.params.docId);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch document lines" });
+    }
+  });
+
+  app.post("/api/finance/document-lines", async (req, res) => {
+    try {
+      const validatedData = insertDocumentLineSchema.parse(req.body);
+      const line = await storage.createDocumentLine(validatedData);
+      res.status(201).json(line);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid line data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create document line" });
+    }
+  });
+
+  app.put("/api/finance/document-lines/:id", async (req, res) => {
+    try {
+      const validatedData = insertDocumentLineSchema.partial().parse(req.body);
+      const line = await storage.updateDocumentLine(req.params.id, validatedData);
+      if (!line) return res.status(404).json({ message: "Line not found" });
+      res.json(line);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid line data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update document line" });
+    }
+  });
+
+  app.delete("/api/finance/document-lines/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteDocumentLine(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Line not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document line" });
+    }
+  });
+
+  // Payments
+  app.get("/api/finance/payments", async (req, res) => {
+    try {
+      const payments = await storage.getPayments();
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  app.get("/api/finance/payments/party/:partyId", async (req, res) => {
+    try {
+      const payments = await storage.getPaymentsByParty(req.params.partyId);
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payments by party" });
+    }
+  });
+
+  app.get("/api/finance/payments/:id", async (req, res) => {
+    try {
+      const payment = await storage.getPayment(req.params.id);
+      if (!payment) return res.status(404).json({ message: "Payment not found" });
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payment" });
+    }
+  });
+
+  app.post("/api/finance/payments", async (req, res) => {
+    try {
+      const validatedData = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(validatedData);
+      res.status(201).json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid payment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  app.put("/api/finance/payments/:id", async (req, res) => {
+    try {
+      const validatedData = insertPaymentSchema.partial().parse(req.body);
+      const payment = await storage.updatePayment(req.params.id, validatedData);
+      if (!payment) return res.status(404).json({ message: "Payment not found" });
+      res.json(payment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid payment data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update payment" });
+    }
+  });
+
+  app.delete("/api/finance/payments/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deletePayment(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Payment not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete payment" });
+    }
+  });
+
+  // GL Journals
+  app.get("/api/finance/gl-journals", async (req, res) => {
+    try {
+      const journals = await storage.getGlJournals();
+      res.json(journals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch GL journals" });
+    }
+  });
+
+  app.get("/api/finance/gl-journals/period/:periodId", async (req, res) => {
+    try {
+      const journals = await storage.getGlJournalsByPeriod(req.params.periodId);
+      res.json(journals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch journals by period" });
+    }
+  });
+
+  app.get("/api/finance/gl-journals/:id", async (req, res) => {
+    try {
+      const journal = await storage.getGlJournal(req.params.id);
+      if (!journal) return res.status(404).json({ message: "Journal not found" });
+      res.json(journal);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch journal" });
+    }
+  });
+
+  app.post("/api/finance/gl-journals", async (req, res) => {
+    try {
+      const validatedData = insertGlJournalSchema.parse(req.body);
+      const journal = await storage.createGlJournal(validatedData);
+      res.status(201).json(journal);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid journal data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create journal" });
+    }
+  });
+
+  app.put("/api/finance/gl-journals/:id", async (req, res) => {
+    try {
+      const validatedData = insertGlJournalSchema.partial().parse(req.body);
+      const journal = await storage.updateGlJournal(req.params.id, validatedData);
+      if (!journal) return res.status(404).json({ message: "Journal not found" });
+      res.json(journal);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid journal data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update journal" });
+    }
+  });
+
+  app.delete("/api/finance/gl-journals/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteGlJournal(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Journal not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete journal" });
+    }
+  });
+
+  // GL Journal Lines
+  app.get("/api/finance/gl-journals/:journalId/lines", async (req, res) => {
+    try {
+      const lines = await storage.getGlJournalLines(req.params.journalId);
+      res.json(lines);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch journal lines" });
+    }
+  });
+
+  app.post("/api/finance/gl-journal-lines", async (req, res) => {
+    try {
+      const validatedData = insertGlJournalLineSchema.parse(req.body);
+      const line = await storage.createGlJournalLine(validatedData);
+      res.status(201).json(line);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid line data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create journal line" });
+    }
+  });
+
+  app.put("/api/finance/gl-journal-lines/:id", async (req, res) => {
+    try {
+      const validatedData = insertGlJournalLineSchema.partial().parse(req.body);
+      const line = await storage.updateGlJournalLine(req.params.id, validatedData);
+      if (!line) return res.status(404).json({ message: "Line not found" });
+      res.json(line);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid line data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update journal line" });
+    }
+  });
+
+  app.delete("/api/finance/gl-journal-lines/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteGlJournalLine(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Line not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete journal line" });
+    }
+  });
+
+  // Finance Analytics
+  app.get("/api/finance/analytics/account-balance/:accountId", async (req, res) => {
+    try {
+      const balance = await storage.getAccountBalance(req.params.accountId);
+      res.json(balance);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch account balance" });
+    }
+  });
+
+  app.get("/api/finance/analytics/trial-balance/:periodId", async (req, res) => {
+    try {
+      const trialBalance = await storage.getTrialBalance(req.params.periodId);
+      res.json(trialBalance);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch trial balance" });
+    }
+  });
+
+  app.get("/api/finance/analytics/aging-report/:partyType", async (req, res) => {
+    try {
+      const aging = await storage.getAgingReport(req.params.partyType);
+      res.json(aging);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch aging report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
