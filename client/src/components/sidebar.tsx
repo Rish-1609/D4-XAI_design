@@ -64,6 +64,7 @@ const menuItems = [
       { label: "Production Orders",    href: "/production-orders" },
       { label: "Equipment Management", href: "/master-equipment" },
       { label: "Material Master",      href: "/master-material" },
+      { label: "Handling Units",       href: "/inventory-master" },
     ],
   },
   {
@@ -73,7 +74,6 @@ const menuItems = [
     submenu: [
       { label: "Stock Overview",        href: "/inventory-overview" },
       { label: "Transactions & Movements", href: "/inventory-transactions" },
-      { label: "Handling Units",        href: "/inventory-master" },
       { label: "Barcode Registry",      href: "/inventory-barcodes" },
       { label: "RFID Monitoring",       href: "/inventory-rfid" },
       { label: "Exceptions",            href: "/inventory-exceptions" },
