@@ -1,0 +1,275 @@
+Build this as one connected Inventory Traceability System inside D4.
+
+1. What the system should be
+
+One unified system where:
+
+materials are created in master data
+locations are defined in a warehouse hierarchy
+pallets/cartons/items get an identity
+barcode and RFID both map to that identity
+every scan is validated against business rules
+valid scans post inventory movements
+stock balances and traceability history update automatically
+
+Do not build RFID as a separate standalone module.
+
+2. Main building blocks
+A. Master data
+
+Build:
+
+Material Master
+Supplier Master
+Location Master
+User / Operator Master
+B. Location hierarchy
+
+Build proper hierarchy:
+
+plant
+warehouse
+room / area
+zone
+rack
+shelf
+bin
+dock door
+C. Handling unit hierarchy
+
+Build:
+
+item
+carton
+pallet
+tote/bin
+
+This is important because scans should usually track a handling unit, not just raw material code.
+
+D. Identity layer
+
+Each inventory object should support:
+
+material code
+batch / lot
+serial if needed
+handling unit ID
+barcode value
+RFID EPC
+
+Barcode and RFID must point to the same business object.
+
+E. Inventory engine
+
+Build the movement and stock logic:
+
+stock in
+putaway
+internal transfer
+issue to production
+production receipt
+stock out
+QC hold / release
+cycle count adjustment
+F. Traceability + monitoring
+
+Build:
+
+barcode registry
+RFID registry
+movement history
+scan log
+exception log
+reader health
+zone activity
+3. Correct logic flow
+
+The system should always work like this:
+
+create object → assign barcode/RFID → scan/input → resolve object → validate → post movement → update stock → save history
+
+Not:
+scan → show event on dashboard
+
+4. How identities should work
+Barcode
+
+D4 should generate barcode values.
+
+RFID
+
+RFID tag EPC should be assigned and mapped in D4.
+
+Printer
+
+Barcode printers should be supported because you will need labels for:
+
+inbound relabeling
+internal pallet/carton creation
+production output
+repacking
+damaged label reprint
+
+Rule:
+
+D4 creates the identity
+printer prints the label
+RFID maps to the same identity
+
+Best practice:
+Use handling unit ID as the main barcode key.
+
+Example:
+
+Handling Unit = PALT-00045
+Material = RM001
+Batch = BT-2024-001
+Barcode = PALT-00045
+RFID EPC = 02180C000625
+5. Barcode vs RFID logic
+Barcode
+
+Use for operator-confirmed actions:
+
+receiving
+putaway
+transfer
+issue
+dispatch
+count
+hold / release
+RFID
+
+Use for automated detection:
+
+dock entry/exit
+zone movement
+bulk visibility
+location detection
+unauthorized movement alerts
+Combined rule
+barcode = confirmation
+RFID = automated visibility
+both update the same inventory engine
+6. Main transactions to build
+
+Build these screens and backend flows:
+
+Receive Inventory
+Putaway
+Internal Transfer
+Issue to Production
+Production Receipt
+Dispatch / Stock Out
+QC Hold / Release
+Cycle Count / Adjustment
+Reprint / Print Label
+7. Required core tables
+
+Build at least these:
+
+Master
+materials
+suppliers
+locations
+users
+readers
+printers
+Traceability
+lots_batches
+serials
+handling_units
+barcodes
+RFID_tags
+tag_assignments
+Inventory
+inventory_balance
+inventory_by_location
+inventory_ledger
+Events
+scan_events_raw
+movement_events
+exception_events
+audit_trail
+print_jobs
+Document references
+purchase_orders
+purchase_order_lines
+transfer_orders
+production_orders
+shipment_orders
+qc_transactions
+8. Required validations
+
+Before any movement is posted, validate:
+
+scanned object exists
+barcode/tag is active
+quantity is available
+batch/serial is valid
+location is correct
+destination is allowed
+linked document is correct
+stock is not on hold
+no duplicate movement is being posted
+
+If invalid, create an exception. Do not update stock.
+
+9. Pages to build
+Inventory master
+materials
+locations
+handling units
+Transactions
+receive
+putaway
+transfer
+issue
+production receipt
+dispatch
+hold/release
+count
+Traceability
+barcode registry
+RFID registry
+batch / lot traceability
+handling unit registry
+Monitoring
+reader health
+live scan feed
+zone activity
+recent events
+Exceptions
+unknown tag
+wrong zone
+wrong batch
+duplicate scan
+shipment mismatch
+hold violation
+History
+movement ledger
+audit trail
+10. What to do with current RFID mockup
+
+Keep it, but make it a monitoring layer, not the main logic layer.
+
+Keep
+readers
+tag registry
+scan events
+zone activity
+movement log
+Change
+
+Rename it to:
+
+Inventory Traceability
+or
+Barcode & RFID Tracking
+Add
+document-linked movement logic
+handling unit linkage
+batch/lot linkage
+barcode printing
+transaction integration
+exception handling

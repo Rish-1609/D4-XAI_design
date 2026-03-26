@@ -1306,6 +1306,82 @@ export const financeAuditLogs = pgTable("finance_audit_logs", {
   notes: text("notes"),
 });
 
+// ==================== INVENTORY TRACEABILITY SYSTEM ====================
+
+// Handling Units - physical containers (pallets, cartons, items, totes)
+export const handlingUnits = pgTable("handling_units", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  huCode: text("hu_code").notNull().unique(), // e.g. PALT-00045, CART-00123
+  huType: text("hu_type").notNull(), // 'pallet', 'carton', 'item', 'tote'
+  parentHuId: varchar("parent_hu_id"), // self-reference for nesting
+  materialCode: text("material_code"),
+  materialName: text("material_name"),
+  batchNumber: text("batch_number"),
+  lotNumber: text("lot_number"),
+  serialNumber: text("serial_number"),
+  quantity: decimal("quantity").default('0'),
+  uom: text("uom").default('units'),
+  currentLocationCode: text("current_location_code"),
+  currentLocationName: text("current_location_name"),
+  status: text("status").notNull().default('available'), // 'available','in-transit','dispatched','scrapped','on-hold','qc-hold'
+  barcodeValue: text("barcode_value").unique(),
+  rfidEpc: text("rfid_epc"),
+  supplierName: text("supplier_name"),
+  receivedDate: timestamp("received_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Barcodes - registry of all generated barcodes
+export const barcodes = pgTable("barcodes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  barcodeValue: text("barcode_value").notNull().unique(),
+  barcodeType: text("barcode_type").notNull(), // 'HU', 'material', 'location', 'batch'
+  linkedHuId: varchar("linked_hu_id").references(() => handlingUnits.id),
+  linkedHuCode: text("linked_hu_code"),
+  materialCode: text("material_code"),
+  batchNumber: text("batch_number"),
+  status: text("status").notNull().default('active'), // 'active', 'inactive', 'reprinted'
+  printedAt: timestamp("printed_at"),
+  printedBy: text("printed_by"),
+  labelType: text("label_type"), // 'pallet', 'carton', 'item', 'location'
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Scan Exceptions - invalid or unresolved scan events
+export const scanExceptions = pgTable("scan_exceptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  exceptionNumber: text("exception_number").notNull().unique(),
+  exceptionType: text("exception_type").notNull(), // 'unknown_tag','wrong_location','wrong_batch','duplicate_scan','no_shipment','hold_violation','inactive_tag','quantity_mismatch'
+  scanType: text("scan_type").notNull().default('rfid'), // 'barcode', 'rfid', 'manual'
+  scannedValue: text("scanned_value"), // the barcode value or RFID EPC that triggered this
+  readerId: varchar("reader_id"),
+  locationCode: text("location_code"),
+  locationName: text("location_name"),
+  materialCode: text("material_code"),
+  batchNumber: text("batch_number"),
+  description: text("description").notNull(),
+  resolvedStatus: text("resolved_status").notNull().default('open'), // 'open', 'resolved', 'ignored'
+  resolvedBy: text("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  notes: text("notes"),
+  scannedAt: timestamp("scanned_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertHandlingUnitSchema = createInsertSchema(handlingUnits).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBarcodeSchema = createInsertSchema(barcodes).omit({ id: true, createdAt: true });
+export const insertScanExceptionSchema = createInsertSchema(scanExceptions).omit({ id: true, createdAt: true });
+
+export type InsertHandlingUnit = z.infer<typeof insertHandlingUnitSchema>;
+export type HandlingUnit = typeof handlingUnits.$inferSelect;
+export type InsertBarcode = z.infer<typeof insertBarcodeSchema>;
+export type Barcode = typeof barcodes.$inferSelect;
+export type InsertScanException = z.infer<typeof insertScanExceptionSchema>;
+export type ScanException = typeof scanExceptions.$inferSelect;
+
 // ==================== RFID INVENTORY TRACKING ====================
 
 // RFID Zones - Areas monitored by RFID scanners

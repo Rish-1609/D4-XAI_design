@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomItemSchema, insertInventoryItemSchema, insertInventoryTransactionSchema, insertCapaSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema, insertChartOfAccountsSchema, insertCostCenterSchema, insertProfitCenterSchema, insertTaxCodeSchema, insertPaymentTermsSchema, insertFiscalYearSchema, insertFiscalPeriodSchema, insertPartySchema, insertFinancialDocumentSchema, insertDocumentLineSchema, insertPaymentSchema, insertGlJournalSchema, insertGlJournalLineSchema, insertRfidZoneSchema, insertRfidReaderSchema, insertRfidTagSchema, insertRfidEventSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomItemSchema, insertInventoryItemSchema, insertInventoryTransactionSchema, insertCapaSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema, insertChartOfAccountsSchema, insertCostCenterSchema, insertProfitCenterSchema, insertTaxCodeSchema, insertPaymentTermsSchema, insertFiscalYearSchema, insertFiscalPeriodSchema, insertPartySchema, insertFinancialDocumentSchema, insertDocumentLineSchema, insertPaymentSchema, insertGlJournalSchema, insertGlJournalLineSchema, insertRfidZoneSchema, insertRfidReaderSchema, insertRfidTagSchema, insertRfidEventSchema, insertHandlingUnitSchema, insertBarcodeSchema, insertScanExceptionSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -3196,6 +3196,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid event data", errors: error.errors });
       res.status(500).json({ message: "Failed to create event" });
     }
+  });
+
+  // ==================== INVENTORY TRACEABILITY ROUTES ====================
+
+  // Traceability stats
+  app.get("/api/traceability/stats", async (req, res) => {
+    try { res.json(await storage.getTraceabilityStats()); }
+    catch { res.status(500).json({ message: "Failed to get stats" }); }
+  });
+
+  // Handling Units
+  app.get("/api/traceability/handling-units", async (req, res) => {
+    try { res.json(await storage.getHandlingUnits()); }
+    catch { res.status(500).json({ message: "Failed to get handling units" }); }
+  });
+
+  app.get("/api/traceability/handling-units/:id", async (req, res) => {
+    try {
+      const hu = await storage.getHandlingUnit(req.params.id);
+      if (!hu) return res.status(404).json({ message: "Handling unit not found" });
+      res.json(hu);
+    } catch { res.status(500).json({ message: "Failed to get handling unit" }); }
+  });
+
+  app.post("/api/traceability/handling-units", async (req, res) => {
+    try {
+      const data = insertHandlingUnitSchema.parse(req.body);
+      res.status(201).json(await storage.createHandlingUnit(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create handling unit" });
+    }
+  });
+
+  app.put("/api/traceability/handling-units/:id", async (req, res) => {
+    try {
+      const data = insertHandlingUnitSchema.partial().parse(req.body);
+      const hu = await storage.updateHandlingUnit(req.params.id, data);
+      if (!hu) return res.status(404).json({ message: "Not found" });
+      res.json(hu);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      res.status(500).json({ message: "Failed to update handling unit" });
+    }
+  });
+
+  app.delete("/api/traceability/handling-units/:id", async (req, res) => {
+    try {
+      const ok = await storage.deleteHandlingUnit(req.params.id);
+      if (!ok) return res.status(404).json({ message: "Not found" });
+      res.json({ success: true });
+    } catch { res.status(500).json({ message: "Failed to delete" }); }
+  });
+
+  // Barcodes
+  app.get("/api/traceability/barcodes", async (req, res) => {
+    try { res.json(await storage.getBarcodes()); }
+    catch { res.status(500).json({ message: "Failed to get barcodes" }); }
+  });
+
+  app.post("/api/traceability/barcodes", async (req, res) => {
+    try {
+      const data = insertBarcodeSchema.parse(req.body);
+      res.status(201).json(await storage.createBarcode(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create barcode" });
+    }
+  });
+
+  app.put("/api/traceability/barcodes/:id", async (req, res) => {
+    try {
+      const data = insertBarcodeSchema.partial().parse(req.body);
+      const bc = await storage.updateBarcode(req.params.id, data);
+      if (!bc) return res.status(404).json({ message: "Not found" });
+      res.json(bc);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      res.status(500).json({ message: "Failed to update barcode" });
+    }
+  });
+
+  // Scan Exceptions
+  app.get("/api/traceability/exceptions", async (req, res) => {
+    try { res.json(await storage.getScanExceptions()); }
+    catch { res.status(500).json({ message: "Failed to get exceptions" }); }
+  });
+
+  app.post("/api/traceability/exceptions", async (req, res) => {
+    try {
+      const data = insertScanExceptionSchema.parse(req.body);
+      res.status(201).json(await storage.createScanException(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create exception" });
+    }
+  });
+
+  app.put("/api/traceability/exceptions/:id/resolve", async (req, res) => {
+    try {
+      const { resolvedBy, notes } = req.body;
+      if (!resolvedBy) return res.status(400).json({ message: "resolvedBy is required" });
+      const ex = await storage.resolveScanException(req.params.id, resolvedBy, notes);
+      if (!ex) return res.status(404).json({ message: "Exception not found" });
+      res.json(ex);
+    } catch { res.status(500).json({ message: "Failed to resolve exception" }); }
   });
 
   const httpServer = createServer(app);

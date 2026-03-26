@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent, type HandlingUnit, type InsertHandlingUnit, type Barcode, type InsertBarcode, type ScanException, type InsertScanException } from "@shared/schema";
 
 // Legacy type aliases for compatibility
 type CapaAction = any;
@@ -397,6 +397,28 @@ export interface IStorage {
   getRfidEventsByZone(zoneId: string): Promise<RfidEvent[]>;
   createRfidEvent(event: InsertRfidEvent): Promise<RfidEvent>;
   getRfidStats(): Promise<{ totalReaders: number; onlineReaders: number; activeTags: number; todayEvents: number; inboundToday: number; outboundToday: number; }>;
+
+  // Handling Unit operations
+  getHandlingUnits(): Promise<HandlingUnit[]>;
+  getHandlingUnit(id: string): Promise<HandlingUnit | undefined>;
+  getHandlingUnitByCode(huCode: string): Promise<HandlingUnit | undefined>;
+  createHandlingUnit(hu: InsertHandlingUnit): Promise<HandlingUnit>;
+  updateHandlingUnit(id: string, data: Partial<InsertHandlingUnit>): Promise<HandlingUnit | undefined>;
+  deleteHandlingUnit(id: string): Promise<boolean>;
+
+  // Barcode operations
+  getBarcodes(): Promise<Barcode[]>;
+  getBarcode(id: string): Promise<Barcode | undefined>;
+  getBarcodeByValue(value: string): Promise<Barcode | undefined>;
+  createBarcode(barcode: InsertBarcode): Promise<Barcode>;
+  updateBarcode(id: string, data: Partial<InsertBarcode>): Promise<Barcode | undefined>;
+
+  // Scan Exception operations
+  getScanExceptions(): Promise<ScanException[]>;
+  getScanException(id: string): Promise<ScanException | undefined>;
+  createScanException(exception: InsertScanException): Promise<ScanException>;
+  resolveScanException(id: string, resolvedBy: string, notes?: string): Promise<ScanException | undefined>;
+  getTraceabilityStats(): Promise<{ totalHUs: number; activeBarcodes: number; openExceptions: number; totalMovements: number; }>;
 }
 
 export class MemStorage implements IStorage {
@@ -469,6 +491,11 @@ export class MemStorage implements IStorage {
   private rfidTagsMap: Map<string, RfidTag>;
   private rfidEventsMap: Map<string, RfidEvent>;
 
+  // Traceability data stores
+  private handlingUnitsMap: Map<string, HandlingUnit>;
+  private barcodesMap: Map<string, Barcode>;
+  private scanExceptionsMap: Map<string, ScanException>;
+
   constructor() {
     this.materials = new Map();
     this.testConfigs = new Map();
@@ -538,10 +565,16 @@ export class MemStorage implements IStorage {
     this.rfidReadersMap = new Map();
     this.rfidTagsMap = new Map();
     this.rfidEventsMap = new Map();
+
+    // Initialize Traceability data stores
+    this.handlingUnitsMap = new Map();
+    this.barcodesMap = new Map();
+    this.scanExceptionsMap = new Map();
     
     this.initializeDummyData().catch(console.error);
     this.initializeFinanceData().catch(console.error);
     this.initializeRfidData().catch(console.error);
+    this.initializeTraceabilityData().catch(console.error);
   }
 
   async getMaterials(): Promise<Material[]> {
@@ -5317,6 +5350,217 @@ export class MemStorage implements IStorage {
       todayEvents: todayEvents.length,
       inboundToday: todayEvents.filter(e => e.eventType === "inbound").length,
       outboundToday: todayEvents.filter(e => e.eventType === "outbound").length,
+    };
+  }
+
+  // ==================== Traceability Implementations ====================
+
+  private async initializeTraceabilityData(): Promise<void> {
+    const now = new Date();
+
+    // Seed Handling Units (pallets/cartons linked to pharma materials)
+    const huData = [
+      { code: "PALT-00001", type: "pallet", matCode: "RM-001", matName: "Paracetamol API", batch: "BT-2024-001", lot: "LOT-001", qty: "500", uom: "kg", loc: "A-01-R01", locName: "Raw Materials Rack A - Shelf 1", status: "available", barcode: "PALT-00001", rfid: "E2000018921802180C006025", supplier: "Pharma APIs Ltd" },
+      { code: "PALT-00002", type: "pallet", matCode: "RM-002", matName: "Microcrystalline Cellulose", batch: "BT-2024-002", lot: "LOT-002", qty: "300", uom: "kg", loc: "A-02-R01", locName: "Raw Materials Rack B - Shelf 1", status: "available", barcode: "PALT-00002", rfid: "E2000018921802180C006026", supplier: "Excipients Corp" },
+      { code: "CART-00010", type: "carton", matCode: "PK-001", matName: "HDPE Bottles 100ml", batch: "PK-2024-001", lot: "LOT-P01", qty: "2000", uom: "units", loc: "B-01-S01", locName: "Packaging Zone - Section 1", status: "available", barcode: "CART-00010", rfid: "E2000018921802180C006028", supplier: "PackPlast India" },
+      { code: "CART-00011", type: "carton", matCode: "PK-002", matName: "Aluminium Blister Foil", batch: "PK-2024-002", lot: "LOT-P02", qty: "5000", uom: "sheets", loc: "B-01-S02", locName: "Packaging Zone - Section 2", status: "available", barcode: "CART-00011", rfid: "E2000018921802180C006029", supplier: "MetalPack Ltd" },
+      { code: "PALT-00003", type: "pallet", matCode: "FG-001", matName: "Paracetamol 500mg Tablets", batch: "FP-2024-001", lot: "LOT-F01", qty: "100000", uom: "units", loc: "C-01-S01", locName: "Finished Goods Zone - Section 1", status: "available", barcode: "PALT-00003", rfid: "E2000018921802180C00602A", supplier: null },
+      { code: "PALT-00004", type: "pallet", matCode: "RM-003", matName: "Magnesium Stearate", batch: "BT-2024-003", lot: "LOT-003", qty: "100", uom: "kg", loc: "D-01", locName: "Cold Storage - Bay 1", status: "qc-hold", barcode: "PALT-00004", rfid: "E2000018921802180C00602C", supplier: "ChemSpec Corp" },
+      { code: "TOTE-00001", type: "tote", matCode: "ART-001", matName: "Package Artwork v3.2", batch: "ART-2024-001", lot: "LOT-A01", qty: "500", uom: "sheets", loc: "B-01-S03", locName: "Packaging Zone - Section 3", status: "available", barcode: "TOTE-00001", rfid: "E2000018921802180C00602D", supplier: "PrintCo" },
+      { code: "PALT-00005", type: "pallet", matCode: "RM-004", matName: "Starch Powder", batch: "BT-2024-004", lot: "LOT-004", qty: "250", uom: "kg", loc: "E-01", locName: "Quarantine Zone", status: "on-hold", barcode: "PALT-00005", rfid: "E2000018921802180C00602E", supplier: "NaturePharma" },
+      { code: "PALT-00006", type: "pallet", matCode: "FG-002", matName: "Ibuprofen 200mg Capsules", batch: "FP-2024-002", lot: "LOT-F02", qty: "80000", uom: "units", loc: "C-01-S02", locName: "Finished Goods Zone - Section 2", status: "available", barcode: "PALT-00006", rfid: "E2000018921802180C00602F", supplier: null },
+      { code: "CART-00012", type: "carton", matCode: "PK-003", matName: "PVC Film Roll", batch: "PK-2024-003", lot: "LOT-P03", qty: "10", uom: "rolls", loc: "B-01-S04", locName: "Packaging Zone - Section 4", status: "available", barcode: "CART-00012", rfid: "E2000018921802180C006030", supplier: "FlexiPack" },
+    ];
+
+    const hus: HandlingUnit[] = huData.map(h => ({
+      id: randomUUID(),
+      huCode: h.code,
+      huType: h.type,
+      parentHuId: null,
+      materialCode: h.matCode,
+      materialName: h.matName,
+      batchNumber: h.batch,
+      lotNumber: h.lot,
+      serialNumber: null,
+      quantity: h.qty,
+      uom: h.uom,
+      currentLocationCode: h.loc,
+      currentLocationName: h.locName,
+      status: h.status,
+      barcodeValue: h.barcode,
+      rfidEpc: h.rfid,
+      supplierName: h.supplier,
+      receivedDate: new Date("2024-04-01"),
+      notes: null,
+      createdAt: new Date("2024-04-01"),
+      updatedAt: now,
+    }));
+    for (const hu of hus) this.handlingUnitsMap.set(hu.id, hu);
+
+    // Seed Barcodes registry
+    const barcodeData = [
+      { val: "PALT-00001", type: "HU", huCode: "PALT-00001", matCode: "RM-001", batch: "BT-2024-001", label: "pallet", printed: new Date("2024-04-01"), by: "Warehouse Operator" },
+      { val: "PALT-00002", type: "HU", huCode: "PALT-00002", matCode: "RM-002", batch: "BT-2024-002", label: "pallet", printed: new Date("2024-04-01"), by: "Warehouse Operator" },
+      { val: "CART-00010", type: "HU", huCode: "CART-00010", matCode: "PK-001", batch: "PK-2024-001", label: "carton", printed: new Date("2024-04-02"), by: "Receiving Desk" },
+      { val: "CART-00011", type: "HU", huCode: "CART-00011", matCode: "PK-002", batch: "PK-2024-002", label: "carton", printed: new Date("2024-04-02"), by: "Receiving Desk" },
+      { val: "PALT-00003", type: "HU", huCode: "PALT-00003", matCode: "FG-001", batch: "FP-2024-001", label: "pallet", printed: new Date("2024-04-10"), by: "Production Team" },
+      { val: "PALT-00004", type: "HU", huCode: "PALT-00004", matCode: "RM-003", batch: "BT-2024-003", label: "pallet", printed: new Date("2024-04-03"), by: "Warehouse Operator" },
+      { val: "TOTE-00001", type: "HU", huCode: "TOTE-00001", matCode: "ART-001", batch: "ART-2024-001", label: "carton", printed: new Date("2024-04-05"), by: "Warehouse Operator" },
+      { val: "PALT-00005", type: "HU", huCode: "PALT-00005", matCode: "RM-004", batch: "BT-2024-004", label: "pallet", printed: new Date("2024-04-06"), by: "Receiving Desk" },
+      { val: "PALT-00006", type: "HU", huCode: "PALT-00006", matCode: "FG-002", batch: "FP-2024-002", label: "pallet", printed: new Date("2024-04-12"), by: "Production Team" },
+      { val: "CART-00012", type: "HU", huCode: "CART-00012", matCode: "PK-003", batch: "PK-2024-003", label: "carton", printed: new Date("2024-04-07"), by: "Receiving Desk" },
+      { val: "LOC-ZONE-RM-A", type: "location", huCode: null, matCode: null, batch: null, label: "location", printed: new Date("2024-01-10"), by: "System" },
+      { val: "LOC-ZONE-FG", type: "location", huCode: null, matCode: null, batch: null, label: "location", printed: new Date("2024-01-10"), by: "System" },
+    ];
+
+    const huCodeToId = Object.fromEntries(hus.map(h => [h.huCode, h.id]));
+    const barcodeRecs: Barcode[] = barcodeData.map(b => ({
+      id: randomUUID(),
+      barcodeValue: b.val,
+      barcodeType: b.type,
+      linkedHuId: b.huCode ? (huCodeToId[b.huCode] || null) : null,
+      linkedHuCode: b.huCode,
+      materialCode: b.matCode,
+      batchNumber: b.batch,
+      status: "active",
+      printedAt: b.printed,
+      printedBy: b.by,
+      labelType: b.label,
+      notes: null,
+      createdAt: b.printed,
+    }));
+    for (const bc of barcodeRecs) this.barcodesMap.set(bc.id, bc);
+
+    // Seed Scan Exceptions
+    const exTypes = [
+      { type: "unknown_tag", scan: "rfid", val: "E200001892AA0000DEADBEEF", loc: "ZONE-DOOR-IN", locName: "Inbound Dock", desc: "RFID EPC not registered in tag registry", mat: null, batch: null },
+      { type: "wrong_location", scan: "barcode", val: "PALT-00004", loc: "ZONE-FG", locName: "Finished Goods Zone", desc: "QC-held pallet PALT-00004 scanned at FG zone — movement blocked", mat: "RM-003", batch: "BT-2024-003" },
+      { type: "hold_violation", scan: "rfid", val: "E2000018921802180C00602E", loc: "ZONE-DOOR-OUT", locName: "Outbound Dock", desc: "On-hold pallet attempted outbound scan without QC release", mat: "RM-004", batch: "BT-2024-004" },
+      { type: "duplicate_scan", scan: "barcode", val: "CART-00010", loc: "ZONE-RM-A", locName: "Raw Materials Rack A", desc: "Barcode CART-00010 scanned twice within 5 minutes — possible double receive", mat: "PK-001", batch: "PK-2024-001" },
+      { type: "no_shipment", scan: "rfid", val: "E2000018921802180C00602F", loc: "ZONE-DOOR-OUT", locName: "Outbound Dock", desc: "RFID tag detected at outbound dock but no active shipment order found", mat: "FG-002", batch: "FP-2024-002" },
+      { type: "wrong_batch", scan: "barcode", val: "PALT-00002", loc: "ZONE-RM-A", locName: "Raw Materials Rack A", desc: "Scanned batch BT-2024-002 does not match production order requirement BT-2024-001", mat: "RM-002", batch: "BT-2024-002" },
+    ];
+
+    let excCounter = 1;
+    const exceptions: ScanException[] = exTypes.map(e => ({
+      id: randomUUID(),
+      exceptionNumber: `EXC-${String(excCounter++).padStart(5, "0")}`,
+      exceptionType: e.type,
+      scanType: e.scan,
+      scannedValue: e.val,
+      readerId: null,
+      locationCode: e.loc,
+      locationName: e.locName,
+      materialCode: e.mat,
+      batchNumber: e.batch,
+      description: e.desc,
+      resolvedStatus: excCounter <= 3 ? "open" : excCounter === 4 ? "resolved" : "open",
+      resolvedBy: excCounter === 4 ? "QC Manager" : null,
+      resolvedAt: excCounter === 4 ? new Date("2024-04-08") : null,
+      notes: null,
+      scannedAt: new Date(now.getTime() - (excCounter * 3600000 * 8)),
+      createdAt: new Date(now.getTime() - (excCounter * 3600000 * 8)),
+    }));
+    for (const ex of exceptions) this.scanExceptionsMap.set(ex.id, ex);
+  }
+
+  // Handling Unit implementations
+  async getHandlingUnits(): Promise<HandlingUnit[]> {
+    return Array.from(this.handlingUnitsMap.values()).sort((a, b) => a.huCode.localeCompare(b.huCode));
+  }
+
+  async getHandlingUnit(id: string): Promise<HandlingUnit | undefined> {
+    return this.handlingUnitsMap.get(id);
+  }
+
+  async getHandlingUnitByCode(huCode: string): Promise<HandlingUnit | undefined> {
+    return Array.from(this.handlingUnitsMap.values()).find(h => h.huCode === huCode);
+  }
+
+  async createHandlingUnit(data: InsertHandlingUnit): Promise<HandlingUnit> {
+    const id = randomUUID();
+    const now = new Date();
+    const hu: HandlingUnit = { ...data, id, parentHuId: data.parentHuId || null, materialCode: data.materialCode || null, materialName: data.materialName || null, batchNumber: data.batchNumber || null, lotNumber: data.lotNumber || null, serialNumber: data.serialNumber || null, quantity: data.quantity || "0", uom: data.uom || "units", currentLocationCode: data.currentLocationCode || null, currentLocationName: data.currentLocationName || null, status: data.status || "available", barcodeValue: data.barcodeValue || null, rfidEpc: data.rfidEpc || null, supplierName: data.supplierName || null, receivedDate: data.receivedDate || null, notes: data.notes || null, createdAt: now, updatedAt: now };
+    this.handlingUnitsMap.set(id, hu);
+    return hu;
+  }
+
+  async updateHandlingUnit(id: string, data: Partial<InsertHandlingUnit>): Promise<HandlingUnit | undefined> {
+    const existing = this.handlingUnitsMap.get(id);
+    if (!existing) return undefined;
+    const updated: HandlingUnit = { ...existing, ...data, updatedAt: new Date() };
+    this.handlingUnitsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteHandlingUnit(id: string): Promise<boolean> {
+    return this.handlingUnitsMap.delete(id);
+  }
+
+  // Barcode implementations
+  async getBarcodes(): Promise<Barcode[]> {
+    return Array.from(this.barcodesMap.values()).sort((a, b) => a.barcodeValue.localeCompare(b.barcodeValue));
+  }
+
+  async getBarcode(id: string): Promise<Barcode | undefined> {
+    return this.barcodesMap.get(id);
+  }
+
+  async getBarcodeByValue(value: string): Promise<Barcode | undefined> {
+    return Array.from(this.barcodesMap.values()).find(b => b.barcodeValue === value);
+  }
+
+  async createBarcode(data: InsertBarcode): Promise<Barcode> {
+    const id = randomUUID();
+    const now = new Date();
+    const bc: Barcode = { ...data, id, linkedHuId: data.linkedHuId || null, linkedHuCode: data.linkedHuCode || null, materialCode: data.materialCode || null, batchNumber: data.batchNumber || null, status: data.status || "active", printedAt: data.printedAt || now, printedBy: data.printedBy || null, labelType: data.labelType || null, notes: data.notes || null, createdAt: now };
+    this.barcodesMap.set(id, bc);
+    return bc;
+  }
+
+  async updateBarcode(id: string, data: Partial<InsertBarcode>): Promise<Barcode | undefined> {
+    const existing = this.barcodesMap.get(id);
+    if (!existing) return undefined;
+    const updated: Barcode = { ...existing, ...data };
+    this.barcodesMap.set(id, updated);
+    return updated;
+  }
+
+  // Scan Exception implementations
+  async getScanExceptions(): Promise<ScanException[]> {
+    return Array.from(this.scanExceptionsMap.values()).sort((a, b) => new Date(b.scannedAt!).getTime() - new Date(a.scannedAt!).getTime());
+  }
+
+  async getScanException(id: string): Promise<ScanException | undefined> {
+    return this.scanExceptionsMap.get(id);
+  }
+
+  async createScanException(data: InsertScanException): Promise<ScanException> {
+    const id = randomUUID();
+    const now = new Date();
+    const ex: ScanException = { ...data, id, readerId: data.readerId || null, locationCode: data.locationCode || null, locationName: data.locationName || null, materialCode: data.materialCode || null, batchNumber: data.batchNumber || null, resolvedStatus: data.resolvedStatus || "open", resolvedBy: data.resolvedBy || null, resolvedAt: data.resolvedAt || null, notes: data.notes || null, scannedAt: data.scannedAt || now, scannedValue: data.scannedValue || null, createdAt: now };
+    this.scanExceptionsMap.set(id, ex);
+    return ex;
+  }
+
+  async resolveScanException(id: string, resolvedBy: string, notes?: string): Promise<ScanException | undefined> {
+    const existing = this.scanExceptionsMap.get(id);
+    if (!existing) return undefined;
+    const updated: ScanException = { ...existing, resolvedStatus: "resolved", resolvedBy, resolvedAt: new Date(), notes: notes || existing.notes };
+    this.scanExceptionsMap.set(id, updated);
+    return updated;
+  }
+
+  async getTraceabilityStats(): Promise<{ totalHUs: number; activeBarcodes: number; openExceptions: number; totalMovements: number; }> {
+    const hus = Array.from(this.handlingUnitsMap.values());
+    const barcodes = Array.from(this.barcodesMap.values());
+    const exceptions = Array.from(this.scanExceptionsMap.values());
+    const movements = Array.from(this.stockMovements.values()).flat();
+    return {
+      totalHUs: hus.length,
+      activeBarcodes: barcodes.filter(b => b.status === "active").length,
+      openExceptions: exceptions.filter(e => e.resolvedStatus === "open").length,
+      totalMovements: movements.length,
     };
   }
 }

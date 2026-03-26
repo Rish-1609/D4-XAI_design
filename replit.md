@@ -55,7 +55,7 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Monitoring**: Live updates for material status and quality metrics
 - **Search and Filter**: Category-based filtering and material type organization
 - **Inventory Tracking**: Stock level management integrated with material records
-- **RFID Inventory Tracking**: Real-time RFID scanner monitoring across warehouse zones — readers (Zebra, Impinj, Alien, Honeywell), tag registry, inbound/outbound movement log, zone activity map. Routes: `/rfid-tracking`. API: `/api/rfid/*` (zones, readers, tags, events, stats)
+- **Inventory Traceability System**: Unified barcode + RFID tracking covering the full material lifecycle. Routes: `/inventory-traceability`. APIs: `/api/traceability/*` (handling-units, barcodes, exceptions, stats) + `/api/rfid/*` (zones, readers, tags, events, stats). Features: 5-tab page — Transactions (8 movement types: receive, putaway, transfer, issue, production receipt, dispatch, QC hold/release, cycle count), Traceability (handling unit registry, barcode registry), RFID Monitoring (reader health, zone map, live scan feed, tag registry), Exceptions (scan exception workbench with resolve workflow), Ledger (full movement audit trail). Schema: handlingUnits (pallets/cartons/items/totes with barcode+RFID identity), barcodes (barcode registry), scanExceptions (invalid scan log). Seeded with 10 handling units, 12 barcodes, 6 scan exceptions.
 - **Finance Management**: Full AP/AR, manufacturing cost tracking, GL journals, budget, and ledger insights. Routes: `/finance-setup`, `/finance-transactions`, `/finance-manufacturing`, `/finance-ledger`
 - **Audit Trail**: Creation and update timestamps for compliance tracking
 

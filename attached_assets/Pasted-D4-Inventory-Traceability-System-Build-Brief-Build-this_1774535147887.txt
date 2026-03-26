@@ -1,0 +1,461 @@
+D4 Inventory Traceability System Build Brief
+
+Build this as a working inventory traceability system, not a standalone RFID dashboard.
+
+1. Goal
+
+Create a unified Barcode + RFID Inventory Tracking system inside the Inventory module that supports:
+
+inbound receipt
+putaway
+internal transfers
+issue to production
+production receipt
+outbound / dispatch
+QC hold / release
+cycle count / stock adjustment
+full material traceability
+
+RFID and barcode must both feed the same inventory logic.
+
+2. Core principle
+
+Do not build RFID as a separate standalone feature.
+
+Build one common engine:
+
+barcode scan
+RFID scan
+manual entry
+API event
+
+All of these should create or validate the same inventory movements.
+
+3. Main modules to build
+A. Material Master
+
+Store:
+
+material code
+material name
+category
+UOM
+supplier
+batch managed yes/no
+serial managed yes/no
+barcode enabled yes/no
+RFID enabled yes/no
+status
+B. Location Hierarchy
+
+Create location master with hierarchy:
+
+plant
+warehouse
+room / storage area
+zone
+rack
+shelf
+bin
+dock door
+
+Every scan must map to one valid location.
+
+C. Handling Unit / Packaging Hierarchy
+
+Track:
+
+item
+carton
+pallet
+tote / bin
+
+Support parent-child mapping:
+
+pallet contains cartons
+carton contains items / lots
+D. Identity Registry
+
+Support mapping between:
+
+material code
+batch / lot
+serial
+handling unit ID
+barcode value
+RFID EPC
+
+Each scanned barcode or RFID must resolve to one business object.
+
+E. Inventory Ledger
+
+Every confirmed movement must post to a ledger.
+
+Store:
+
+movement type
+material
+batch / serial
+quantity
+from location
+to location
+source document
+source type = barcode / RFID / manual / API
+timestamp
+performed by
+F. Exception Log
+
+Track:
+
+unknown barcode / tag
+wrong location
+wrong batch
+duplicate read
+outbound without shipment
+issue without stock
+inactive tag
+QC hold violation
+4. Required backend tables
+
+Build these minimum tables:
+
+Master
+materials
+suppliers
+locations
+readers
+scanners
+users
+Traceability
+lots_batches
+serials
+handling_units
+barcodes
+RFID_tags
+tag_assignments
+Inventory
+inventory_balance
+inventory_by_location
+inventory_ledger
+Events
+scan_events_raw
+movement_events
+exception_events
+audit_trail
+Document references
+purchase_orders
+purchase_order_lines
+transfer_orders
+production_orders
+shipment_orders
+qc_transactions
+5. Required movement types
+
+Support these movement types:
+
+stock_in
+putaway
+internal_transfer
+issue_to_production
+production_receipt
+stock_out
+return_in
+return_out
+QC_hold
+QC_release
+cycle_count_adjustment
+scrap_adjustment
+6. Barcode logic
+
+Barcode scanning should be used for operator-confirmed transactions.
+
+When barcode is scanned:
+
+read barcode value
+resolve to item / pallet / batch / material
+check current transaction context
+validate location, quantity, status, and document
+post movement if valid
+log exception if invalid
+
+Barcode should support:
+
+receiving
+putaway
+transfer
+issue
+pack
+dispatch
+count
+hold / release
+7. RFID logic
+
+RFID should be used as an automated event source, not as the only truth.
+
+When RFID event is received:
+
+capture raw read
+resolve RFID EPC to mapped object
+resolve reader to location
+infer event type based on rules
+either:
+create informational event
+propose movement
+auto-post confirmed movement if rules allow
+log exception if mapping or rules fail
+
+RFID should support:
+
+dock entry / exit
+zone visibility
+passive movement detection
+bulk movement confirmation
+rapid stock locating
+loss prevention / unauthorized movement alerts
+8. Barcode + RFID combined rule
+
+Use this model:
+
+barcode = transactional confirmation
+RFID = automated visibility and detection
+
+Example:
+
+barcode confirms receipt or issue
+RFID confirms movement through dock / zone
+
+Both must update the same inventory records.
+
+9. Inbound flow
+
+Build inbound like this:
+
+user opens receive screen
+selects PO / ASN
+scans barcode or RFID-tagged handling unit
+system matches material, batch, qty to PO line
+creates stock_in movement
+inventory status becomes received or QC pending
+current location = inbound dock / receiving area
+user can then perform putaway to rack/bin
+
+If supplier labels are missing:
+
+allow D4 to create internal barcode / handling unit
+allow RFID tag assignment
+10. Putaway flow
+user selects received unit
+scans source pallet / carton / item
+scans destination rack / bin
+system validates destination
+posts putaway / internal transfer
+updates current location
+11. Internal transfer flow
+user selects transfer action
+scans source inventory object
+scans destination location
+validates stock exists and is movable
+posts internal_transfer
+updates inventory by location
+12. Issue to production flow
+user opens production issue
+selects production order
+scans pallet / carton / item
+validates material and batch against production order
+posts issue_to_production
+deducts stock from warehouse location
+updates traceability history
+13. Production receipt flow
+user opens production receipt
+selects production order
+creates finished goods batch / lot
+creates barcode / handling unit
+optionally assigns RFID tag
+posts production_receipt
+updates finished goods inventory
+14. Outbound / dispatch flow
+user opens shipment / dispatch
+selects shipment order
+scans pallet / carton / item
+validates right material, batch, qty, location
+posts stock_out
+if RFID reader detects exit at dock, log confirmation
+if tag seen at outbound dock without shipment, raise exception
+15. QC hold / release flow
+
+Support:
+
+hold stock
+release stock
+
+Rules:
+
+held stock cannot be issued or shipped
+hold / release must be written to inventory ledger
+history must remain visible
+16. Cycle count / adjustment flow
+user opens count session
+scans barcode or RFID items in zone
+system compares expected vs actual
+creates adjustment proposal
+approved adjustment posts to ledger
+keep audit trail
+17. Required validation rules
+
+Before posting any movement, validate:
+
+item exists
+tag / barcode exists
+tag active
+correct location
+correct document
+enough quantity
+status allows movement
+batch / serial valid
+no duplicate transaction
+destination allowed
+
+If validation fails, do not post stock movement. Create exception instead.
+
+18. Required UI pages
+Inventory Master
+materials
+locations
+handling units
+Transactions
+receive
+putaway
+transfer
+issue to production
+production receipt
+dispatch
+hold / release
+cycle count
+Traceability
+barcode registry
+RFID registry
+lot / batch registry
+handling unit registry
+Monitoring
+live reader monitor
+zone activity
+scan event feed
+reader health
+Exceptions
+unknown tag
+wrong zone
+duplicate scan
+shipment mismatch
+hold violation
+History
+movement ledger
+scan log
+audit trail
+19. Reader and scanner setup
+
+Support configuration for:
+
+RFID readers
+
+Store:
+
+reader code
+vendor
+model
+IP
+assigned zone
+assigned location
+antennas
+status
+last heartbeat
+Barcode scanners
+
+Support:
+
+handheld scanners
+fixed scanners
+mobile camera scanning
+
+All devices should hit the same backend APIs.
+
+20. APIs to build
+
+Build APIs around business actions, not just raw scans.
+
+Required APIs:
+
+create_material
+create_location
+create_handling_unit
+generate_barcode
+assign_RFID_tag
+receive_inventory
+confirm_putaway
+move_inventory
+issue_to_production
+receive_from_production
+dispatch_inventory
+place_inventory_hold
+release_inventory_hold
+count_inventory
+ingest_scan_event
+resolve_scan_event
+get_inventory_trace
+get_reader_status
+get_exceptions
+21. Event processing design
+
+Use 3 layers:
+
+Layer 1: raw capture
+
+Store every incoming barcode / RFID event in scan_events_raw
+
+Layer 2: resolution
+
+Resolve:
+
+what was scanned
+which location
+which user / device
+which transaction
+valid or invalid
+Layer 3: posting
+
+If valid:
+
+create movement event
+update inventory balance
+update current location
+write ledger
+write audit trail
+
+If invalid:
+
+write exception event
+22. What to change in current mockup
+
+Keep the current pages, but reposition them.
+
+Keep
+reader health
+tag registry
+movement log
+recent scan events
+zone activity map
+Change
+
+Rename “RFID Tracking” to:
+
+Inventory Traceability
+or
+Barcode & RFID Tracking
+Add
+transaction screens
+handling unit registry
+batch/lot traceability
+barcode registry
+exception workbench
+document-linked movements
+
+The monitoring page should not be the main system. It should support the transaction system.
