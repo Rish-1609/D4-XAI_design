@@ -30,6 +30,11 @@ import FinanceManufacturing from "@/pages/finance-manufacturing";
 import FinanceLedger from "@/pages/finance-ledger";
 import RfidTracking from "@/pages/rfid-tracking";
 import InventoryTraceability from "@/pages/inventory-traceability";
+import InventoryMaster from "@/pages/inventory-master";
+import InventoryTransactions from "@/pages/inventory-transactions";
+import InventoryBarcodes from "@/pages/inventory-barcodes";
+import InventoryRFID from "@/pages/inventory-rfid";
+import InventoryExceptions from "@/pages/inventory-exceptions";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -62,6 +67,11 @@ function Router() {
       <Route path="/finance-ledger" component={FinanceLedger} />
       <Route path="/rfid-tracking" component={RfidTracking} />
       <Route path="/inventory-traceability" component={InventoryTraceability} />
+      <Route path="/inventory-master" component={InventoryMaster} />
+      <Route path="/inventory-transactions" component={InventoryTransactions} />
+      <Route path="/inventory-barcodes" component={InventoryBarcodes} />
+      <Route path="/inventory-rfid" component={InventoryRFID} />
+      <Route path="/inventory-exceptions" component={InventoryExceptions} />
       <Route component={NotFound} />
     </Switch>
   );

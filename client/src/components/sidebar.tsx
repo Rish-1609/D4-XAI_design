@@ -55,7 +55,11 @@ const menuItems = [
     submenu: [
       { label: "Stock Overview", href: "/inventory-overview" },
       { label: "Stock Movements", href: "/stock-movements" },
-      { label: "Inventory Traceability", href: "/inventory-traceability" },
+      { label: "Master Data", href: "/inventory-master" },
+      { label: "Transactions", href: "/inventory-transactions" },
+      { label: "Barcode Registry", href: "/inventory-barcodes" },
+      { label: "RFID Monitoring", href: "/inventory-rfid" },
+      { label: "Exceptions", href: "/inventory-exceptions" },
     ],
   },
   {
