@@ -66,6 +66,14 @@ Preferred communication style: Simple, everyday language.
   - APIs: `/api/traceability/*` (handling-units, barcodes, exceptions, stats, movements, search) + `/api/rfid/*` (zones, readers, tags, events, stats)
   - Schema: handlingUnits, barcodes, scanExceptions, movementLedger (with movementNumber MVT-000001, sourceDocType/Number, scanMethod, statusBefore/After, performedBy, movedAt)
 - **Finance Management**: Full AP/AR, manufacturing cost tracking, GL journals, budget, and ledger insights. Routes: `/finance-setup`, `/finance-transactions`, `/finance-manufacturing`, `/finance-ledger`
+- **Master Data Management**: "Master" sidebar section with 6 sub-pages:
+  - `/master-suppliers` — Supplier registry with rating, on-time delivery %, quality score, block/unblock workflow; 10 seeded pharma suppliers; API at `/api/master/suppliers`; SOP: SUP-001
+  - `/master-customers` — Customer registry (retail chains, distributors, C&F agents, government institutions, export); 10 seeded customers with GSTIN, drug license, credit limit, payment terms; SOP: CUS-001
+  - `/bom-management` — Rebuilt with expandable rows; shows 10 pharma BOMs (OFLACIN-OZ, MEDISUM'S NIMUPARA, PANTOBIS-DSR, CEFIXIME-200, LEVOBACT-500, METFORMIN-SR-500, AMOXYCLAV-625, ATORVASTATIN-10, RABEZOLE-20-DSR, DOLO-650); each BOM expands to show raw material components with materialType (RM/PM/FG), label claim, qty, scrap %, overage %, unit cost, total cost, supplier code; SOP: BOM-001 rev 2.1
+  - `/production-orders` — Production orders (existing page)
+  - `/master-equipment` — Equipment master with 12 pieces of pharma manufacturing equipment (FBD, HSG, tablet press, blister packer, autoclave, HPLC, dissolution tester, coating machine, capsule filler, balance, EMS, stability chamber); maintenance/calibration due dates with color-coded countdowns; SOP: EQP-001
+  - Material Master — placeholder link to dashboard (in development)
+  - Schema: `suppliers` table with supplierCode, rating, onTimeDelivery, qualityScore, totalOrders, totalValue, status, blockedReason; `bomItems` extended with materialType, labelClaim, overagePercent, unitCost, totalCost, supplierCode; `billOfMaterials` extended with totalCost
 - **Audit Trail**: Creation and update timestamps for compliance tracking
 
 # External Dependencies

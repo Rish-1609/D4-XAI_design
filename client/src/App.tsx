@@ -36,6 +36,9 @@ import InventoryBarcodes from "@/pages/inventory-barcodes";
 import InventoryRFID from "@/pages/inventory-rfid";
 import InventoryExceptions from "@/pages/inventory-exceptions";
 import InventoryTraceabilitySearch from "@/pages/inventory-traceability-search";
+import MasterSuppliers from "@/pages/master-suppliers";
+import MasterCustomers from "@/pages/master-customers";
+import MasterEquipment from "@/pages/master-equipment";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -74,6 +77,10 @@ function Router() {
       <Route path="/inventory-rfid" component={InventoryRFID} />
       <Route path="/inventory-exceptions" component={InventoryExceptions} />
       <Route path="/inventory-traceability-search" component={InventoryTraceabilitySearch} />
+      {/* Master Data routes */}
+      <Route path="/master-suppliers" component={MasterSuppliers} />
+      <Route path="/master-customers" component={MasterCustomers} />
+      <Route path="/master-equipment" component={MasterEquipment} />
       <Route component={NotFound} />
     </Switch>
   );

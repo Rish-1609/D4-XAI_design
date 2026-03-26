@@ -253,10 +253,37 @@ export type ProductionOrder = typeof productionOrders.$inferSelect;
 export type InsertCapa = z.infer<typeof insertCapaSchema>;
 export type Capa = typeof capas.$inferSelect;
 
+// Suppliers Master Schema
+export const suppliers = pgTable("suppliers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierCode: text("supplier_code").notNull().unique(),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // 'Packaging Material', 'Raw Material', 'API', 'Excipient'
+  contactPerson: text("contact_person"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  country: text("country").default("India"),
+  rating: decimal("rating").default("0"), // 0-5 star rating
+  onTimeDelivery: decimal("on_time_delivery").default("0"), // percentage 0-100
+  qualityScore: decimal("quality_score").default("0"), // percentage 0-100
+  totalOrders: integer("total_orders").default(0),
+  totalValue: decimal("total_value").default("0"), // in USD
+  status: text("status").notNull().default("active"), // 'active', 'blocked', 'inactive'
+  blockedReason: text("blocked_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type Supplier = typeof suppliers.$inferSelect;
+
 // Bill of Materials Schema
 export const billOfMaterials = pgTable("bill_of_materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  bomNumber: text("bom_number").notNull().unique(),
+  bomNumber: text("bom_number").notNull().unique(), // BOM0000001
   name: text("name").notNull(),
   productCode: text("product_code").notNull(),
   productName: text("product_name").notNull(),
@@ -265,6 +292,7 @@ export const billOfMaterials = pgTable("bill_of_materials", {
   batchSize: integer("batch_size").notNull(),
   batchSizeUom: text("batch_size_uom").notNull().default('units'),
   description: text("description"),
+  totalCost: decimal("total_cost").default("0"), // cached total cost of all items
   effectiveFrom: timestamp("effective_from"),
   effectiveTo: timestamp("effective_to"),
   approvedBy: text("approved_by"),
@@ -281,11 +309,17 @@ export const bomItems = pgTable("bom_items", {
   materialId: varchar("material_id").references(() => materials.id),
   materialCode: text("material_code").notNull(),
   materialName: text("material_name").notNull(),
+  materialType: text("material_type").default("RM"), // 'RM' raw material, 'PM' packaging, 'FG' finished good
+  labelClaim: text("label_claim"), // label claim / specification
   quantity: decimal("quantity").notNull(),
-  uom: text("uom").notNull(), // 'kg', 'g', 'ml', 'l', 'units'
+  uom: text("uom").notNull(), // 'kg', 'g', 'ml', 'l', 'pcs', 'strips'
   isActive: boolean("is_active").default(true),
-  isCritical: boolean("is_critical").default(false), // Critical for manufacturing
-  scrapPercentage: decimal("scrap_percentage").default('0'),
+  isCritical: boolean("is_critical").default(false),
+  scrapPercentage: decimal("scrap_percentage").default('0'), // scrap/wastage %
+  overagePercent: decimal("overage_percent").default('0'), // overage/excess tolerance %
+  unitCost: decimal("unit_cost").default("0"), // cost per unit in INR
+  totalCost: decimal("total_cost").default("0"), // quantity * unitCost with scrap
+  supplierCode: text("supplier_code"), // linked supplier
   notes: text("notes"),
   sequenceNumber: integer("sequence_number"),
   createdAt: timestamp("created_at").defaultNow(),

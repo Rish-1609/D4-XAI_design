@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent, type HandlingUnit, type InsertHandlingUnit, type Barcode, type InsertBarcode, type ScanException, type InsertScanException, type MovementLedgerEntry, type InsertMovementLedger } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent, type HandlingUnit, type InsertHandlingUnit, type Barcode, type InsertBarcode, type ScanException, type InsertScanException, type MovementLedgerEntry, type InsertMovementLedger, type Supplier, type InsertSupplier } from "@shared/schema";
 
 // Legacy type aliases for compatibility
 type CapaAction = any;
@@ -427,6 +427,14 @@ export interface IStorage {
   getMovementsBySourceDoc(docNumber: string): Promise<MovementLedgerEntry[]>;
   createMovementEntry(entry: InsertMovementLedger): Promise<MovementLedgerEntry>;
   searchTraceability(query: string): Promise<{ handlingUnits: HandlingUnit[]; barcodes: Barcode[]; movements: MovementLedgerEntry[]; }>;
+
+  // Supplier Master operations
+  getSuppliers(): Promise<Supplier[]>;
+  getSupplier(id: string): Promise<Supplier | undefined>;
+  createSupplier(supplier: InsertSupplier): Promise<Supplier>;
+  updateSupplier(id: string, data: Partial<InsertSupplier>): Promise<Supplier | undefined>;
+  deleteSupplier(id: string): Promise<boolean>;
+  getSupplierStats(): Promise<{ total: number; active: number; blocked: number; avgRating: number; }>;
 }
 
 export class MemStorage implements IStorage {
@@ -504,6 +512,7 @@ export class MemStorage implements IStorage {
   private barcodesMap: Map<string, Barcode>;
   private scanExceptionsMap: Map<string, ScanException>;
   private movementLedgerMap: Map<string, MovementLedgerEntry>;
+  private suppliersMap: Map<string, Supplier>;
   private movementCounter: number;
 
   constructor() {
@@ -581,12 +590,14 @@ export class MemStorage implements IStorage {
     this.barcodesMap = new Map();
     this.scanExceptionsMap = new Map();
     this.movementLedgerMap = new Map();
+    this.suppliersMap = new Map();
     this.movementCounter = 0;
     
     this.initializeDummyData().catch(console.error);
     this.initializeFinanceData().catch(console.error);
     this.initializeRfidData().catch(console.error);
     this.initializeTraceabilityData().catch(console.error);
+    this.initializeSupplierData();
   }
 
   async getMaterials(): Promise<Material[]> {
@@ -1619,124 +1630,67 @@ export class MemStorage implements IStorage {
       }
     }
     
-    // Add sample BOM data
-    const bomData = [
-      {
-        id: "bom1",
-        bomNumber: "000001",
-        productName: "MEFECUM-P SYP",
-        version: "1.0",
-        status: "Active" as const,
-        totalCost: 260700, // ₹2607.00 in paise
-        shelfLifeDays: 730, // 2 years shelf life
-        approvedBy: "admin@pharma.com",
-        createdBy: "system",
-        createdAt: new Date('2024-08-20'),
-        updatedAt: new Date('2024-08-25'),
-      },
-      {
-        id: "bom2",
-        bomNumber: "000002",
-        productName: "LEVOCIDAL-500",
-        version: "1.0",
-        status: "Active" as const,
-        totalCost: 338800, // ₹3388.00 in paise
-        shelfLifeDays: 1095, // 3 years shelf life
-        approvedBy: "admin@pharma.com",
-        createdBy: "system",
-        createdAt: new Date('2024-08-22'),
-        updatedAt: new Date('2024-08-25'),
-      },
-      {
-        id: "bom3",
-        bomNumber: "000003",
-        productName: "ZEN RSR PLUS(RED)",
-        version: "1.0",
-        status: "Active" as const,
-        totalCost: 346900, // ₹3469.00 in paise
-        shelfLifeDays: 1460, // 4 years shelf life
-        approvedBy: "admin@pharma.com",
-        createdBy: "system",
-        createdAt: new Date('2024-08-18'),
-        updatedAt: new Date('2024-08-20'),
-      }
+    // ── BOM seed data — 10 pharma BOMs matching D4 Workspace image (replit.md §BOM Management) ──
+    const bomData: any[] = [
+      { id: "bom1",  bomNumber: "BOM0000001", name: "OFLACIN-OZ(MAY)", productCode: "OFLN-OZ-MAY", productName: "OFLACIN-OZ(MAY)", version: "1.1", status: "Active", batchSize: 1000, batchSizeUom: "strips", totalCost: "1988.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-25'), updatedAt: new Date('2026-03-25') },
+      { id: "bom2",  bomNumber: "BOM0000002", name: "MEDISUM'S NIMUPARA", productCode: "MED-NIMU", productName: "MEDISUM'S NIMUPARA", version: "1.2", status: "Active", batchSize: 500, batchSizeUom: "strips", totalCost: "2742.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-25'), updatedAt: new Date('2026-03-25') },
+      { id: "bom3",  bomNumber: "BOM0000003", name: "PANTOBIS-DSR", productCode: "PAN-DSR", productName: "PANTOBIS-DSR", version: "1.0", status: "Active", batchSize: 1000, batchSizeUom: "capsules", totalCost: "1520.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-20'), updatedAt: new Date('2026-03-20') },
+      { id: "bom4",  bomNumber: "BOM0000004", name: "CEFIXIME-200", productCode: "CEF-200", productName: "CEFIXIME-200", version: "1.0", status: "Active", batchSize: 1000, batchSizeUom: "tablets", totalCost: "1840.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-18'), updatedAt: new Date('2026-03-18') },
+      { id: "bom5",  bomNumber: "BOM0000005", name: "LEVOBACT-500", productCode: "LEV-500", productName: "LEVOBACT-500", version: "1.1", status: "Active", batchSize: 1000, batchSizeUom: "tablets", totalCost: "1290.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-15'), updatedAt: new Date('2026-03-15') },
+      { id: "bom6",  bomNumber: "BOM0000006", name: "METFORMIN-SR-500", productCode: "MET-SR-500", productName: "METFORMIN-SR-500", version: "1.0", status: "Active", batchSize: 2000, batchSizeUom: "tablets", totalCost: "1650.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-10'), updatedAt: new Date('2026-03-10') },
+      { id: "bom7",  bomNumber: "BOM0000007", name: "AMOXYCLAV-625", productCode: "AMX-625", productName: "AMOXYCLAV-625", version: "1.3", status: "Active", batchSize: 500, batchSizeUom: "tablets", totalCost: "1950.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-08'), updatedAt: new Date('2026-03-08') },
+      { id: "bom8",  bomNumber: "BOM0000008", name: "ATORVASTATIN-10", productCode: "ATV-10", productName: "ATORVASTATIN-10", version: "1.0", status: "Active", batchSize: 1000, batchSizeUom: "tablets", totalCost: "1320.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-03-05'), updatedAt: new Date('2026-03-05') },
+      { id: "bom9",  bomNumber: "BOM0000009", name: "RABEZOLE-20-DSR", productCode: "RAB-20-DSR", productName: "RABEZOLE-20-DSR", version: "1.0", status: "Draft", batchSize: 1000, batchSizeUom: "capsules", totalCost: "1760.00", approvedBy: null, createdBy: "system", createdAt: new Date('2026-03-01'), updatedAt: new Date('2026-03-01') },
+      { id: "bom10", bomNumber: "BOM0000010", name: "DOLO-650", productCode: "DOL-650", productName: "DOLO-650", version: "2.0", status: "Active", batchSize: 5000, batchSizeUom: "tablets", totalCost: "1931.00", approvedBy: "admin@d4workspace.com", createdBy: "system", createdAt: new Date('2026-02-28'), updatedAt: new Date('2026-02-28') },
     ];
-
     bomData.forEach(bom => this.boms.set(bom.id, bom));
-    
-    // Add sample BOM materials data
-    const bomMaterialsData = [
-      // BOM 1 materials (MEFECUM-P SYP)
-      {
-        id: "bm1",
-        bomId: "bom1",
-        materialId: "m1", // Reference to existing material
-        materialCode: "RM0305",
-        materialName: "Paracetamol Active Ingredient",
-        quantity: 1000, // 1 Lt with precision
-        uom: "KG",
-        unitCost: 9400, // ₹94.00 in paise
-        scrapPercentage: 100, // 1% with precision (1% * 100)
-        totalCost: 9494, // ₹94.94 in paise (including scrap)
-        shelfLifeDays: 1095, // 3 years shelf life
-        createdAt: new Date('2024-08-20'),
-      },
-      {
-        id: "bm2",
-        bomId: "bom1",
-        materialId: "m2",
-        materialCode: "SM0004",
-        materialName: "Sucrose Sugar Base",
-        quantity: 500, // 0.5 KG
-        uom: "KG",
-        unitCost: 4900, // ₹49.00 in paise
-        scrapPercentage: 200, // 2%
-        totalCost: 4998, // ₹49.98 in paise
-        shelfLifeDays: 365, // 1 year shelf life
-        createdAt: new Date('2024-08-20'),
-      },
-      {
-        id: "bm3",
-        bomId: "bom1",
-        materialId: null,
-        materialCode: "RM0002",
-        materialName: "Flavoring Agent Cherry",
-        quantity: 60, // 60g converted to grams with precision
-        uom: "KG",
-        unitCost: 10900, // ₹109.00 in paise
-        scrapPercentage: 300, // 3%
-        totalCost: 11227, // ₹112.27 in paise
-        shelfLifeDays: 545, // 1.5 years shelf life
-        createdAt: new Date('2024-08-20'),
-      },
-      {
-        id: "bm4",
-        bomId: "bom1",
-        materialId: null,
-        materialCode: "RM0001",
-        materialName: "Preservative Sodium Benzoate",
-        quantity: 10, // 10g
-        uom: "KG",
-        unitCost: 7250, // ₹72.50 in paise
-        scrapPercentage: 400, // 4%
-        totalCost: 7540, // ₹75.40 in paise
-        shelfLifeDays: 1825, // 5 years shelf life
-        createdAt: new Date('2024-08-20'),
-      },
-      {
-        id: "bm5",
-        bomId: "bom1",
-        materialId: null,
-        materialCode: "RM0004",
-        materialName: "Citric Acid Stabilizer",
-        quantity: 5, // 5g
-        uom: "KG",
-        unitCost: 4800, // ₹48.00 in paise
-        scrapPercentage: 200, // 2%
-        totalCost: 4896, // ₹48.96 in paise
-        shelfLifeDays: 730, // 2 years shelf life
-        createdAt: new Date('2024-08-20'),
-      }
+
+    // ── BOM items — raw material components per BOM ──
+    const bomMaterialsData: any[] = [
+      // BOM1: OFLACIN-OZ(MAY) — 7 foil packing materials (matches D4 Workspace image)
+      { id: "bi1a", bomId: "bom1", materialCode: "PM-4501", materialName: "FERROCHIP-40 TAB FOIL", materialType: "RM", labelClaim: null, quantity: "6", uom: "pcs", scrapPercentage: "4", overagePercent: "0", unitCost: "45.00", totalCost: "270.00", supplierCode: "SUP-001", sequenceNumber: 1, createdAt: new Date('2026-03-25') },
+      { id: "bi1b", bomId: "bom1", materialCode: "PM-4502", materialName: "TROYFENAC-SP FORTE TAB FOIL", materialType: "RM", labelClaim: null, quantity: "8", uom: "pcs", scrapPercentage: "4", overagePercent: "0", unitCost: "72.00", totalCost: "576.00", supplierCode: "SUP-002", sequenceNumber: 2, createdAt: new Date('2026-03-25') },
+      { id: "bi1c", bomId: "bom1", materialCode: "PM-4503", materialName: "MONTEL-LC TAB 1ST FOIL 220MM", materialType: "RM", labelClaim: null, quantity: "8", uom: "pcs", scrapPercentage: "3", overagePercent: "0", unitCost: "37.00", totalCost: "296.00", supplierCode: "SUP-003", sequenceNumber: 3, createdAt: new Date('2026-03-25') },
+      { id: "bi1d", bomId: "bom1", materialCode: "PM-4504", materialName: "NUDICLO-50 TAB FOIL", materialType: "RM", labelClaim: null, quantity: "2", uom: "pcs", scrapPercentage: "4", overagePercent: "0", unitCost: "86.00", totalCost: "172.00", supplierCode: "SUP-001", sequenceNumber: 4, createdAt: new Date('2026-03-25') },
+      { id: "bi1e", bomId: "bom1", materialCode: "PM-4505", materialName: "LEVOWON-500 TAB A/A CTN", materialType: "RM", labelClaim: null, quantity: "1", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "74.00", totalCost: "74.00", supplierCode: "SUP-004", sequenceNumber: 5, createdAt: new Date('2026-03-25') },
+      { id: "bi1f", bomId: "bom1", materialCode: "PM-4506", materialName: "236MM ACUPERA-SP PTD BASE FOIL", materialType: "RM", labelClaim: null, quantity: "2", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "30.00", totalCost: "60.00", supplierCode: "SUP-002", sequenceNumber: 6, createdAt: new Date('2026-03-25') },
+      { id: "bi1g", bomId: "bom1", materialCode: "PM-4507", materialName: "LEVOWON-500 TAB FOIL A/A", materialType: "RM", labelClaim: null, quantity: "10", uom: "pcs", scrapPercentage: "1", overagePercent: "0", unitCost: "54.00", totalCost: "540.00", supplierCode: "SUP-003", sequenceNumber: 7, createdAt: new Date('2026-03-25') },
+
+      // BOM2: MEDISUM'S NIMUPARA — 6 items
+      { id: "bi2a", bomId: "bom2", materialCode: "RM-3001", materialName: "NIMESULIDE 100MG API", materialType: "RM", labelClaim: "100mg", quantity: "10", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "180.00", totalCost: "1800.00", supplierCode: "SUP-005", sequenceNumber: 1, createdAt: new Date('2026-03-25') },
+      { id: "bi2b", bomId: "bom2", materialCode: "RM-3002", materialName: "PARACETAMOL 500MG API", materialType: "RM", labelClaim: "500mg", quantity: "5", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "94.00", totalCost: "470.00", supplierCode: "SUP-006", sequenceNumber: 2, createdAt: new Date('2026-03-25') },
+      { id: "bi2c", bomId: "bom2", materialCode: "EX-2001", materialName: "MICROCRYSTALLINE CELLULOSE PH102", materialType: "RM", labelClaim: null, quantity: "3", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "58.00", totalCost: "174.00", supplierCode: "SUP-007", sequenceNumber: 3, createdAt: new Date('2026-03-25') },
+      { id: "bi2d", bomId: "bom2", materialCode: "EX-2002", materialName: "CROSCARMELLOSE SODIUM", materialType: "RM", labelClaim: null, quantity: "1", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "120.00", totalCost: "120.00", supplierCode: "SUP-007", sequenceNumber: 4, createdAt: new Date('2026-03-25') },
+      { id: "bi2e", bomId: "bom2", materialCode: "PM-5001", materialName: "ALU-ALU FOIL 20x10 CM", materialType: "PM", labelClaim: null, quantity: "100", uom: "pcs", scrapPercentage: "3", overagePercent: "0", unitCost: "1.38", totalCost: "138.00", supplierCode: "SUP-001", sequenceNumber: 5, createdAt: new Date('2026-03-25') },
+      { id: "bi2f", bomId: "bom2", materialCode: "PM-5002", materialName: "OUTER CARTON MEDISUM NIMUPARA", materialType: "PM", labelClaim: null, quantity: "10", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "4.00", totalCost: "40.00", supplierCode: "SUP-008", sequenceNumber: 6, createdAt: new Date('2026-03-25') },
+
+      // BOM3: PANTOBIS-DSR — 5 items
+      { id: "bi3a", bomId: "bom3", materialCode: "RM-4001", materialName: "PANTOPRAZOLE 40MG API", materialType: "RM", labelClaim: "40mg", quantity: "8", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "95.00", totalCost: "760.00", supplierCode: "SUP-005", sequenceNumber: 1, createdAt: new Date('2026-03-20') },
+      { id: "bi3b", bomId: "bom3", materialCode: "RM-4002", materialName: "DOMPERIDONE 30MG SR API", materialType: "RM", labelClaim: "30mg", quantity: "6", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "65.00", totalCost: "390.00", supplierCode: "SUP-006", sequenceNumber: 2, createdAt: new Date('2026-03-20') },
+      { id: "bi3c", bomId: "bom3", materialCode: "EX-3001", materialName: "HPMC E5 BINDER", materialType: "RM", labelClaim: null, quantity: "2", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "85.00", totalCost: "170.00", supplierCode: "SUP-007", sequenceNumber: 3, createdAt: new Date('2026-03-20') },
+      { id: "bi3d", bomId: "bom3", materialCode: "PM-6001", materialName: "CAPSULE SHELL SIZE 1 CLEAR", materialType: "PM", labelClaim: null, quantity: "1000", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "0.12", totalCost: "120.00", supplierCode: "SUP-009", sequenceNumber: 4, createdAt: new Date('2026-03-20') },
+      { id: "bi3e", bomId: "bom3", materialCode: "PM-6002", materialName: "BLISTER FOIL 200MIC PVC/PVDC", materialType: "PM", labelClaim: null, quantity: "50", uom: "pcs", scrapPercentage: "3", overagePercent: "0", unitCost: "1.60", totalCost: "80.00", supplierCode: "SUP-002", sequenceNumber: 5, createdAt: new Date('2026-03-20') },
+
+      // BOM4: CEFIXIME-200 — 5 items
+      { id: "bi4a", bomId: "bom4", materialCode: "RM-5001", materialName: "CEFIXIME TRIHYDRATE 200MG API", materialType: "RM", labelClaim: "200mg", quantity: "10", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "120.00", totalCost: "1200.00", supplierCode: "SUP-005", sequenceNumber: 1, createdAt: new Date('2026-03-18') },
+      { id: "bi4b", bomId: "bom4", materialCode: "EX-4001", materialName: "STARCH MAIZE IP", materialType: "RM", labelClaim: null, quantity: "3", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "28.00", totalCost: "84.00", supplierCode: "SUP-007", sequenceNumber: 2, createdAt: new Date('2026-03-18') },
+      { id: "bi4c", bomId: "bom4", materialCode: "EX-4002", materialName: "MAGNESIUM STEARATE IP", materialType: "RM", labelClaim: null, quantity: "0.5", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "95.00", totalCost: "47.50", supplierCode: "SUP-007", sequenceNumber: 3, createdAt: new Date('2026-03-18') },
+      { id: "bi4d", bomId: "bom4", materialCode: "PM-7001", materialName: "PVC FOIL 250MIC CLEAR", materialType: "PM", labelClaim: null, quantity: "80", uom: "pcs", scrapPercentage: "3", overagePercent: "0", unitCost: "3.00", totalCost: "240.00", supplierCode: "SUP-003", sequenceNumber: 4, createdAt: new Date('2026-03-18') },
+      { id: "bi4e", bomId: "bom4", materialCode: "PM-7002", materialName: "CARTON BOX CEFIXIME-200", materialType: "PM", labelClaim: null, quantity: "20", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "13.42", totalCost: "268.50", supplierCode: "SUP-008", sequenceNumber: 5, createdAt: new Date('2026-03-18') },
+
+      // BOM5: LEVOBACT-500 — 4 items
+      { id: "bi5a", bomId: "bom5", materialCode: "RM-6001", materialName: "LEVOFLOXACIN HEMIHYDRATE 500MG", materialType: "RM", labelClaim: "500mg", quantity: "10", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "85.00", totalCost: "850.00", supplierCode: "SUP-006", sequenceNumber: 1, createdAt: new Date('2026-03-15') },
+      { id: "bi5b", bomId: "bom5", materialCode: "EX-5001", materialName: "DICALCIUM PHOSPHATE", materialType: "RM", labelClaim: null, quantity: "4", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "35.00", totalCost: "140.00", supplierCode: "SUP-007", sequenceNumber: 2, createdAt: new Date('2026-03-15') },
+      { id: "bi5c", bomId: "bom5", materialCode: "PM-8001", materialName: "ALU FOIL 20 MICRON", materialType: "PM", labelClaim: null, quantity: "80", uom: "pcs", scrapPercentage: "3", overagePercent: "0", unitCost: "2.50", totalCost: "200.00", supplierCode: "SUP-001", sequenceNumber: 3, createdAt: new Date('2026-03-15') },
+      { id: "bi5d", bomId: "bom5", materialCode: "PM-8002", materialName: "OUTER BOX LEVOBACT-500", materialType: "PM", labelClaim: null, quantity: "20", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "5.00", totalCost: "100.00", supplierCode: "SUP-008", sequenceNumber: 4, createdAt: new Date('2026-03-15') },
+
+      // BOM10: DOLO-650 — 6 items
+      { id: "bi10a", bomId: "bom10", materialCode: "RM-9001", materialName: "PARACETAMOL 650MG DC GRADE", materialType: "RM", labelClaim: "650mg", quantity: "30", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "38.00", totalCost: "1140.00", supplierCode: "SUP-006", sequenceNumber: 1, createdAt: new Date('2026-02-28') },
+      { id: "bi10b", bomId: "bom10", materialCode: "EX-9001", materialName: "AVICEL PH102 MCC", materialType: "RM", labelClaim: null, quantity: "8", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "58.00", totalCost: "464.00", supplierCode: "SUP-007", sequenceNumber: 2, createdAt: new Date('2026-02-28') },
+      { id: "bi10c", bomId: "bom10", materialCode: "EX-9002", materialName: "POLYPLASDONE XL-10", materialType: "RM", labelClaim: null, quantity: "2", uom: "kg", scrapPercentage: "1", overagePercent: "0", unitCost: "68.00", totalCost: "136.00", supplierCode: "SUP-007", sequenceNumber: 3, createdAt: new Date('2026-02-28') },
+      { id: "bi10d", bomId: "bom10", materialCode: "EX-9003", materialName: "TALC IP GRADE", materialType: "RM", labelClaim: null, quantity: "1", uom: "kg", scrapPercentage: "2", overagePercent: "0", unitCost: "15.00", totalCost: "15.00", supplierCode: "SUP-007", sequenceNumber: 4, createdAt: new Date('2026-02-28') },
+      { id: "bi10e", bomId: "bom10", materialCode: "PM-9001", materialName: "STRIP FOIL ALU-PVC 10X10", materialType: "PM", labelClaim: null, quantity: "500", uom: "pcs", scrapPercentage: "3", overagePercent: "0", unitCost: "0.30", totalCost: "150.00", supplierCode: "SUP-002", sequenceNumber: 5, createdAt: new Date('2026-02-28') },
+      { id: "bi10f", bomId: "bom10", materialCode: "PM-9002", materialName: "OUTER CARTON DOLO-650", materialType: "PM", labelClaim: null, quantity: "50", uom: "pcs", scrapPercentage: "2", overagePercent: "0", unitCost: "0.52", totalCost: "26.00", supplierCode: "SUP-008", sequenceNumber: 6, createdAt: new Date('2026-02-28') },
     ];
 
     // Group materials by bomId
@@ -5662,6 +5616,59 @@ export class MemStorage implements IStorage {
       (m.toLocationName ?? "").toLowerCase().includes(q)
     ).sort((a, b) => new Date(b.movedAt!).getTime() - new Date(a.movedAt!).getTime());
     return { handlingUnits: hus, barcodes: bcs, movements: mvts };
+  }
+
+  // ── Supplier Master ──────────────────────────────────────────────────────────
+  // SOP: SUP-001 — Supplier Master Data Entry; approved by QA Manager 2026-01-15
+  private initializeSupplierData(): void {
+    const supplierSeed: Supplier[] = [
+      { id: "sup1",  supplierCode: "SUP-001", name: "SHREEBHAN PACKAGING PVT LTD", category: "Packaging Material", contactPerson: "Rajesh Sharma", email: "rajesh@shreebhan.com", phone: "+91-9876543210", address: "Plot 42, GIDC Naroda, Ahmedabad - 382330", country: "India", rating: "4.8", onTimeDelivery: "96.5", qualityScore: "98.2", totalOrders: 142, totalValue: "2850000.00", status: "active", blockedReason: null, notes: "Primary foil & blister packaging supplier", createdAt: new Date('2024-01-10'), updatedAt: new Date('2026-03-20') },
+      { id: "sup2",  supplierCode: "SUP-002", name: "RKE FOIL INDUSTRIES",           category: "Packaging Material", contactPerson: "Ketan Patel",   email: "ketan@rkefoil.com",    phone: "+91-9898765432", address: "B-12, Anand Industrial Estate, Anand - 388001",  country: "India", rating: "4.5", onTimeDelivery: "93.0", qualityScore: "95.0", totalOrders: 98,  totalValue: "1920000.00", status: "active", blockedReason: null, notes: "ALU-ALU and plain foil rolls", createdAt: new Date('2024-02-05'), updatedAt: new Date('2026-03-15') },
+      { id: "sup3",  supplierCode: "SUP-003", name: "SJ INDUSTRIES",                  category: "Packaging Material", contactPerson: "Suresh Joshi",  email: "suresh@sjind.com",    phone: "+91-9765432109", address: "14, Phase-II, IDA Jeedimetla, Hyderabad - 500055", country: "India", rating: "4.2", onTimeDelivery: "90.0", qualityScore: "93.5", totalOrders: 67,  totalValue: "875000.00",  status: "active", blockedReason: null, notes: "Carton and secondary packaging", createdAt: new Date('2024-03-12'), updatedAt: new Date('2026-02-28') },
+      { id: "sup4",  supplierCode: "SUP-004", name: "MEDIPACK SOLUTIONS LLP",         category: "Packaging Material", contactPerson: "Anita Verma",   email: "anita@medipack.in",   phone: "+91-9654321098", address: "C-45, Bhiwandi Warehouse District, Mumbai - 421302", country: "India", rating: "4.6", onTimeDelivery: "94.5", qualityScore: "96.8", totalOrders: 54,  totalValue: "650000.00",  status: "active", blockedReason: null, notes: "Polypropylene containers and HDPE bottles", createdAt: new Date('2024-04-01'), updatedAt: new Date('2026-03-10') },
+      { id: "sup5",  supplierCode: "SUP-005", name: "AARAV PHARMA CHEMICALS",         category: "Active Pharmaceutical Ingredient", contactPerson: "Dr. Ravi Kulkarni", email: "ravi@aaravpharma.com", phone: "+91-9543210987", address: "211-B, TTC Industrial Area, Navi Mumbai - 400706", country: "India", rating: "4.9", onTimeDelivery: "97.0", qualityScore: "99.1", totalOrders: 210, totalValue: "12500000.00", status: "active", blockedReason: null, notes: "Primary API supplier — Cefixime, Pantoprazole, Ofloxacin. CoA verified batch-wise. NABL accredited.", createdAt: new Date('2023-11-20'), updatedAt: new Date('2026-03-25') },
+      { id: "sup6",  supplierCode: "SUP-006", name: "SUNRISE EXCIPIENTS PVT LTD",    category: "Raw Material",       contactPerson: "Mehul Shah",    email: "mehul@sunriseexc.com",phone: "+91-9432109876", address: "Shed 7, Vatva GIDC, Ahmedabad - 382445",          country: "India", rating: "4.3", onTimeDelivery: "91.5", qualityScore: "94.2", totalOrders: 176, totalValue: "4300000.00", status: "active", blockedReason: null, notes: "Paracetamol, Nimesulide, Levofloxacin API and excipients", createdAt: new Date('2024-01-25'), updatedAt: new Date('2026-03-18') },
+      { id: "sup7",  supplierCode: "SUP-007", name: "NATIONAL EXCIPIENTS CORP",       category: "Excipient",          contactPerson: "Pooja Nair",    email: "pooja@natexc.com",    phone: "+91-9321098765", address: "77, SIDCO Industrial Estate, Chennai - 600098",    country: "India", rating: "4.7", onTimeDelivery: "95.5", qualityScore: "97.3", totalOrders: 321, totalValue: "8750000.00", status: "active", blockedReason: null, notes: "MCC, HPMC, Starch, Talc, Croscarmellose. Master supplier for excipients. GDP-certified.", createdAt: new Date('2023-09-15'), updatedAt: new Date('2026-03-22') },
+      { id: "sup8",  supplierCode: "SUP-008", name: "ECOPACK PRINTERS & CARTONS",     category: "Packaging Material", contactPerson: "Deepak Tiwari", email: "deepak@ecopack.in",   phone: "+91-9210987654", address: "Industrial Area Phase-1, Baddi - 173205, Himachal Pradesh", country: "India", rating: "4.0", onTimeDelivery: "88.5", qualityScore: "91.0", totalOrders: 45, totalValue: "320000.00",  status: "active", blockedReason: null, notes: "Mono cartons, shippers, and leaflet printing", createdAt: new Date('2024-06-10'), updatedAt: new Date('2026-01-30') },
+      { id: "sup9",  supplierCode: "SUP-009", name: "CAPSUGEL INDIA PVT LTD",         category: "Packaging Material", contactPerson: "Nikhil Bose",   email: "nikhil@capsugel.in",  phone: "+91-9109876543", address: "12th Floor, DLF Cyber City, Gurugram - 122002",   country: "India", rating: "4.8", onTimeDelivery: "96.0", qualityScore: "98.5", totalOrders: 88,  totalValue: "2100000.00", status: "active", blockedReason: null, notes: "Hard gelatin capsule shells — size 0, 1, 2. HPMC variants available. FDA-approved.", createdAt: new Date('2024-02-18'), updatedAt: new Date('2026-03-12') },
+      { id: "sup10", supplierCode: "SUP-010", name: "CHEM INDIA SUPPLIES",            category: "Raw Material",       contactPerson: "Vaibhav Doshi", email: "vaibhav@chemindia.com",phone: "+91-9098765432", address: "B-301, Sarabhai Chemicals Campus, Vadodara - 391740", country: "India", rating: "3.5", onTimeDelivery: "78.0", qualityScore: "82.0", totalOrders: 32,  totalValue: "185000.00",  status: "blocked", blockedReason: "Repeated out-of-spec CoA reports (Lot#CI-2025-08, CI-2025-11). Under CAPA review per SOP QA-012.", notes: "Blocked pending CAPA closure", createdAt: new Date('2024-08-01'), updatedAt: new Date('2026-02-10') },
+    ];
+    supplierSeed.forEach(s => this.suppliersMap.set(s.id, s));
+  }
+
+  async getSuppliers(): Promise<Supplier[]> {
+    return Array.from(this.suppliersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getSupplier(id: string): Promise<Supplier | undefined> {
+    return this.suppliersMap.get(id);
+  }
+
+  async createSupplier(data: InsertSupplier): Promise<Supplier> {
+    const id = `sup${Date.now()}`;
+    const supplier: Supplier = { ...data, id, createdAt: new Date(), updatedAt: new Date() } as Supplier;
+    this.suppliersMap.set(id, supplier);
+    return supplier;
+  }
+
+  async updateSupplier(id: string, data: Partial<InsertSupplier>): Promise<Supplier | undefined> {
+    const existing = this.suppliersMap.get(id);
+    if (!existing) return undefined;
+    const updated: Supplier = { ...existing, ...data, updatedAt: new Date() };
+    this.suppliersMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteSupplier(id: string): Promise<boolean> {
+    return this.suppliersMap.delete(id);
+  }
+
+  async getSupplierStats(): Promise<{ total: number; active: number; blocked: number; avgRating: number; }> {
+    const all = Array.from(this.suppliersMap.values());
+    const active = all.filter(s => s.status === "active").length;
+    const blocked = all.filter(s => s.status === "blocked").length;
+    const avgRating = all.length > 0 ? all.reduce((sum, s) => sum + parseFloat(s.rating ?? "0"), 0) / all.length : 0;
+    return { total: all.length, active, blocked, avgRating: parseFloat(avgRating.toFixed(1)) };
   }
 }
 

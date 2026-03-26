@@ -3348,6 +3348,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch { res.status(500).json({ message: "Failed to search" }); }
   });
 
+  // ── Supplier Master routes (SOP: SUP-001 — Supplier Master Data Entry) ──────
+  app.get("/api/master/suppliers", async (_req, res) => {
+    try { res.json(await storage.getSuppliers()); }
+    catch { res.status(500).json({ message: "Failed to fetch suppliers" }); }
+  });
+
+  app.get("/api/master/suppliers/stats", async (_req, res) => {
+    try { res.json(await storage.getSupplierStats()); }
+    catch { res.status(500).json({ message: "Failed to fetch supplier stats" }); }
+  });
+
+  app.get("/api/master/suppliers/:id", async (req, res) => {
+    try {
+      const s = await storage.getSupplier(req.params.id);
+      if (!s) return res.status(404).json({ message: "Supplier not found" });
+      res.json(s);
+    } catch { res.status(500).json({ message: "Failed to fetch supplier" }); }
+  });
+
+  app.post("/api/master/suppliers", async (req, res) => {
+    try {
+      const supplier = await storage.createSupplier(req.body);
+      res.status(201).json(supplier);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid supplier data", error: String(error) });
+    }
+  });
+
+  app.put("/api/master/suppliers/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateSupplier(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Supplier not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update supplier" }); }
+  });
+
+  app.delete("/api/master/suppliers/:id", async (req, res) => {
+    try {
+      const ok = await storage.deleteSupplier(req.params.id);
+      if (!ok) return res.status(404).json({ message: "Supplier not found" });
+      res.status(204).end();
+    } catch { res.status(500).json({ message: "Failed to delete supplier" }); }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
