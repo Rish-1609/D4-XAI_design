@@ -1,0 +1,154 @@
+What is still missing or should be improved
+
+This is the important part.
+
+1. “Transactions” needs actual workflow screens
+
+Right now the Transactions page looks more like a launcher/dashboard.
+
+That is okay for navigation, but the actual system still needs transaction forms/workflows such as:
+
+Receive against PO / ASN
+Putaway by source HU and destination bin
+Transfer from location A to location B
+Issue to production against production order
+Production receipt against production order
+Dispatch against shipment order
+QC hold / release against HU or batch
+Cycle count with variance posting
+
+Right now I can see the categories, but not yet the full operational flow screens.
+
+So:
+good structure, but still needs transaction execution forms
+
+2. Stock Movements is still too generic
+
+The Stock Movements page is good visually, but it still looks like a simple movement log.
+
+To fully align with the logic, it should show more traceability context such as:
+
+HU code
+batch/lot
+movement type
+source document
+source method: barcode / RFID / manual / API
+from location
+to location
+status impact
+performed by
+
+At the moment it feels slightly too summarized.
+
+3. Barcode Registry should include print and reprint logic clearly
+
+This page is good, but to complete the story it should also support:
+
+generate barcode
+print label
+reprint label
+deactivate barcode
+label template used
+printer used
+
+You have the print icon, which is good, but the workflow should be explicit in the product story.
+
+4. RFID Tag Registry needs stronger linkage to HU
+
+This is one of the main gaps still.
+
+In the RFID tag registry, I can see:
+
+EPC
+tag type
+material type
+batch/lot
+last zone
+last reader
+last RSSI
+last seen
+status
+
+But ideally it should also show:
+
+linked HU code
+optionally linked barcode
+linked material code
+
+Because the true business object is the handling unit.
+Right now RFID still looks slightly tag-centric instead of HU-centric.
+
+That is fixable.
+
+5. Exception resolution logic should be deeper
+
+The Exception Workbench is very good, but the action seems simplified to:
+
+Resolve
+Ignore
+
+You should also support exception-specific resolution flows such as:
+
+map unknown tag
+move to correct location
+release QC hold before dispatch
+confirm duplicate scan should be ignored
+link missing shipment
+override with reason code
+
+So the page is good, but the next level is:
+resolution workflow, not just buttons
+
+6. Missing traceability search screen
+
+This is still one major missing page.
+
+You need one Traceability Search / Item History page where user can search by:
+
+material code
+HU code
+barcode
+RFID EPC
+batch/lot
+PO
+shipment
+production order
+
+And see:
+
+current status
+current location
+full movement history
+barcode
+RFID
+linked documents
+exceptions if any
+
+This will tie everything together.
+
+Right now the module pieces are there, but a full traceability journey page is still missing.
+
+7. Missing document linkage in UI
+
+This is probably the biggest business gap still.
+
+The system logic we discussed required movements to tie to:
+
+PO
+ASN
+production order
+shipment
+QC transaction
+
+I can see some references in movement logs, but the UI still does not fully show document-based workflows.
+
+To make this enterprise-grade, each major transaction should visibly work against a document.
+
+Example:
+
+Receive Inventory → against PO / ASN
+Issue to Production → against production order
+Dispatch → against shipment order
+QC Hold / Release → against QC transaction / reason
+
+That needs to be more explicit.

@@ -35,6 +35,7 @@ import InventoryTransactions from "@/pages/inventory-transactions";
 import InventoryBarcodes from "@/pages/inventory-barcodes";
 import InventoryRFID from "@/pages/inventory-rfid";
 import InventoryExceptions from "@/pages/inventory-exceptions";
+import InventoryTraceabilitySearch from "@/pages/inventory-traceability-search";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/inventory-barcodes" component={InventoryBarcodes} />
       <Route path="/inventory-rfid" component={InventoryRFID} />
       <Route path="/inventory-exceptions" component={InventoryExceptions} />
+      <Route path="/inventory-traceability-search" component={InventoryTraceabilitySearch} />
       <Route component={NotFound} />
     </Switch>
   );

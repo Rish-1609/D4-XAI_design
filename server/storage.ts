@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent, type HandlingUnit, type InsertHandlingUnit, type Barcode, type InsertBarcode, type ScanException, type InsertScanException } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent, type HandlingUnit, type InsertHandlingUnit, type Barcode, type InsertBarcode, type ScanException, type InsertScanException, type MovementLedgerEntry, type InsertMovementLedger } from "@shared/schema";
 
 // Legacy type aliases for compatibility
 type CapaAction = any;
@@ -419,6 +419,14 @@ export interface IStorage {
   createScanException(exception: InsertScanException): Promise<ScanException>;
   resolveScanException(id: string, resolvedBy: string, notes?: string): Promise<ScanException | undefined>;
   getTraceabilityStats(): Promise<{ totalHUs: number; activeBarcodes: number; openExceptions: number; totalMovements: number; }>;
+
+  // Movement Ledger operations
+  getMovementLedger(): Promise<MovementLedgerEntry[]>;
+  getMovementsByHuCode(huCode: string): Promise<MovementLedgerEntry[]>;
+  getMovementsByBatch(batchNumber: string): Promise<MovementLedgerEntry[]>;
+  getMovementsBySourceDoc(docNumber: string): Promise<MovementLedgerEntry[]>;
+  createMovementEntry(entry: InsertMovementLedger): Promise<MovementLedgerEntry>;
+  searchTraceability(query: string): Promise<{ handlingUnits: HandlingUnit[]; barcodes: Barcode[]; movements: MovementLedgerEntry[]; }>;
 }
 
 export class MemStorage implements IStorage {
@@ -495,6 +503,8 @@ export class MemStorage implements IStorage {
   private handlingUnitsMap: Map<string, HandlingUnit>;
   private barcodesMap: Map<string, Barcode>;
   private scanExceptionsMap: Map<string, ScanException>;
+  private movementLedgerMap: Map<string, MovementLedgerEntry>;
+  private movementCounter: number;
 
   constructor() {
     this.materials = new Map();
@@ -570,6 +580,8 @@ export class MemStorage implements IStorage {
     this.handlingUnitsMap = new Map();
     this.barcodesMap = new Map();
     this.scanExceptionsMap = new Map();
+    this.movementLedgerMap = new Map();
+    this.movementCounter = 0;
     
     this.initializeDummyData().catch(console.error);
     this.initializeFinanceData().catch(console.error);
@@ -5555,13 +5567,101 @@ export class MemStorage implements IStorage {
     const hus = Array.from(this.handlingUnitsMap.values());
     const barcodes = Array.from(this.barcodesMap.values());
     const exceptions = Array.from(this.scanExceptionsMap.values());
-    const movements = Array.from(this.stockMovements.values()).flat();
+    const movements = Array.from(this.movementLedgerMap.values());
     return {
       totalHUs: hus.length,
       activeBarcodes: barcodes.filter(b => b.status === "active").length,
       openExceptions: exceptions.filter(e => e.resolvedStatus === "open").length,
       totalMovements: movements.length,
     };
+  }
+
+  // Movement Ledger implementations
+  async getMovementLedger(): Promise<MovementLedgerEntry[]> {
+    return Array.from(this.movementLedgerMap.values()).sort((a, b) => new Date(b.movedAt!).getTime() - new Date(a.movedAt!).getTime());
+  }
+
+  async getMovementsByHuCode(huCode: string): Promise<MovementLedgerEntry[]> {
+    return Array.from(this.movementLedgerMap.values())
+      .filter(m => m.huCode === huCode)
+      .sort((a, b) => new Date(b.movedAt!).getTime() - new Date(a.movedAt!).getTime());
+  }
+
+  async getMovementsByBatch(batchNumber: string): Promise<MovementLedgerEntry[]> {
+    return Array.from(this.movementLedgerMap.values())
+      .filter(m => m.batchNumber === batchNumber)
+      .sort((a, b) => new Date(b.movedAt!).getTime() - new Date(a.movedAt!).getTime());
+  }
+
+  async getMovementsBySourceDoc(docNumber: string): Promise<MovementLedgerEntry[]> {
+    return Array.from(this.movementLedgerMap.values())
+      .filter(m => m.sourceDocNumber === docNumber)
+      .sort((a, b) => new Date(b.movedAt!).getTime() - new Date(a.movedAt!).getTime());
+  }
+
+  async createMovementEntry(data: InsertMovementLedger): Promise<MovementLedgerEntry> {
+    const id = randomUUID();
+    const now = new Date();
+    this.movementCounter++;
+    const movementNumber = data.movementNumber || `MVT-${String(this.movementCounter).padStart(6, "0")}`;
+    const entry: MovementLedgerEntry = {
+      id,
+      movementNumber,
+      movementType: data.movementType,
+      huId: data.huId || null,
+      huCode: data.huCode || null,
+      huType: data.huType || null,
+      materialCode: data.materialCode || null,
+      materialName: data.materialName || null,
+      batchNumber: data.batchNumber || null,
+      lotNumber: data.lotNumber || null,
+      quantity: data.quantity || "0",
+      uom: data.uom || null,
+      fromLocationCode: data.fromLocationCode || null,
+      fromLocationName: data.fromLocationName || null,
+      toLocationCode: data.toLocationCode || null,
+      toLocationName: data.toLocationName || null,
+      sourceDocType: data.sourceDocType || null,
+      sourceDocNumber: data.sourceDocNumber || null,
+      scanMethod: data.scanMethod || "manual",
+      performedBy: data.performedBy || null,
+      statusBefore: data.statusBefore || null,
+      statusAfter: data.statusAfter || null,
+      notes: data.notes || null,
+      movedAt: data.movedAt || now,
+      createdAt: now,
+    };
+    this.movementLedgerMap.set(id, entry);
+    return entry;
+  }
+
+  async searchTraceability(query: string): Promise<{ handlingUnits: HandlingUnit[]; barcodes: Barcode[]; movements: MovementLedgerEntry[]; }> {
+    const q = query.toLowerCase().trim();
+    if (!q) return { handlingUnits: [], barcodes: [], movements: [] };
+    const hus = Array.from(this.handlingUnitsMap.values()).filter(h =>
+      h.huCode.toLowerCase().includes(q) ||
+      (h.materialCode ?? "").toLowerCase().includes(q) ||
+      (h.materialName ?? "").toLowerCase().includes(q) ||
+      (h.batchNumber ?? "").toLowerCase().includes(q) ||
+      (h.lotNumber ?? "").toLowerCase().includes(q) ||
+      (h.rfidEpc ?? "").toLowerCase().includes(q) ||
+      (h.barcodeValue ?? "").toLowerCase().includes(q)
+    );
+    const bcs = Array.from(this.barcodesMap.values()).filter(b =>
+      b.barcodeValue.toLowerCase().includes(q) ||
+      (b.materialCode ?? "").toLowerCase().includes(q) ||
+      (b.batchNumber ?? "").toLowerCase().includes(q) ||
+      (b.linkedHuCode ?? "").toLowerCase().includes(q)
+    );
+    const mvts = Array.from(this.movementLedgerMap.values()).filter(m =>
+      (m.huCode ?? "").toLowerCase().includes(q) ||
+      (m.materialCode ?? "").toLowerCase().includes(q) ||
+      (m.batchNumber ?? "").toLowerCase().includes(q) ||
+      (m.sourceDocNumber ?? "").toLowerCase().includes(q) ||
+      (m.fromLocationName ?? "").toLowerCase().includes(q) ||
+      (m.toLocationName ?? "").toLowerCase().includes(q)
+    ).sort((a, b) => new Date(b.movedAt!).getTime() - new Date(a.movedAt!).getTime());
+    return { handlingUnits: hus, barcodes: bcs, movements: mvts };
   }
 }
 

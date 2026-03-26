@@ -40,6 +40,7 @@ export default function InventoryRFID() {
   const { data: rfidZones = [] } = useQuery<RfidZone[]>({ queryKey: ["/api/rfid/zones"] });
   const { data: rfidTags = [] } = useQuery<RfidTag[]>({ queryKey: ["/api/rfid/tags"] });
   const { data: rfidEvents = [] } = useQuery<RfidEvent[]>({ queryKey: ["/api/rfid/events"] });
+  const { data: handlingUnits = [] } = useQuery<{ id: string; huCode: string; rfidEpc: string | null; barcodeValue: string | null; materialCode: string | null; materialName: string | null }[]>({ queryKey: ["/api/traceability/handling-units"] });
   const { data: rfidStats } = useQuery<{
     totalReaders: number; onlineReaders: number; activeTags: number;
     todayEvents: number; inboundToday: number; outboundToday: number;
@@ -241,6 +242,8 @@ export default function InventoryRFID() {
                       <TableRow className="bg-gray-50">
                         <TableHead className="text-xs">EPC Code</TableHead>
                         <TableHead className="text-xs">Tag Type</TableHead>
+                        <TableHead className="text-xs">Linked HU</TableHead>
+                        <TableHead className="text-xs">Material Code</TableHead>
                         <TableHead className="text-xs">Material Type</TableHead>
                         <TableHead className="text-xs">Batch / Lot</TableHead>
                         <TableHead className="text-xs">Last Zone</TableHead>
@@ -254,12 +257,19 @@ export default function InventoryRFID() {
                       {rfidTags.map(tag => {
                         const lastZone = tag.lastZoneId ? rfidZones.find(z => z.id === tag.lastZoneId) : null;
                         const lastReader = tag.lastReaderId ? rfidReaders.find(r => r.id === tag.lastReaderId) : null;
+                        const linkedHU = handlingUnits.find(h => h.rfidEpc === tag.tagEpc);
                         return (
                           <TableRow key={tag.id} className="hover:bg-gray-50">
                             <TableCell className="font-mono text-xs font-bold text-purple-700">{tag.tagEpc}</TableCell>
                             <TableCell>
                               <Badge className="bg-purple-50 text-purple-700 border-0 text-xs">{tag.tagType}</Badge>
                             </TableCell>
+                            <TableCell>
+                              {linkedHU ? (
+                                <span className="font-mono text-xs font-semibold text-blue-700">{linkedHU.huCode}</span>
+                              ) : <span className="text-xs text-gray-400">—</span>}
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-gray-700">{linkedHU?.materialCode ?? (tag.materialType ? `${tag.materialType.split("-")[0].toUpperCase()}-001` : "—")}</TableCell>
                             <TableCell className="text-xs text-gray-600 capitalize">{(tag.materialType ?? "—").replace(/-/g, " ")}</TableCell>
                             <TableCell className="font-mono text-xs text-gray-600">{tag.batchNumber ?? "—"}</TableCell>
                             <TableCell className="text-xs text-gray-500">{lastZone?.name ?? "—"}</TableCell>

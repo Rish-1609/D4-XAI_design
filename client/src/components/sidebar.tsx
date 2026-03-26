@@ -60,6 +60,7 @@ const menuItems = [
       { label: "Barcode Registry", href: "/inventory-barcodes" },
       { label: "RFID Monitoring", href: "/inventory-rfid" },
       { label: "Exceptions", href: "/inventory-exceptions" },
+      { label: "Traceability Search", href: "/inventory-traceability-search" },
     ],
   },
   {

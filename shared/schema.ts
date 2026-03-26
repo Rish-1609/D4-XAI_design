@@ -1371,9 +1371,39 @@ export const scanExceptions = pgTable("scan_exceptions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Movement Ledger - full audit trail of every stock movement
+export const movementLedger = pgTable("movement_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  movementNumber: text("movement_number").notNull().unique(), // MVT-000001
+  movementType: text("movement_type").notNull(), // stock_in, putaway, internal_transfer, issue_to_production, production_receipt, stock_out, QC_hold, cycle_count
+  huId: varchar("hu_id"),
+  huCode: text("hu_code"),
+  huType: text("hu_type"),
+  materialCode: text("material_code"),
+  materialName: text("material_name"),
+  batchNumber: text("batch_number"),
+  lotNumber: text("lot_number"),
+  quantity: decimal("quantity").default('0'),
+  uom: text("uom"),
+  fromLocationCode: text("from_location_code"),
+  fromLocationName: text("from_location_name"),
+  toLocationCode: text("to_location_code"),
+  toLocationName: text("to_location_name"),
+  sourceDocType: text("source_doc_type"), // 'PO','ASN','production_order','shipment','QC_transaction','transfer_order','cycle_count'
+  sourceDocNumber: text("source_doc_number"), // e.g. PO-2024-001
+  scanMethod: text("scan_method").notNull().default('manual'), // 'barcode','rfid','manual','api'
+  performedBy: text("performed_by"),
+  statusBefore: text("status_before"),
+  statusAfter: text("status_after"),
+  notes: text("notes"),
+  movedAt: timestamp("moved_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertHandlingUnitSchema = createInsertSchema(handlingUnits).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBarcodeSchema = createInsertSchema(barcodes).omit({ id: true, createdAt: true });
 export const insertScanExceptionSchema = createInsertSchema(scanExceptions).omit({ id: true, createdAt: true });
+export const insertMovementLedgerSchema = createInsertSchema(movementLedger).omit({ id: true, createdAt: true });
 
 export type InsertHandlingUnit = z.infer<typeof insertHandlingUnitSchema>;
 export type HandlingUnit = typeof handlingUnits.$inferSelect;
@@ -1381,6 +1411,8 @@ export type InsertBarcode = z.infer<typeof insertBarcodeSchema>;
 export type Barcode = typeof barcodes.$inferSelect;
 export type InsertScanException = z.infer<typeof insertScanExceptionSchema>;
 export type ScanException = typeof scanExceptions.$inferSelect;
+export type InsertMovementLedger = z.infer<typeof insertMovementLedgerSchema>;
+export type MovementLedgerEntry = typeof movementLedger.$inferSelect;
 
 // ==================== RFID INVENTORY TRACKING ====================
 

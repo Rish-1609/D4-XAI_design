@@ -55,7 +55,16 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Monitoring**: Live updates for material status and quality metrics
 - **Search and Filter**: Category-based filtering and material type organization
 - **Inventory Tracking**: Stock level management integrated with material records
-- **Inventory Traceability System**: Unified barcode + RFID tracking covering the full material lifecycle. Routes: `/inventory-traceability`. APIs: `/api/traceability/*` (handling-units, barcodes, exceptions, stats) + `/api/rfid/*` (zones, readers, tags, events, stats). Features: 5-tab page — Transactions (8 movement types: receive, putaway, transfer, issue, production receipt, dispatch, QC hold/release, cycle count), Traceability (handling unit registry, barcode registry), RFID Monitoring (reader health, zone map, live scan feed, tag registry), Exceptions (scan exception workbench with resolve workflow), Ledger (full movement audit trail). Schema: handlingUnits (pallets/cartons/items/totes with barcode+RFID identity), barcodes (barcode registry), scanExceptions (invalid scan log). Seeded with 10 handling units, 12 barcodes, 6 scan exceptions.
+- **Inventory Management System**: Split into 6 team-focused pages under "Inventory Management" in the sidebar:
+  - `/stock-movements` — Full movement ledger view with filters by type/scan method; integrates movement ledger data
+  - `/inventory-master` — Master data (handling units registry) 
+  - `/inventory-transactions` — 8 document-driven transaction types (Receive, Putaway, Transfer, Issue, Prod. Receipt, Dispatch, QC Hold, Cycle Count); each type has its own source document reference, auto-fills HU data, posts to movement ledger
+  - `/inventory-barcodes` — Generate → Print → Reprint workflow with Zebra printer selection (5 printers), 6 GS1 label templates, reprint reason codes
+  - `/inventory-rfid` — RFID zone map, reader health, live event feed, tag registry (with linked HU/material cross-reference columns)
+  - `/inventory-exceptions` — 8-type exception workbench: each type has a custom resolution dialog with type-specific fields (map unknown tag, correct location, batch action, duplicate confirmation, shipment linkage, CAPA reference, quantity adjustment)
+  - `/inventory-traceability-search` — Universal search by HU code, barcode, RFID EPC, batch/lot, PO, shipment, production order → shows full item journey as an interactive timeline
+  - APIs: `/api/traceability/*` (handling-units, barcodes, exceptions, stats, movements, search) + `/api/rfid/*` (zones, readers, tags, events, stats)
+  - Schema: handlingUnits, barcodes, scanExceptions, movementLedger (with movementNumber MVT-000001, sourceDocType/Number, scanMethod, statusBefore/After, performedBy, movedAt)
 - **Finance Management**: Full AP/AR, manufacturing cost tracking, GL journals, budget, and ledger insights. Routes: `/finance-setup`, `/finance-transactions`, `/finance-manufacturing`, `/finance-ledger`
 - **Audit Trail**: Creation and update timestamps for compliance tracking
 

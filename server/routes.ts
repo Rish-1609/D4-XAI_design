@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomItemSchema, insertInventoryItemSchema, insertInventoryTransactionSchema, insertCapaSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema, insertChartOfAccountsSchema, insertCostCenterSchema, insertProfitCenterSchema, insertTaxCodeSchema, insertPaymentTermsSchema, insertFiscalYearSchema, insertFiscalPeriodSchema, insertPartySchema, insertFinancialDocumentSchema, insertDocumentLineSchema, insertPaymentSchema, insertGlJournalSchema, insertGlJournalLineSchema, insertRfidZoneSchema, insertRfidReaderSchema, insertRfidTagSchema, insertRfidEventSchema, insertHandlingUnitSchema, insertBarcodeSchema, insertScanExceptionSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomItemSchema, insertInventoryItemSchema, insertInventoryTransactionSchema, insertCapaSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema, insertChartOfAccountsSchema, insertCostCenterSchema, insertProfitCenterSchema, insertTaxCodeSchema, insertPaymentTermsSchema, insertFiscalYearSchema, insertFiscalPeriodSchema, insertPartySchema, insertFinancialDocumentSchema, insertDocumentLineSchema, insertPaymentSchema, insertGlJournalSchema, insertGlJournalLineSchema, insertRfidZoneSchema, insertRfidReaderSchema, insertRfidTagSchema, insertRfidEventSchema, insertHandlingUnitSchema, insertBarcodeSchema, insertScanExceptionSchema, insertMovementLedgerSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -3302,6 +3302,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ex) return res.status(404).json({ message: "Exception not found" });
       res.json(ex);
     } catch { res.status(500).json({ message: "Failed to resolve exception" }); }
+  });
+
+  // ── Movement Ledger routes ────────────────────────────────────────────
+  app.get("/api/traceability/movements", async (req, res) => {
+    try {
+      const { huCode, batch, doc } = req.query as Record<string, string>;
+      let entries;
+      if (huCode) entries = await storage.getMovementsByHuCode(huCode);
+      else if (batch) entries = await storage.getMovementsByBatch(batch);
+      else if (doc) entries = await storage.getMovementsBySourceDoc(doc);
+      else entries = await storage.getMovementLedger();
+      res.json(entries);
+    } catch { res.status(500).json({ message: "Failed to fetch movement ledger" }); }
+  });
+
+  app.post("/api/traceability/movements", async (req, res) => {
+    try {
+      const validated = insertMovementLedgerSchema.parse(req.body);
+      const entry = await storage.createMovementEntry(validated);
+
+      // Also update the handling unit status/location if huId is provided
+      if (req.body.huId && req.body.statusAfter) {
+        await storage.updateHandlingUnit(req.body.huId, {
+          status: req.body.statusAfter,
+          currentLocationCode: req.body.toLocationCode || req.body.fromLocationCode,
+          currentLocationName: req.body.toLocationName || req.body.fromLocationName,
+          notes: `[${req.body.movementType}] ${req.body.sourceDocNumber || ""} — ${req.body.notes || ""}`,
+        });
+      }
+      res.status(201).json(entry);
+    } catch (error) {
+      if ((error as any)?.name === "ZodError") return res.status(400).json({ message: "Invalid data", errors: (error as any).errors });
+      res.status(500).json({ message: "Failed to create movement entry" });
+    }
+  });
+
+  // ── Traceability Search route ─────────────────────────────────────────
+  app.get("/api/traceability/search", async (req, res) => {
+    try {
+      const { q } = req.query as { q?: string };
+      if (!q) return res.json({ handlingUnits: [], barcodes: [], movements: [] });
+      const results = await storage.searchTraceability(q);
+      res.json(results);
+    } catch { res.status(500).json({ message: "Failed to search" }); }
   });
 
   const httpServer = createServer(app);
