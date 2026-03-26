@@ -63,7 +63,7 @@ const menuItems = [
       { label: "BOM Management",       href: "/bom-management" },
       { label: "Production Orders",    href: "/production-orders" },
       { label: "Equipment Management", href: "/master-equipment" },
-      { label: "Material Master",      href: "/" },
+      { label: "Material Master",      href: "/master-material" },
     ],
   },
   {

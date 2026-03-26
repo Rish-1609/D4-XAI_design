@@ -39,6 +39,7 @@ import InventoryTraceabilitySearch from "@/pages/inventory-traceability-search";
 import MasterSuppliers from "@/pages/master-suppliers";
 import MasterCustomers from "@/pages/master-customers";
 import MasterEquipment from "@/pages/master-equipment";
+import MasterMaterial from "@/pages/master-material";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/master-suppliers" component={MasterSuppliers} />
       <Route path="/master-customers" component={MasterCustomers} />
       <Route path="/master-equipment" component={MasterEquipment} />
+      <Route path="/master-material" component={MasterMaterial} />
       <Route component={NotFound} />
     </Switch>
   );
