@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { Sidebar } from "@/components/sidebar";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,7 +145,10 @@ export default function MasterCustomers() {
   const totalValue = customers.reduce((sum, c) => sum + parseFloat(c.totalValue ?? "0"), 0);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Customer Management</h1>
@@ -257,6 +260,8 @@ export default function MasterCustomers() {
           <CustomerForm customer={selected ?? undefined} onClose={() => setDialogOpen(false)} />
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }

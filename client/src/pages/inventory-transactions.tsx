@@ -196,8 +196,8 @@ export default function InventoryTransactions() {
       <div className="flex-1 overflow-y-auto">
         <div className="p-6">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Inventory Transactions</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Execute and audit all stock movements — every action is document-driven and written to the movement ledger</p>
+            <h1 className="text-2xl font-bold text-gray-900">Transactions & Movements</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Post document-driven transactions and view the full movement ledger — every action creates an immutable audit trail</p>
           </div>
 
           {/* Stock status summary */}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -90,7 +91,10 @@ export default function MasterEquipment() {
   const calibrationDue = SEED.filter(e => e.status === "calibration_due" || (daysUntil(e.nextCalibrationDate) ?? 999) < 30).length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Equipment Management</h1>
@@ -260,6 +264,8 @@ export default function MasterEquipment() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }

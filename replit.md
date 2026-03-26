@@ -55,10 +55,10 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Monitoring**: Live updates for material status and quality metrics
 - **Search and Filter**: Category-based filtering and material type organization
 - **Inventory Tracking**: Stock level management integrated with material records
-- **Inventory Management System**: Split into 6 team-focused pages under "Inventory Management" in the sidebar:
-  - `/stock-movements` — Full movement ledger view with filters by type/scan method; integrates movement ledger data
-  - `/inventory-master` — Master data (handling units registry) 
-  - `/inventory-transactions` — 8 document-driven transaction types (Receive, Putaway, Transfer, Issue, Prod. Receipt, Dispatch, QC Hold, Cycle Count); each type has its own source document reference, auto-fills HU data, posts to movement ledger
+- **Inventory Management System**: Split into team-focused pages under "Inventory Management" in the sidebar:
+  - `/inventory-transactions` — Combined "Transactions & Movements" page: 8 document-driven transaction types (Receive, Putaway, Transfer, Issue, Prod. Receipt, Dispatch, QC Hold, Cycle Count) + embedded movement ledger with filters; sidebar label: "Transactions & Movements"
+  - `/stock-movements` — Legacy standalone movement ledger (still accessible via direct URL but removed from sidebar; merged into `/inventory-transactions`)
+  - `/inventory-master` — Handling Units registry (sidebar label: "Handling Units")
   - `/inventory-barcodes` — Generate → Print → Reprint workflow with Zebra printer selection (5 printers), 6 GS1 label templates, reprint reason codes
   - `/inventory-rfid` — RFID zone map, reader health, live event feed, tag registry (with linked HU/material cross-reference columns)
   - `/inventory-exceptions` — 8-type exception workbench: each type has a custom resolution dialog with type-specific fields (map unknown tag, correct location, batch action, duplicate confirmation, shipment linkage, CAPA reference, quantity adjustment)

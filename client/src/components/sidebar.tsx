@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { 
   ChevronRight, 
@@ -72,9 +72,8 @@ const menuItems = [
     icon: Warehouse,
     submenu: [
       { label: "Stock Overview",        href: "/inventory-overview" },
-      { label: "Stock Movements",       href: "/stock-movements" },
-      { label: "Master Data",           href: "/inventory-master" },
-      { label: "Transactions",          href: "/inventory-transactions" },
+      { label: "Transactions & Movements", href: "/inventory-transactions" },
+      { label: "Handling Units",        href: "/inventory-master" },
       { label: "Barcode Registry",      href: "/inventory-barcodes" },
       { label: "RFID Monitoring",       href: "/inventory-rfid" },
       { label: "Exceptions",            href: "/inventory-exceptions" },
@@ -126,40 +125,52 @@ const menuItems = [
   },
 ];
 
+const STORAGE_KEY = "d4_sidebar_expanded";
+
 export function Sidebar({ className }: SidebarProps) {
   const [location] = useLocation();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  // Auto-expand menu if current location matches a submenu item
-  const getDefaultExpandedMenus = () => {
+  // Compute which menus should be open based on current route
+  const getMenusForLocation = (loc: string): string[] => {
     const expanded: string[] = [];
     menuItems.forEach(item => {
-      if (item.submenu) {
-        const hasActiveSubmenu = item.submenu.some(subItem => subItem.href === location);
-        if (hasActiveSubmenu) {
-          expanded.push(item.id);
-        }
+      if (item.submenu && item.submenu.some(sub => sub.href === loc)) {
+        expanded.push(item.id);
       }
     });
     return expanded;
   };
 
-  // Set expanded menus based on current location on mount
-  const defaultExpanded = getDefaultExpandedMenus();
-  if (defaultExpanded.length > 0 && expandedMenus.length === 0) {
-    setExpandedMenus(defaultExpanded);
-  }
+  // Initialise from localStorage; if nothing stored, auto-expand active section
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY);
+      if (stored) return JSON.parse(stored) as string[];
+    } catch {}
+    return getMenusForLocation(location);
+  });
+
+  // When location changes, ensure the active section stays expanded
+  useEffect(() => {
+    const active = getMenusForLocation(location);
+    if (active.length > 0) {
+      setExpandedMenus(prev => {
+        const next = Array.from(new Set([...prev, ...active]));
+        try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
+  }, [location]);
 
   const toggleSubmenu = (menuId: string, e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    setExpandedMenus(prev =>
-      prev.includes(menuId)
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    setExpandedMenus(prev => {
+      const next = prev.includes(menuId)
         ? prev.filter(id => id !== menuId)
-        : [...prev, menuId]
-    );
+        : [...prev, menuId];
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   return (
@@ -203,8 +214,13 @@ export function Sidebar({ className }: SidebarProps) {
                   {expandedMenus.includes(item.id) && item.submenu.length > 0 && (
                     <div className="ml-6 mt-1 space-y-1">
                       {item.submenu.map((subItem) => (
-                        <Link key={subItem.href} href={subItem.href}>
-                          <button className="block w-full text-left px-3 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                        <Link key={subItem.label + subItem.href} href={subItem.href}>
+                          <button className={cn(
+                            "block w-full text-left px-3 py-2 text-xs transition-colors rounded",
+                            location === subItem.href
+                              ? "text-white bg-blue-600/70 font-medium"
+                              : "text-gray-400 hover:text-white hover:bg-white/10"
+                          )}>
                             {subItem.label}
                           </button>
                         </Link>
