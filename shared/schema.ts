@@ -1306,6 +1306,101 @@ export const financeAuditLogs = pgTable("finance_audit_logs", {
   notes: text("notes"),
 });
 
+// ==================== RFID INVENTORY TRACKING ====================
+
+// RFID Zones - Areas monitored by RFID scanners
+export const rfidZones = pgTable("rfid_zones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  zoneCode: text("zone_code").notNull().unique(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'rack', 'room', 'door', 'conveyor', 'cold-storage', 'quarantine'
+  warehouseId: text("warehouse_id"),
+  locationCode: text("location_code"),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// RFID Readers/Scanners - Physical scanner devices
+export const rfidReaders = pgTable("rfid_readers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  readerCode: text("reader_code").notNull().unique(),
+  name: text("name").notNull(),
+  model: text("model").notNull(), // e.g., 'Zebra FX9600', 'Impinj R700', 'Alien ALR-9900+'
+  vendor: text("vendor").notNull(), // 'Zebra', 'Impinj', 'Alien', 'Honeywell', 'Feig', 'Nordic ID'
+  zoneId: varchar("zone_id").references(() => rfidZones.id),
+  ipAddress: text("ip_address"),
+  port: integer("port").default(5084),
+  antennaCount: integer("antenna_count").default(4),
+  status: text("status").notNull().default('offline'), // 'online', 'offline', 'error', 'maintenance'
+  firmwareVersion: text("firmware_version"),
+  lastHeartbeat: timestamp("last_heartbeat"),
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  installedDate: timestamp("installed_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// RFID Tags - Tags attached to materials/items
+export const rfidTags = pgTable("rfid_tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tagEpc: text("tag_epc").notNull().unique(), // Electronic Product Code
+  tagType: text("tag_type").notNull().default('UHF'), // 'UHF', 'HF', 'LF'
+  materialId: varchar("material_id").references(() => materials.id),
+  materialType: text("material_type"), // 'raw-material', 'packaging', 'artwork', 'finished-product', 'instructions'
+  batchNumber: text("batch_number"),
+  lotNumber: text("lot_number"),
+  status: text("status").notNull().default('active'), // 'active', 'decommissioned', 'lost', 'damaged'
+  lastSeenAt: timestamp("last_seen_at"),
+  lastZoneId: varchar("last_zone_id").references(() => rfidZones.id),
+  lastReaderId: varchar("last_reader_id").references(() => rfidReaders.id),
+  lastRssi: integer("last_rssi"), // Signal strength in dBm
+  isActive: boolean("is_active").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// RFID Events - Scan events and movement records
+export const rfidEvents = pgTable("rfid_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventNumber: text("event_number").notNull().unique(),
+  tagEpc: text("tag_epc").notNull(),
+  tagId: varchar("tag_id").references(() => rfidTags.id),
+  readerId: varchar("reader_id").references(() => rfidReaders.id),
+  zoneId: varchar("zone_id").references(() => rfidZones.id),
+  eventType: text("event_type").notNull(), // 'inbound', 'outbound', 'detected', 'zone-transfer'
+  direction: text("direction"), // 'in', 'out'
+  rssi: integer("rssi"), // Signal strength in dBm
+  antennaPort: integer("antenna_port"),
+  materialId: varchar("material_id").references(() => materials.id),
+  materialType: text("material_type"),
+  batchNumber: text("batch_number"),
+  fromZoneId: varchar("from_zone_id").references(() => rfidZones.id),
+  toZoneId: varchar("to_zone_id").references(() => rfidZones.id),
+  quantity: integer("quantity").default(1),
+  performedBy: text("performed_by"),
+  notes: text("notes"),
+  scannedAt: timestamp("scanned_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertRfidZoneSchema = createInsertSchema(rfidZones).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRfidReaderSchema = createInsertSchema(rfidReaders).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRfidTagSchema = createInsertSchema(rfidTags).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRfidEventSchema = createInsertSchema(rfidEvents).omit({ id: true, createdAt: true });
+
+export type InsertRfidZone = z.infer<typeof insertRfidZoneSchema>;
+export type RfidZone = typeof rfidZones.$inferSelect;
+export type InsertRfidReader = z.infer<typeof insertRfidReaderSchema>;
+export type RfidReader = typeof rfidReaders.$inferSelect;
+export type InsertRfidTag = z.infer<typeof insertRfidTagSchema>;
+export type RfidTag = typeof rfidTags.$inferSelect;
+export type InsertRfidEvent = z.infer<typeof insertRfidEventSchema>;
+export type RfidEvent = typeof rfidEvents.$inferSelect;
+
 // ==================== INSERT SCHEMAS AND TYPES ====================
 
 // Financial Setup

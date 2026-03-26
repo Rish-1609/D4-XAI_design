@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomItemSchema, insertInventoryItemSchema, insertInventoryTransactionSchema, insertCapaSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema, insertChartOfAccountsSchema, insertCostCenterSchema, insertProfitCenterSchema, insertTaxCodeSchema, insertPaymentTermsSchema, insertFiscalYearSchema, insertFiscalPeriodSchema, insertPartySchema, insertFinancialDocumentSchema, insertDocumentLineSchema, insertPaymentSchema, insertGlJournalSchema, insertGlJournalLineSchema } from "@shared/schema";
+import { insertMaterialSchema, updateMaterialSchema, insertTestConfigSchema, insertTestResultSchema, insertTestInstructionSchema, insertSopSchema, insertSopChangeRequestSchema, insertProductionOrderSchema, insertBomSchema, insertBomItemSchema, insertInventoryItemSchema, insertInventoryTransactionSchema, insertCapaSchema, insertProductionBatchSchema, insertBatchStageSchema, insertBatchExecutionSchema, insertJobWorkSchema, insertBatchReviewSchema, insertEquipmentSchema, insertProductionJobSchema, insertJobCardSchema, insertChartOfAccountsSchema, insertCostCenterSchema, insertProfitCenterSchema, insertTaxCodeSchema, insertPaymentTermsSchema, insertFiscalYearSchema, insertFiscalPeriodSchema, insertPartySchema, insertFinancialDocumentSchema, insertDocumentLineSchema, insertPaymentSchema, insertGlJournalSchema, insertGlJournalLineSchema, insertRfidZoneSchema, insertRfidReaderSchema, insertRfidTagSchema, insertRfidEventSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -2985,6 +2985,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(aging);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch aging report" });
+    }
+  });
+
+  // ==================== RFID Tracking Routes ====================
+
+  // RFID Stats
+  app.get("/api/rfid/stats", async (req, res) => {
+    try {
+      const stats = await storage.getRfidStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch RFID stats" });
+    }
+  });
+
+  // RFID Zones
+  app.get("/api/rfid/zones", async (req, res) => {
+    try {
+      res.json(await storage.getRfidZones());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch RFID zones" });
+    }
+  });
+
+  app.get("/api/rfid/zones/:id", async (req, res) => {
+    try {
+      const zone = await storage.getRfidZone(req.params.id);
+      if (!zone) return res.status(404).json({ message: "Zone not found" });
+      res.json(zone);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch zone" });
+    }
+  });
+
+  app.post("/api/rfid/zones", async (req, res) => {
+    try {
+      const data = insertRfidZoneSchema.parse(req.body);
+      res.status(201).json(await storage.createRfidZone(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid zone data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create zone" });
+    }
+  });
+
+  app.put("/api/rfid/zones/:id", async (req, res) => {
+    try {
+      const data = insertRfidZoneSchema.partial().parse(req.body);
+      const zone = await storage.updateRfidZone(req.params.id, data);
+      if (!zone) return res.status(404).json({ message: "Zone not found" });
+      res.json(zone);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid zone data", errors: error.errors });
+      res.status(500).json({ message: "Failed to update zone" });
+    }
+  });
+
+  app.delete("/api/rfid/zones/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteRfidZone(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Zone not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete zone" });
+    }
+  });
+
+  // RFID Readers
+  app.get("/api/rfid/readers", async (req, res) => {
+    try {
+      res.json(await storage.getRfidReaders());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch RFID readers" });
+    }
+  });
+
+  app.get("/api/rfid/readers/:id", async (req, res) => {
+    try {
+      const reader = await storage.getRfidReader(req.params.id);
+      if (!reader) return res.status(404).json({ message: "Reader not found" });
+      res.json(reader);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch reader" });
+    }
+  });
+
+  app.post("/api/rfid/readers", async (req, res) => {
+    try {
+      const data = insertRfidReaderSchema.parse(req.body);
+      res.status(201).json(await storage.createRfidReader(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid reader data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create reader" });
+    }
+  });
+
+  app.put("/api/rfid/readers/:id", async (req, res) => {
+    try {
+      const data = insertRfidReaderSchema.partial().parse(req.body);
+      const reader = await storage.updateRfidReader(req.params.id, data);
+      if (!reader) return res.status(404).json({ message: "Reader not found" });
+      res.json(reader);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid reader data", errors: error.errors });
+      res.status(500).json({ message: "Failed to update reader" });
+    }
+  });
+
+  app.delete("/api/rfid/readers/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteRfidReader(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Reader not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete reader" });
+    }
+  });
+
+  // RFID Tags
+  app.get("/api/rfid/tags", async (req, res) => {
+    try {
+      res.json(await storage.getRfidTags());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch RFID tags" });
+    }
+  });
+
+  app.get("/api/rfid/tags/epc/:epc", async (req, res) => {
+    try {
+      const tag = await storage.getRfidTagByEpc(req.params.epc);
+      if (!tag) return res.status(404).json({ message: "Tag not found" });
+      res.json(tag);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch tag" });
+    }
+  });
+
+  app.get("/api/rfid/tags/:id", async (req, res) => {
+    try {
+      const tag = await storage.getRfidTag(req.params.id);
+      if (!tag) return res.status(404).json({ message: "Tag not found" });
+      res.json(tag);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch tag" });
+    }
+  });
+
+  app.post("/api/rfid/tags", async (req, res) => {
+    try {
+      const data = insertRfidTagSchema.parse(req.body);
+      res.status(201).json(await storage.createRfidTag(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid tag data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create tag" });
+    }
+  });
+
+  app.put("/api/rfid/tags/:id", async (req, res) => {
+    try {
+      const data = insertRfidTagSchema.partial().parse(req.body);
+      const tag = await storage.updateRfidTag(req.params.id, data);
+      if (!tag) return res.status(404).json({ message: "Tag not found" });
+      res.json(tag);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid tag data", errors: error.errors });
+      res.status(500).json({ message: "Failed to update tag" });
+    }
+  });
+
+  app.delete("/api/rfid/tags/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteRfidTag(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Tag not found" });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete tag" });
+    }
+  });
+
+  // RFID Events
+  app.get("/api/rfid/events", async (req, res) => {
+    try {
+      res.json(await storage.getRfidEvents());
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch RFID events" });
+    }
+  });
+
+  app.get("/api/rfid/events/tag/:tagId", async (req, res) => {
+    try {
+      res.json(await storage.getRfidEventsByTag(req.params.tagId));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch events" });
+    }
+  });
+
+  app.get("/api/rfid/events/zone/:zoneId", async (req, res) => {
+    try {
+      res.json(await storage.getRfidEventsByZone(req.params.zoneId));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch events" });
+    }
+  });
+
+  app.post("/api/rfid/events", async (req, res) => {
+    try {
+      const data = insertRfidEventSchema.parse(req.body);
+      res.status(201).json(await storage.createRfidEvent(data));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid event data", errors: error.errors });
+      res.status(500).json({ message: "Failed to create event" });
     }
   });
 

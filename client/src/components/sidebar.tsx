@@ -25,7 +25,8 @@ import {
   DollarSign,
   Calculator,
   Wallet,
-  BookOpen
+  BookOpen,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ const menuItems = [
     submenu: [
       { label: "Stock Overview", href: "/inventory-overview" },
       { label: "Stock Movements", href: "/stock-movements" },
+      { label: "RFID Tracking", href: "/rfid-tracking" },
     ],
   },
   {

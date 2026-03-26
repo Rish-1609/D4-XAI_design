@@ -55,6 +55,8 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Monitoring**: Live updates for material status and quality metrics
 - **Search and Filter**: Category-based filtering and material type organization
 - **Inventory Tracking**: Stock level management integrated with material records
+- **RFID Inventory Tracking**: Real-time RFID scanner monitoring across warehouse zones — readers (Zebra, Impinj, Alien, Honeywell), tag registry, inbound/outbound movement log, zone activity map. Routes: `/rfid-tracking`. API: `/api/rfid/*` (zones, readers, tags, events, stats)
+- **Finance Management**: Full AP/AR, manufacturing cost tracking, GL journals, budget, and ledger insights. Routes: `/finance-setup`, `/finance-transactions`, `/finance-manufacturing`, `/finance-ledger`
 - **Audit Trail**: Creation and update timestamps for compliance tracking
 
 # External Dependencies

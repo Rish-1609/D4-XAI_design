@@ -28,6 +28,7 @@ import FinanceSetup from "@/pages/finance-setup";
 import FinanceTransactions from "@/pages/finance-transactions";
 import FinanceManufacturing from "@/pages/finance-manufacturing";
 import FinanceLedger from "@/pages/finance-ledger";
+import RfidTracking from "@/pages/rfid-tracking";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/finance-transactions" component={FinanceTransactions} />
       <Route path="/finance-manufacturing" component={FinanceManufacturing} />
       <Route path="/finance-ledger" component={FinanceLedger} />
+      <Route path="/rfid-tracking" component={RfidTracking} />
       <Route component={NotFound} />
     </Switch>
   );

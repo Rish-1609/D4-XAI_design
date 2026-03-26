@@ -1,4 +1,4 @@
-import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine } from "@shared/schema";
+import { type Material, type InsertMaterial, type UpdateMaterial, type TestConfig, type InsertTestConfig, type TestResult, type InsertTestResult, type TestInstruction, type InsertTestInstruction, type Sop, type InsertSop, type SopVersion, type InsertSopVersion, type SopChangeRequest, type InsertSopChangeRequest, type Capa, type InsertCapa, type ProductionOrder, type InsertProductionOrder, type Bom, type InsertBom, type BomItem, type InsertBomItem, type InventoryItem, type InsertInventoryItem, type InventoryTransaction, type InsertInventoryTransaction, type ChatSession, type InsertChatSession, type ChatMessage, type InsertChatMessage, type ProductionBatch, type InsertProductionBatch, type BatchStage, type InsertBatchStage, type BatchExecution, type InsertBatchExecution, type JobWork, type InsertJobWork, type BatchReview, type InsertBatchReview, type Equipment, type InsertEquipment, type ProductionJob, type InsertProductionJob, type JobCard, type InsertJobCard, type ChartOfAccounts, type InsertChartOfAccounts, type CostCenter, type InsertCostCenter, type ProfitCenter, type InsertProfitCenter, type TaxCode, type InsertTaxCode, type PaymentTerms, type InsertPaymentTerms, type FiscalYear, type InsertFiscalYear, type FiscalPeriod, type InsertFiscalPeriod, type Party, type InsertParty, type FinancialDocument, type InsertFinancialDocument, type DocumentLine, type InsertDocumentLine, type Payment, type InsertPayment, type GlJournal, type InsertGlJournal, type GlJournalLine, type InsertGlJournalLine, type RfidZone, type InsertRfidZone, type RfidReader, type InsertRfidReader, type RfidTag, type InsertRfidTag, type RfidEvent, type InsertRfidEvent } from "@shared/schema";
 
 // Legacy type aliases for compatibility
 type CapaAction = any;
@@ -368,6 +368,35 @@ export interface IStorage {
   getAccountBalance(accountId: string): Promise<{ debit: number; credit: number; balance: number }>;
   getTrialBalance(fiscalPeriodId: string): Promise<Array<{ accountId: string; accountName: string; accountCode: string; debit: number; credit: number; }>>;
   getAgingReport(partyType: string): Promise<Array<{ partyId: string; partyName: string; current: number; days30: number; days60: number; days90: number; over90: number; total: number; }>>;
+
+  // RFID Zone operations
+  getRfidZones(): Promise<RfidZone[]>;
+  getRfidZone(id: string): Promise<RfidZone | undefined>;
+  createRfidZone(zone: InsertRfidZone): Promise<RfidZone>;
+  updateRfidZone(id: string, data: Partial<InsertRfidZone>): Promise<RfidZone | undefined>;
+  deleteRfidZone(id: string): Promise<boolean>;
+
+  // RFID Reader operations
+  getRfidReaders(): Promise<RfidReader[]>;
+  getRfidReader(id: string): Promise<RfidReader | undefined>;
+  createRfidReader(reader: InsertRfidReader): Promise<RfidReader>;
+  updateRfidReader(id: string, data: Partial<InsertRfidReader>): Promise<RfidReader | undefined>;
+  deleteRfidReader(id: string): Promise<boolean>;
+
+  // RFID Tag operations
+  getRfidTags(): Promise<RfidTag[]>;
+  getRfidTag(id: string): Promise<RfidTag | undefined>;
+  getRfidTagByEpc(epc: string): Promise<RfidTag | undefined>;
+  createRfidTag(tag: InsertRfidTag): Promise<RfidTag>;
+  updateRfidTag(id: string, data: Partial<InsertRfidTag>): Promise<RfidTag | undefined>;
+  deleteRfidTag(id: string): Promise<boolean>;
+
+  // RFID Event operations
+  getRfidEvents(): Promise<RfidEvent[]>;
+  getRfidEventsByTag(tagId: string): Promise<RfidEvent[]>;
+  getRfidEventsByZone(zoneId: string): Promise<RfidEvent[]>;
+  createRfidEvent(event: InsertRfidEvent): Promise<RfidEvent>;
+  getRfidStats(): Promise<{ totalReaders: number; onlineReaders: number; activeTags: number; todayEvents: number; inboundToday: number; outboundToday: number; }>;
 }
 
 export class MemStorage implements IStorage {
@@ -434,6 +463,12 @@ export class MemStorage implements IStorage {
   private glJournalsMap: Map<string, GlJournal>;
   private glJournalLinesMap: Map<string, GlJournalLine>;
 
+  // RFID Module data stores
+  private rfidZonesMap: Map<string, RfidZone>;
+  private rfidReadersMap: Map<string, RfidReader>;
+  private rfidTagsMap: Map<string, RfidTag>;
+  private rfidEventsMap: Map<string, RfidEvent>;
+
   constructor() {
     this.materials = new Map();
     this.testConfigs = new Map();
@@ -497,9 +532,16 @@ export class MemStorage implements IStorage {
     this.paymentsMap = new Map();
     this.glJournalsMap = new Map();
     this.glJournalLinesMap = new Map();
+
+    // Initialize RFID Module data stores
+    this.rfidZonesMap = new Map();
+    this.rfidReadersMap = new Map();
+    this.rfidTagsMap = new Map();
+    this.rfidEventsMap = new Map();
     
     this.initializeDummyData().catch(console.error);
     this.initializeFinanceData().catch(console.error);
+    this.initializeRfidData().catch(console.error);
   }
 
   async getMaterials(): Promise<Material[]> {
@@ -5023,6 +5065,259 @@ export class MemStorage implements IStorage {
     }
     
     return result.sort((a, b) => b.total - a.total);
+  }
+
+  // ==================== RFID Module Implementations ====================
+
+  private async initializeRfidData(): Promise<void> {
+    const now = new Date();
+
+    // Seed zones
+    const zones: RfidZone[] = [
+      { id: randomUUID(), zoneCode: "ZONE-RM-A", name: "Raw Materials Rack A", type: "rack", warehouseId: "WH-001", locationCode: "A-01", description: "Main raw material storage rack - Row A", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-RM-B", name: "Raw Materials Rack B", type: "rack", warehouseId: "WH-001", locationCode: "A-02", description: "Main raw material storage rack - Row B", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-PKG", name: "Packaging Materials Zone", type: "room", warehouseId: "WH-002", locationCode: "B-01", description: "Packaging and labeling materials storage", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-FG", name: "Finished Goods Zone", type: "room", warehouseId: "WH-003", locationCode: "C-01", description: "Finished product holding area", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-COLD", name: "Cold Storage", type: "cold-storage", warehouseId: "WH-001", locationCode: "D-01", description: "Temperature-controlled storage (2-8°C)", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-QUAR", name: "Quarantine Zone", type: "quarantine", warehouseId: "WH-001", locationCode: "E-01", description: "Materials awaiting QC clearance", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-DOOR-IN", name: "Inbound Dock", type: "door", warehouseId: "WH-001", locationCode: "DOCK-IN", description: "Receiving dock - entry point", isActive: true, createdAt: now, updatedAt: now },
+      { id: randomUUID(), zoneCode: "ZONE-DOOR-OUT", name: "Outbound Dock", type: "door", warehouseId: "WH-001", locationCode: "DOCK-OUT", description: "Dispatch dock - exit point", isActive: true, createdAt: now, updatedAt: now },
+    ];
+    for (const z of zones) this.rfidZonesMap.set(z.id, z);
+
+    const zoneIds = zones.map(z => z.id);
+
+    // Seed readers
+    const readers: RfidReader[] = [
+      { id: randomUUID(), readerCode: "RDR-001", name: "Zebra FX9600 - RM Rack A", model: "FX9600", vendor: "Zebra", zoneId: zoneIds[0], ipAddress: "192.168.1.101", port: 5084, antennaCount: 4, status: "online", firmwareVersion: "2.3.12.0", lastHeartbeat: now, isActive: true, notes: null, installedDate: new Date("2024-01-15"), createdAt: now, updatedAt: now },
+      { id: randomUUID(), readerCode: "RDR-002", name: "Impinj R700 - RM Rack B", model: "R700", vendor: "Impinj", zoneId: zoneIds[1], ipAddress: "192.168.1.102", port: 5084, antennaCount: 4, status: "online", firmwareVersion: "8.0.0.240", lastHeartbeat: now, isActive: true, notes: null, installedDate: new Date("2024-01-15"), createdAt: now, updatedAt: now },
+      { id: randomUUID(), readerCode: "RDR-003", name: "Zebra FX7500 - Packaging Zone", model: "FX7500", vendor: "Zebra", zoneId: zoneIds[2], ipAddress: "192.168.1.103", port: 5084, antennaCount: 2, status: "online", firmwareVersion: "2.2.40.0", lastHeartbeat: new Date(now.getTime() - 120000), isActive: true, notes: null, installedDate: new Date("2024-02-10"), createdAt: now, updatedAt: now },
+      { id: randomUUID(), readerCode: "RDR-004", name: "Impinj Speedway R420 - FG Zone", model: "Speedway R420", vendor: "Impinj", zoneId: zoneIds[3], ipAddress: "192.168.1.104", port: 5084, antennaCount: 4, status: "online", firmwareVersion: "5.14.1.240", lastHeartbeat: now, isActive: true, notes: null, installedDate: new Date("2024-02-20"), createdAt: now, updatedAt: now },
+      { id: randomUUID(), readerCode: "RDR-005", name: "Alien ALR-9900+ - Cold Storage", model: "ALR-9900+", vendor: "Alien", zoneId: zoneIds[4], ipAddress: "192.168.1.105", port: 5084, antennaCount: 4, status: "error", firmwareVersion: "19.1.9.2", lastHeartbeat: new Date(now.getTime() - 3600000), isActive: true, notes: "Antenna 3 fault - maintenance scheduled", installedDate: new Date("2024-03-05"), createdAt: now, updatedAt: now },
+      { id: randomUUID(), readerCode: "RDR-006", name: "Honeywell RFID - Inbound Dock", model: "IH21", vendor: "Honeywell", zoneId: zoneIds[6], ipAddress: "192.168.1.106", port: 5084, antennaCount: 2, status: "online", firmwareVersion: "4.2.1", lastHeartbeat: now, isActive: true, notes: null, installedDate: new Date("2024-03-01"), createdAt: now, updatedAt: now },
+      { id: randomUUID(), readerCode: "RDR-007", name: "Zebra FX9600 - Outbound Dock", model: "FX9600", vendor: "Zebra", zoneId: zoneIds[7], ipAddress: "192.168.1.107", port: 5084, antennaCount: 4, status: "offline", firmwareVersion: "2.3.12.0", lastHeartbeat: new Date(now.getTime() - 86400000), isActive: true, notes: "Offline for firmware update", installedDate: new Date("2024-03-01"), createdAt: now, updatedAt: now },
+    ];
+    for (const r of readers) this.rfidReadersMap.set(r.id, r);
+
+    const readerIds = readers.map(r => r.id);
+
+    // Seed tags
+    const materialTypes = ["raw-material", "packaging", "artwork", "finished-product", "instructions"];
+    const tagData = [
+      { epc: "E2000018921802180C006025", materialType: "raw-material", batch: "BT-2024-001", lot: "LOT-001", zoneIdx: 0, readerIdx: 0 },
+      { epc: "E2000018921802180C006026", materialType: "raw-material", batch: "BT-2024-001", lot: "LOT-001", zoneIdx: 0, readerIdx: 0 },
+      { epc: "E2000018921802180C006027", materialType: "raw-material", batch: "BT-2024-002", lot: "LOT-002", zoneIdx: 1, readerIdx: 1 },
+      { epc: "E2000018921802180C006028", materialType: "packaging", batch: "PK-2024-001", lot: "LOT-P01", zoneIdx: 2, readerIdx: 2 },
+      { epc: "E2000018921802180C006029", materialType: "packaging", batch: "PK-2024-002", lot: "LOT-P02", zoneIdx: 2, readerIdx: 2 },
+      { epc: "E2000018921802180C00602A", materialType: "finished-product", batch: "FP-2024-001", lot: "LOT-F01", zoneIdx: 3, readerIdx: 3 },
+      { epc: "E2000018921802180C00602B", materialType: "finished-product", batch: "FP-2024-001", lot: "LOT-F01", zoneIdx: 3, readerIdx: 3 },
+      { epc: "E2000018921802180C00602C", materialType: "raw-material", batch: "BT-2024-003", lot: "LOT-003", zoneIdx: 4, readerIdx: 0 },
+      { epc: "E2000018921802180C00602D", materialType: "artwork", batch: "ART-2024-001", lot: "LOT-A01", zoneIdx: 2, readerIdx: 2 },
+      { epc: "E2000018921802180C00602E", materialType: "raw-material", batch: "BT-2024-004", lot: "LOT-004", zoneIdx: 5, readerIdx: 0 },
+      { epc: "E2000018921802180C00602F", materialType: "finished-product", batch: "FP-2024-002", lot: "LOT-F02", zoneIdx: 3, readerIdx: 3 },
+      { epc: "E2000018921802180C006030", materialType: "packaging", batch: "PK-2024-003", lot: "LOT-P03", zoneIdx: 2, readerIdx: 2 },
+    ];
+
+    const tags: RfidTag[] = tagData.map(t => ({
+      id: randomUUID(),
+      tagEpc: t.epc,
+      tagType: "UHF",
+      materialId: null,
+      materialType: t.materialType,
+      batchNumber: t.batch,
+      lotNumber: t.lot,
+      status: "active",
+      lastSeenAt: new Date(now.getTime() - Math.random() * 3600000),
+      lastZoneId: zoneIds[t.zoneIdx],
+      lastReaderId: readerIds[t.readerIdx],
+      lastRssi: -45 - Math.floor(Math.random() * 30),
+      isActive: true,
+      notes: null,
+      createdAt: new Date("2024-04-01"),
+      updatedAt: now,
+    }));
+    for (const t of tags) this.rfidTagsMap.set(t.id, t);
+
+    const tagIds = tags.map(t => t.id);
+
+    // Seed events
+    const eventTypes: Array<{ type: string; direction: string | null }> = [
+      { type: "inbound", direction: "in" },
+      { type: "outbound", direction: "out" },
+      { type: "detected", direction: null },
+      { type: "zone-transfer", direction: null },
+    ];
+
+    let eventCounter = 1;
+    const events: RfidEvent[] = [];
+    for (let i = 0; i < 30; i++) {
+      const tag = tags[i % tags.length];
+      const et = eventTypes[i % eventTypes.length];
+      const scannedAt = new Date(now.getTime() - i * 1800000);
+      events.push({
+        id: randomUUID(),
+        eventNumber: `RFID-EVT-${String(eventCounter++).padStart(5, "0")}`,
+        tagEpc: tag.tagEpc,
+        tagId: tag.id,
+        readerId: tag.lastReaderId,
+        zoneId: tag.lastZoneId,
+        eventType: et.type,
+        direction: et.direction,
+        rssi: -45 - Math.floor(Math.random() * 30),
+        antennaPort: Math.ceil(Math.random() * 4),
+        materialId: null,
+        materialType: tag.materialType,
+        batchNumber: tag.batchNumber,
+        fromZoneId: et.type === "zone-transfer" ? zoneIds[Math.floor(Math.random() * zoneIds.length)] : null,
+        toZoneId: et.type === "zone-transfer" ? tag.lastZoneId : null,
+        quantity: 1,
+        performedBy: "System",
+        notes: null,
+        scannedAt,
+        createdAt: scannedAt,
+      });
+    }
+    for (const e of events) this.rfidEventsMap.set(e.id, e);
+  }
+
+  // RFID Zone implementations
+  async getRfidZones(): Promise<RfidZone[]> {
+    return Array.from(this.rfidZonesMap.values()).sort((a, b) => a.zoneCode.localeCompare(b.zoneCode));
+  }
+
+  async getRfidZone(id: string): Promise<RfidZone | undefined> {
+    return this.rfidZonesMap.get(id);
+  }
+
+  async createRfidZone(data: InsertRfidZone): Promise<RfidZone> {
+    const id = randomUUID();
+    const now = new Date();
+    const zone: RfidZone = { ...data, id, warehouseId: data.warehouseId || null, locationCode: data.locationCode || null, description: data.description || null, isActive: data.isActive ?? true, createdAt: now, updatedAt: now };
+    this.rfidZonesMap.set(id, zone);
+    return zone;
+  }
+
+  async updateRfidZone(id: string, data: Partial<InsertRfidZone>): Promise<RfidZone | undefined> {
+    const existing = this.rfidZonesMap.get(id);
+    if (!existing) return undefined;
+    const updated: RfidZone = { ...existing, ...data, updatedAt: new Date() };
+    this.rfidZonesMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteRfidZone(id: string): Promise<boolean> {
+    return this.rfidZonesMap.delete(id);
+  }
+
+  // RFID Reader implementations
+  async getRfidReaders(): Promise<RfidReader[]> {
+    return Array.from(this.rfidReadersMap.values()).sort((a, b) => a.readerCode.localeCompare(b.readerCode));
+  }
+
+  async getRfidReader(id: string): Promise<RfidReader | undefined> {
+    return this.rfidReadersMap.get(id);
+  }
+
+  async createRfidReader(data: InsertRfidReader): Promise<RfidReader> {
+    const id = randomUUID();
+    const now = new Date();
+    const reader: RfidReader = { ...data, id, zoneId: data.zoneId || null, ipAddress: data.ipAddress || null, port: data.port ?? 5084, antennaCount: data.antennaCount ?? 4, status: data.status || "offline", firmwareVersion: data.firmwareVersion || null, lastHeartbeat: data.lastHeartbeat || null, isActive: data.isActive ?? true, notes: data.notes || null, installedDate: data.installedDate || null, createdAt: now, updatedAt: now };
+    this.rfidReadersMap.set(id, reader);
+    return reader;
+  }
+
+  async updateRfidReader(id: string, data: Partial<InsertRfidReader>): Promise<RfidReader | undefined> {
+    const existing = this.rfidReadersMap.get(id);
+    if (!existing) return undefined;
+    const updated: RfidReader = { ...existing, ...data, updatedAt: new Date() };
+    this.rfidReadersMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteRfidReader(id: string): Promise<boolean> {
+    return this.rfidReadersMap.delete(id);
+  }
+
+  // RFID Tag implementations
+  async getRfidTags(): Promise<RfidTag[]> {
+    return Array.from(this.rfidTagsMap.values()).sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async getRfidTag(id: string): Promise<RfidTag | undefined> {
+    return this.rfidTagsMap.get(id);
+  }
+
+  async getRfidTagByEpc(epc: string): Promise<RfidTag | undefined> {
+    return Array.from(this.rfidTagsMap.values()).find(t => t.tagEpc === epc);
+  }
+
+  async createRfidTag(data: InsertRfidTag): Promise<RfidTag> {
+    const id = randomUUID();
+    const now = new Date();
+    const tag: RfidTag = { ...data, id, materialId: data.materialId || null, materialType: data.materialType || null, batchNumber: data.batchNumber || null, lotNumber: data.lotNumber || null, status: data.status || "active", lastSeenAt: data.lastSeenAt || null, lastZoneId: data.lastZoneId || null, lastReaderId: data.lastReaderId || null, lastRssi: data.lastRssi || null, isActive: data.isActive ?? true, notes: data.notes || null, createdAt: now, updatedAt: now };
+    this.rfidTagsMap.set(id, tag);
+    return tag;
+  }
+
+  async updateRfidTag(id: string, data: Partial<InsertRfidTag>): Promise<RfidTag | undefined> {
+    const existing = this.rfidTagsMap.get(id);
+    if (!existing) return undefined;
+    const updated: RfidTag = { ...existing, ...data, updatedAt: new Date() };
+    this.rfidTagsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteRfidTag(id: string): Promise<boolean> {
+    return this.rfidTagsMap.delete(id);
+  }
+
+  // RFID Event implementations
+  async getRfidEvents(): Promise<RfidEvent[]> {
+    return Array.from(this.rfidEventsMap.values()).sort((a, b) => new Date(b.scannedAt!).getTime() - new Date(a.scannedAt!).getTime());
+  }
+
+  async getRfidEventsByTag(tagId: string): Promise<RfidEvent[]> {
+    return Array.from(this.rfidEventsMap.values()).filter(e => e.tagId === tagId).sort((a, b) => new Date(b.scannedAt!).getTime() - new Date(a.scannedAt!).getTime());
+  }
+
+  async getRfidEventsByZone(zoneId: string): Promise<RfidEvent[]> {
+    return Array.from(this.rfidEventsMap.values()).filter(e => e.zoneId === zoneId).sort((a, b) => new Date(b.scannedAt!).getTime() - new Date(a.scannedAt!).getTime());
+  }
+
+  async createRfidEvent(data: InsertRfidEvent): Promise<RfidEvent> {
+    const id = randomUUID();
+    const now = new Date();
+    const event: RfidEvent = { ...data, id, tagId: data.tagId || null, readerId: data.readerId || null, zoneId: data.zoneId || null, direction: data.direction || null, rssi: data.rssi || null, antennaPort: data.antennaPort || null, materialId: data.materialId || null, materialType: data.materialType || null, batchNumber: data.batchNumber || null, fromZoneId: data.fromZoneId || null, toZoneId: data.toZoneId || null, quantity: data.quantity ?? 1, performedBy: data.performedBy || null, notes: data.notes || null, scannedAt: data.scannedAt || now, createdAt: now };
+    this.rfidEventsMap.set(id, event);
+
+    // Update the tag's last-seen information if tagId is provided
+    if (data.tagId) {
+      const tag = this.rfidTagsMap.get(data.tagId);
+      if (tag) {
+        const updatedTag: RfidTag = { ...tag, lastSeenAt: event.scannedAt, lastZoneId: data.zoneId || tag.lastZoneId, lastReaderId: data.readerId || tag.lastReaderId, lastRssi: data.rssi || tag.lastRssi, updatedAt: now };
+        this.rfidTagsMap.set(tag.id, updatedTag);
+      }
+    }
+    return event;
+  }
+
+  async getRfidStats(): Promise<{ totalReaders: number; onlineReaders: number; activeTags: number; todayEvents: number; inboundToday: number; outboundToday: number; }> {
+    const readers = Array.from(this.rfidReadersMap.values());
+    const tags = Array.from(this.rfidTagsMap.values());
+    const events = Array.from(this.rfidEventsMap.values());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayEvents = events.filter(e => new Date(e.scannedAt!) >= today);
+
+    return {
+      totalReaders: readers.length,
+      onlineReaders: readers.filter(r => r.status === "online").length,
+      activeTags: tags.filter(t => t.status === "active" && t.isActive).length,
+      todayEvents: todayEvents.length,
+      inboundToday: todayEvents.filter(e => e.eventType === "inbound").length,
+      outboundToday: todayEvents.filter(e => e.eventType === "outbound").length,
+    };
   }
 }
 
